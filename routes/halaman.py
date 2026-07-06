@@ -170,17 +170,6 @@ def pencarian():
 def pengaturan():
     """Halaman Pengaturan."""
     return render_template(
-        "pencarian/index.html",
-        query_text="",
-        pagination=None,
-        hasil=[],
-        daftar_media=[],
-        daftar_topik=[],
-        filter_sentimen="",
-        filter_media="",
-        filter_topik="",
-        filter_tanggal_dari="",
-        filter_tanggal_sampai="",
-        filter_wilayah="",
+        "pengaturan/index.html",
         active_page="pengaturan",
     )
