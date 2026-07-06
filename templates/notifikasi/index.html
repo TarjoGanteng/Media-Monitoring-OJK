@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Notifikasi{% endblock %}
+{% block breadcrumb %}Notifikasi{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Notifikasi</h1>
+        <p class="page-subtitle">Notifikasi penting untuk pimpinan · Terakhir diperbarui {{ now.strftime('%H:%M') }} WIB</p>
+    </div>
+    <div class="page-header-actions">
+        <button class="btn-action-secondary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<!-- Notifikasi List -->
+<div class="card-panel">
+    <div class="card-panel-header">
+        <div>
+            <h5 class="card-panel-title">Semua Notifikasi</h5>
+            <p class="card-panel-subtitle">{{ notifikasi_list | length }} notifikasi hari ini</p>
+        </div>
+        <span class="badge-live">
+            <span class="live-dot"></span> Live
+        </span>
+    </div>
+    <div class="card-panel-body p-0">
+        <div class="notif-list">
+            {% for notif in notifikasi_list %}
+            <div class="notif-item notif-{{ notif.tipe }}">
+                <div class="notif-icon-wrap">
+                    <i class="bi {{ notif.icon }}"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">{{ notif.judul }}</span>
+                        <span class="notif-time">{{ notif.waktu }}</span>
+                    </div>
+                    <p class="notif-msg">{{ notif.pesan }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

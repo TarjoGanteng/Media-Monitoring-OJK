@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Pencarian Berita{% endblock %}
+{% block breadcrumb %}Pencarian{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Pencarian Berita</h1>
+        <p class="page-subtitle">Cari berita dengan berbagai filter</p>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card-panel mb-4">
+    <div class="card-panel-body">
+        <form method="GET" action="{{ url_for('halaman.pencarian') }}">
+            <div class="search-bar-big">
+                <i class="bi bi-search search-icon-big"></i>
+                <input type="text" name="q" id="searchInput" class="search-input-big"
+                       placeholder="Masukkan kata kunci berita OJK..." value="{{ query_text }}"
+                       autofocus>
+                <button type="submit" class="search-btn-big">Cari</button>
+            </div>
+
+            <!-- Filter Tambahan -->
+            <div class="row g-3 mt-3">
+                <div class="col-md-2">
+                    <label class="filter-label">Sentimen</label>
+                    <select name="sentimen" class="form-select filter-input">
+                        <option value="">Semua</option>
+                        <option value="Positif" {% if filter_sentimen == 'Positif' %}selected{% endif %}>Positif</option>
+                        <option value="Netral" {% if filter_sentimen == 'Netral' %}selected{% endif %}>Netral</option>
+                        <option value="Negatif" {% if filter_sentimen == 'Negatif' %}selected{% endif %}>Negatif</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="filter-label">Media</label>
+                    <select name="media" class="form-select filter-input">
+                        <option value="">Semua Media</option>
+                        {% for m in daftar_media %}
+                        <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="filter-label">Tanggal Dari</label>
+                    <input type="date" name="tanggal_dari" class="form-control filter-input" value="{{ filter_tanggal_dari }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="filter-label">Tanggal Sampai</label>
+                    <input type="date" name="tanggal_sampai" class="form-control filter-input" value="{{ filter_tanggal_sampai }}">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hasil Pencarian -->
+{% if query_text %}
+<div class="card-panel">
+    <div class="card-panel-header">
+        <div>
+            <h5 class="card-panel-title">
+                Hasil Pencarian:
+                <span class="search-query-highlight">"{{ query_text }}"</span>
+            </h5>
+            <p class="card-panel-subtitle">
+                {% if pagination %}
+                    Ditemukan {{ pagination.total }} berita
+                {% else %}
+                    Tidak ada hasil
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="card-panel-body p-0">
+        {% if hasil %}
+        <div class="table-responsive">
+            <table class="table-berita">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">Tanggal</th>
+                        <th>Judul Berita</th>
+                        <th style="width: 140px;">Media</th>
+                        <th style="width: 100px;">Sentimen</th>
+                        <th style="width: 130px;">Topik</th>
+                        <th style="width: 60px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for berita in hasil %}
+                    <tr>
+                        <td class="td-date">{{ berita.get_tanggal_formatted() }}</td>
+                        <td class="td-title">
+                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" class="title-link">
+                                {{ berita.judul }}
+                            </a>
+                        </td>
+                        <td class="td-media">{{ berita.media or '-' }}</td>
+                        <td>
+                            <span class="badge-sentimen {{ berita.get_sentimen_badge() }}">{{ berita.sentimen or 'Netral' }}</span>
+                        </td>
+                        <td class="td-topik">{{ berita.topik or '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" class="btn-detail-sm">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination and pagination.pages > 1 %}
+        <div class="pagination-wrapper">
+            <div class="pagination-info">
+                Halaman {{ pagination.page }} dari {{ pagination.pages }}
+            </div>
+            <nav>
+                <ul class="pagination-custom">
+                    <li class="{% if not pagination.has_prev %}disabled{% endif %}">
+                        <a href="{% if pagination.has_prev %}{{ url_for('halaman.pencarian', q=query_text, page=pagination.prev_num) }}{% else %}#{% endif %}" class="page-btn">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% for p in pagination.iter_pages() %}
+                        {% if p %}
+                        <li><a href="{{ url_for('halaman.pencarian', q=query_text, page=p) }}" class="page-btn {% if p == pagination.page %}active{% endif %}">{{ p }}</a></li>
+                        {% else %}
+                        <li><span class="page-ellipsis">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="{% if not pagination.has_next %}disabled{% endif %}">
+                        <a href="{% if pagination.has_next %}{{ url_for('halaman.pencarian', q=query_text, page=pagination.next_num) }}{% else %}#{% endif %}" class="page-btn">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state py-5">
+            <i class="bi bi-search"></i>
+            <h3>Tidak Ada Hasil</h3>
+            <p>Tidak ditemukan berita untuk kata kunci <strong>"{{ query_text }}"</strong>. Coba kata kunci lain.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Initial state - belum ada pencarian -->
+<div class="card-panel">
+    <div class="card-panel-body">
+        <div class="search-initial-state">
+            <i class="bi bi-search"></i>
+            <h3>Mulai Pencarian</h3>
+            <p>Masukkan kata kunci di kolom pencarian di atas untuk mencari berita.</p>
+            <div class="search-suggestions">
+                <span class="suggestion-label">Saran:</span>
+                <a href="?q=OJK" class="suggestion-chip">OJK</a>
+                <a href="?q=Pinjaman Online" class="suggestion-chip">Pinjaman Online</a>
+                <a href="?q=Literasi Keuangan" class="suggestion-chip">Literasi Keuangan</a>
+                <a href="?q=Bandung" class="suggestion-chip">Bandung</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

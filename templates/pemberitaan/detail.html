@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}{{ berita.judul[:60] }}{% endblock %}
+{% block breadcrumb %}Pemberitaan · Detail Berita{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('pemberitaan.index') }}" class="back-link">
+            <i class="bi bi-arrow-left"></i> Kembali ke Pemberitaan
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- ====== KONTEN UTAMA ====== -->
+    <div class="col-lg-8">
+        <div class="card-panel">
+            <div class="card-panel-body">
+                <!-- Header Berita -->
+                <div class="detail-header">
+                    <div class="detail-meta-top">
+                        <span class="detail-media">
+                            <i class="bi bi-tv me-1"></i>{{ berita.media or 'Unknown Media' }}
+                        </span>
+                        <span class="detail-dot">·</span>
+                        <span class="detail-date">
+                            <i class="bi bi-calendar3 me-1"></i>{{ berita.get_tanggal_formatted() }}
+                        </span>
+                        <span class="detail-dot">·</span>
+                        <span class="detail-keyword">
+                            <i class="bi bi-tag me-1"></i>{{ berita.keyword or 'OJK' }}
+                        </span>
+                    </div>
+
+                    <h1 class="detail-title">{{ berita.judul }}</h1>
+
+                    <div class="detail-badges">
+                        <span class="badge-sentimen {{ berita.get_sentimen_badge() }}">
+                            {% if berita.sentimen == 'Positif' %}<i class="bi bi-emoji-smile me-1"></i>
+                            {% elif berita.sentimen == 'Negatif' %}<i class="bi bi-emoji-frown me-1"></i>
+                            {% else %}<i class="bi bi-emoji-neutral me-1"></i>{% endif %}
+                            {{ berita.sentimen or 'Netral' }}
+                        </span>
+                        <span class="badge-topik">{{ dummy_ai.topik }}</span>
+                        {% if berita.wilayah or dummy_ai.wilayah %}
+                        <span class="badge-wilayah">
+                            <i class="bi bi-geo-alt me-1"></i>{{ berita.wilayah or dummy_ai.wilayah }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Gambar Berita -->
+                {% if berita.gambar_url %}
+                <div class="detail-image" style="margin-bottom: 1.5rem; border-radius: 0.5rem; overflow: hidden; text-align: center; background-color: #f9fafb;">
+                    <img src="{{ berita.gambar_url }}" alt="{{ berita.judul }}" style="max-width: 100%; max-height: 400px; height: auto; object-fit: cover; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                </div>
+                {% endif %}
+
+                <!-- Isi Berita -->
+                <div class="detail-content" style="font-size: 1.05rem; line-height: 1.8; color: #374151; text-align: justify; margin-bottom: 2rem;">
+                    {% if berita.isi %}
+                        <!-- Menampilkan isi berita dengan rapi -->
+                        {{ berita.isi | safe }}
+                    {% else %}
+                        <div class="detail-no-content" style="text-align: center; padding: 2rem; background: #f9fafb; border-radius: 0.5rem;">
+                            <i class="bi bi-file-earmark-text" style="font-size: 2rem; color: #9ca3af; margin-bottom: 1rem; display: block;"></i>
+                            <p style="color: #6b7280; margin-bottom: 0;">Konten lengkap berita belum tersedia atau tidak dapat ditarik sepenuhnya dari sumber asli.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Link Asli -->
+                <div class="detail-source-box" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed #e5e7eb;">
+                    <i class="bi bi-link-45deg" style="color: #6b7280; font-size: 1.2rem; vertical-align: middle;"></i>
+                    <span style="font-size: 0.9rem; color: #6b7280; margin-left: 0.5rem; margin-right: 0.5rem;">Sumber rujukan:</span>
+                    <a href="{{ berita.link }}" target="_blank" rel="noopener noreferrer" class="detail-source-link" style="color: #2563eb; font-weight: 500; text-decoration: none;">
+                        Baca Artikel Asli di Website Sumber <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.8rem;"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== SIDEBAR DETAIL ====== -->
+    <div class="col-lg-4">
+        <!-- Ringkasan AI (Dummy) -->
+        <div class="card-panel mb-4">
+            <div class="card-panel-header">
+                <div>
+                    <h5 class="card-panel-title">
+                        <i class="bi bi-robot me-2 text-primary"></i>Ringkasan AI
+                    </h5>
+                    <p class="card-panel-subtitle">Analisis otomatis (segera hadir)</p>
+                </div>
+                <span class="badge-coming-soon">Beta</span>
+            </div>
+            <div class="card-panel-body">
+                <div class="ai-summary-box">
+                    <p class="ai-summary-text">{{ dummy_ai.ringkasan }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Klasifikasi -->
+        <div class="card-panel mb-4">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">Klasifikasi</h5>
+            </div>
+            <div class="card-panel-body">
+                <div class="classification-list">
+                    <div class="classification-item">
+                        <span class="class-label"><i class="bi bi-heart-pulse me-2"></i>Sentimen</span>
+                        <span class="badge-sentimen {{ berita.get_sentimen_badge() }}">{{ berita.sentimen or 'Netral' }}</span>
+                    </div>
+                    <div class="classification-item">
+                        <span class="class-label"><i class="bi bi-tag me-2"></i>Topik</span>
+                        <span class="class-value">{{ dummy_ai.topik }}</span>
+                    </div>
+                    <div class="classification-item">
+                        <span class="class-label"><i class="bi bi-geo-alt me-2"></i>Wilayah</span>
+                        <span class="class-value">{{ berita.wilayah or dummy_ai.wilayah }}</span>
+                    </div>
+                    <div class="classification-item">
+                        <span class="class-label"><i class="bi bi-calendar3 me-2"></i>Triwulan</span>
+                        <span class="class-value">Q{{ berita.triwulan or '1' }} {{ berita.tahun or now.year }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Narasumber -->
+        <div class="card-panel mb-4">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">Narasumber</h5>
+            </div>
+            <div class="card-panel-body">
+                {% set narasumber_list = (berita.narasumber or dummy_ai.narasumber).split(',') %}
+                {% for ns in narasumber_list %}
+                <div class="narasumber-item">
+                    <div class="narasumber-avatar">{{ ns.strip()[0] if ns.strip() else 'N' }}</div>
+                    <span class="narasumber-name">{{ ns.strip() }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Tokoh Terkait -->
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">Tokoh Terkait</h5>
+            </div>
+            <div class="card-panel-body">
+                <div class="tokoh-tags">
+                    {% for tokoh in dummy_ai.tokoh %}
+                    <span class="badge-tokoh">{{ tokoh }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

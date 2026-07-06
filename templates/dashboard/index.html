@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- ====== ROW 1: MORNING BRIEF + STAT CARDS ====== -->
+<div class="dash-top-row">
+    <!-- Morning Brief -->
+    <div class="morning-brief-card">
+        <div class="morning-brief-header">
+            <span class="morning-sun">&#9728;</span>
+            <span class="morning-label">MORNING BRIEF</span>
+        </div>
+        <div class="morning-date">{{ now.strftime('%d %B %Y') }}</div>
+        <div class="morning-time">{{ now.strftime('%H.%M') }} WIB</div>
+        <div class="morning-data-label">Data Pemberitaan</div>
+        <div class="morning-data-date">{{ now.strftime('%d %B %Y') }}</div>
+        <p class="morning-desc" style="flex:1;">Berikut ringkasan pemberitaan OJK selama 24 jam terakhir yang telah dianalisis oleh sistem.</p>
+        <a href="{{ url_for('pemberitaan.index') }}" class="btn-morning-detail">Lihat Selengkapnya &rarr;</a>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="dash-stat-cards">
+        <div class="stat-card-v2 stat-total">
+            <div class="stat-v2-label">Total Berita</div>
+            <div class="stat-v2-value">{{ statistik.total }}</div>
+            <div class="stat-v2-sub">Berita</div>
+            <div class="stat-v2-change up">
+                <i class="bi bi-arrow-up-short"></i> 18%
+                <span class="stat-v2-vs">vs 01 Juli 2026</span>
+            </div>
+        </div>
+        <div class="stat-card-v2 stat-positif">
+            <div class="stat-v2-top">
+                <span class="stat-v2-dot dot-positif">&#9679;</span>
+                <span class="stat-v2-label">Positif</span>
+            </div>
+            <div class="stat-v2-value">{{ statistik.positif }}</div>
+            <div class="stat-v2-sub">Berita</div>
+            <div class="stat-v2-pct positif-pct">{{ statistik.pct_positif }}%</div>
+        </div>
+        <div class="stat-card-v2 stat-netral">
+            <div class="stat-v2-top">
+                <span class="stat-v2-dot dot-netral">&#9728;</span>
+                <span class="stat-v2-label">Netral</span>
+            </div>
+            <div class="stat-v2-value">{{ statistik.netral }}</div>
+            <div class="stat-v2-sub">Berita</div>
+            <div class="stat-v2-pct netral-pct">{{ statistik.pct_netral }}%</div>
+        </div>
+        <div class="stat-card-v2 stat-negatif">
+            <div class="stat-v2-top">
+                <span class="stat-v2-dot dot-negatif">&#9675;</span>
+                <span class="stat-v2-label">Negatif</span>
+            </div>
+            <div class="stat-v2-value">{{ statistik.negatif }}</div>
+            <div class="stat-v2-sub">Berita</div>
+            <div class="stat-v2-pct negatif-pct">{{ statistik.pct_negatif }}%</div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== ROW 2: TREND CHART + TOPIK DONUT ====== -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card-panel h-100">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">TREND JUMLAH BERITA</h5>
+                <select class="filter-select-sm" id="trendPeriod">
+                    <option>7 Hari Terakhir</option>
+                    <option>30 Hari Terakhir</option>
+                </select>
+            </div>
+            <div class="card-panel-body" style="height:190px;">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-panel h-100">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">TOPIK TERBANYAK</h5>
+            </div>
+            <div class="card-panel-body d-flex align-items-center gap-3" style="flex-wrap:wrap;">
+                <div style="width:130px;height:130px;flex-shrink:0;">
+                    <canvas id="topikDonut"></canvas>
+                </div>
+                <div class="topik-legend">
+                    {% set topik_colors = ['#c8002d','#f59e0b','#3b82f6','#8b5cf6','#6b7280'] %}
+                    {% if topik_terbanyak %}
+                        {% for item in topik_terbanyak[:5] %}
+                        <div class="topik-legend-item">
+                            <span class="topik-legend-dot" style="background:{{ topik_colors[loop.index0 % 5] }};"></span>
+                            <span class="topik-legend-name">{{ item.topik }}</span>
+                            <span class="topik-legend-pct">{{ item.pct }}%</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:var(--text-secondary);font-size:0.8rem;">Belum ada data</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== ROW 3: BERITA TERBARU + SEBARAN PETA ====== -->
+<div class="row g-3 mb-3">
+    <!-- Berita Terbaru -->
+    <div class="col-lg-6">
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">BERITA TERBARU <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">({{ now.strftime('%d %B %Y') }})</span></h5>
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <a href="{{ url_for('pemberitaan.index') }}" class="btn-panel-link">Lihat Semua &rarr;</a>
+                </div>
+            </div>
+            <div class="card-panel-body p-0">
+                {% if berita_terbaru %}
+                <div class="berita-list">
+                    {% for berita in berita_terbaru %}
+                    <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" class="berita-item-v2">
+                        <div class="berita-v2-time">{{ berita.get_tanggal_formatted()[-8:-3] if berita.get_tanggal_formatted()|length > 8 else '--:--' }} WIB</div>
+                        <div class="berita-v2-thumb">
+                            {% if berita.gambar_url %}
+                            <img src="{{ berita.gambar_url }}"
+                                 alt="{{ berita.judul[:30] }}"
+                                 class="berita-thumb-img"
+                                 onerror="this.onerror=null; this.src='https://www.google.com/s2/favicons?domain={{ berita.media | lower | replace(' ','') }}.com&sz=64'; this.style.objectFit='contain'; this.style.padding='8px';">
+                            {% else %}
+                            <img src="{{ berita.get_media_favicon() }}"
+                                 alt="{{ berita.media }}"
+                                 class="berita-thumb-img"
+                                 style="object-fit:contain; padding:10px; background:#f9fafb;">
+                            {% endif %}
+                        </div>
+                        <div class="berita-v2-content">
+                            <div class="berita-v2-source">{{ berita.media or 'Unknown' }}</div>
+                            <p class="berita-v2-title">{{ berita.judul }}</p>
+                            <div class="berita-v2-badges">
+                                <span class="badge-sentimen {{ berita.get_sentimen_badge() }}">{{ berita.sentimen or 'Netral' }}</span>
+                                {% if berita.topik %}
+                                <span class="badge-topik-v2">{{ berita.topik }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-table">
+                    <i class="bi bi-inbox"></i>
+                    <p>Belum ada berita. <a href="#" onclick="runCrawler(); return false;">Jalankan crawler</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sebaran Peta -->
+    <div class="col-lg-6">
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">SEBARAN PEMBERITAAN JAWA BARAT</h5>
+                <a href="{{ url_for('halaman.wilayah') }}" class="btn-panel-link">Lihat Detail &rarr;</a>
+            </div>
+            <div class="card-panel-body p-0">
+                <div class="sebaran-layout">
+                    <div class="sebaran-map-area">
+                        <div class="map-placeholder-v2">
+                            <svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                                <ellipse cx="150" cy="100" rx="130" ry="70" fill="#fca5a5" opacity="0.4"/>
+                                <ellipse cx="160" cy="95" rx="60" ry="40" fill="#f87171" opacity="0.5"/>
+                                <ellipse cx="155" cy="93" rx="30" ry="22" fill="#c8002d" opacity="0.7"/>
+                                <text x="145" y="97" font-size="8" fill="#fff" font-family="Inter">Bandung</text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="sebaran-list">
+                        {% for item in kota_terbanyak %}
+                        <div class="sebaran-city-item">
+                            <span class="sebaran-city-name">{{ item.kota }}</span>
+                            <span class="sebaran-city-count">{{ item.jumlah }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== ROW 4: INSIGHT AI + MEDIA PALING AKTIF ====== -->
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">INSIGHT AI</h5>
+            </div>
+            <div class="card-panel-body">
+                <div class="insight-list">
+                    <div class="insight-item insight-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <p>Jumlah berita meningkat 18% dibanding hari sebelumnya.</p>
+                    </div>
+                    <div class="insight-item insight-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <p>Sentimen positif mendominasi dengan {{ statistik.pct_positif }}% dari total berita.</p>
+                    </div>
+                    <div class="insight-item insight-warning">
+                        <i class="bi bi-exclamation-circle-fill"></i>
+                        <p>Topik Pinjaman Online menjadi sorotan utama di berbagai media.</p>
+                    </div>
+                    <div class="insight-item insight-info">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <p>Bandung menjadi kota dengan pemberitaan terbanyak.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <h5 class="card-panel-title">MEDIA PALING AKTIF</h5>
+            </div>
+            <div class="card-panel-body p-0">
+                {% for item in media_teraktif %}
+                <div class="media-aktif-item">
+                    <span class="media-aktif-rank">{{ loop.index }}</span>
+                    <span class="media-aktif-name">{{ item.media }}</span>
+                    <span class="media-aktif-count">{{ item.jumlah }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trendData = {{ trend_json | safe }};
+const topikData = {{ topik_terbanyak | tojson }};
+
+// Trend Chart
+const ctx = document.getElementById('trendChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: trendData.labels,
+        datasets: [{
+            label: 'Total',
+            data: trendData.total,
+            borderColor: '#c8002d',
+            backgroundColor: 'rgba(200,0,45,0.06)',
+            borderWidth: 2,
+            pointBackgroundColor: '#c8002d',
+            pointRadius: 3,
+            tension: 0.4,
+            fill: true,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#fff', titleColor: '#374151', bodyColor: '#6b7280', borderColor: '#e5e7eb', borderWidth: 1 } },
+        scales: {
+            x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } }, beginAtZero: true }
+        }
+    }
+});
+
+// Topik Donut
+const topikColors = ['#c8002d','#f59e0b','#3b82f6','#8b5cf6','#6b7280'];
+const dctx = document.getElementById('topikDonut').getContext('2d');
+if (topikData && topikData.length > 0) {
+    new Chart(dctx, {
+        type: 'doughnut',
+        data: {
+            labels: topikData.slice(0,5).map(t => t.topik),
+            datasets: [{ data: topikData.slice(0,5).map(t => t.jumlah), backgroundColor: topikColors, borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#fff', titleColor: '#374151', bodyColor: '#6b7280', borderColor: '#e5e7eb', borderWidth: 1 } }, cutout: '65%' }
+    });
+}
+</script>
+
+<script>
+// Fungsi ambil gambar untuk berita yang belum punya thumbnail
+async function fetchImages() {
+    const btn = document.getElementById('btnFetchImages');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Mengambil...';
+
+    try {
+        const resp = await fetch('/api/crawler/fetch-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limit: 30 })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            btn.innerHTML = `<i class="bi bi-check-circle"></i> ${data.diupdate} gambar berhasil`;
+            btn.style.color = '#059669';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            btn.innerHTML = '<i class="bi bi-x-circle"></i> Gagal';
+            btn.style.color = '#dc2626';
+            btn.disabled = false;
+        }
+    } catch (e) {
+        btn.innerHTML = '<i class="bi bi-x-circle"></i> Error';
+        btn.style.color = '#dc2626';
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

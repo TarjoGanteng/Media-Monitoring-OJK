@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Media{% endblock %}
+{% block breadcrumb %}Media{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Media</h1>
+        <p class="page-subtitle">Media yang paling aktif memberitakan OJK Jawa Barat</p>
+    </div>
+</div>
+
+<div class="card-panel">
+    <div class="card-panel-header">
+        <div>
+            <h5 class="card-panel-title">Semua Media</h5>
+            <p class="card-panel-subtitle">{{ sebaran_media | length }} media terdeteksi</p>
+        </div>
+    </div>
+    <div class="card-panel-body p-0">
+        {% if sebaran_media %}
+        {% set max_jumlah = sebaran_media[0].jumlah if sebaran_media else 1 %}
+        <div class="media-full-list">
+            {% for item in sebaran_media %}
+            <div class="media-full-item">
+                <div class="media-rank-num">{{ loop.index }}</div>
+                <div class="media-icon-wrap">
+                    <i class="bi bi-globe"></i>
+                </div>
+                <div class="media-detail">
+                    <span class="media-name-full">{{ item.media }}</span>
+                    <div class="media-progress-wrap">
+                        <div class="media-progress-bar" style="width: {{ item.pct }}%"></div>
+                    </div>
+                </div>
+                <div class="media-stats">
+                    <span class="media-count-big">{{ item.jumlah }}</span>
+                    <span class="media-pct">{{ item.pct }}%</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state py-5">
+            <i class="bi bi-tv"></i>
+            <p>Belum ada data media. Jalankan crawler terlebih dahulu.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

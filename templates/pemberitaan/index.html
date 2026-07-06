@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}Pemberitaan{% endblock %}
+{% block breadcrumb %}Pemberitaan{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    /* Styling Select2 agar menyerupai input Bootstrap 5 yang ada */
+    .select2-container .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.375rem !important;
+        display: flex;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #1f2937 !important;
+        line-height: normal !important;
+    }
+    .select2-results__option {
+        font-size: 0.85rem;
+    }
+    /* Membatasi tinggi scroll dropdown */
+    .select2-results__options {
+        max-height: 300px !important;
+    }
+    /* Memaksa input flatpickr (termasuk altInput yang digenerate) agar selalu berwarna putih */
+    .date-picker-bg {
+        background-color: #ffffff !important;
+        border-color: #e5e7eb !important;
+        color: #1f2937 !important;
+        border-radius: 0.375rem !important;
+        font-size: 0.85rem !important;
+        height: 38px !important;
+        padding-right: 2.5rem !important;
+        opacity: 1 !important; /* Mencegah opacity bawaan readonly */
+    }
+    /* ----- LAYOUT FULL SCREEN UNTUK MENGHILANGKAN SCROLL UTAMA HALAMAN ----- */
+    body {
+        overflow-y: hidden !important;
+    }
+    #mainWrapper {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    .content-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding-bottom: 1rem !important;
+    }
+    .card-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        margin-bottom: 0 !important;
+        height: 100%;
+    }
+    .card-panel-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 1rem !important;
+    }
+    #filterForm, hr, .pagination-container {
+        flex-shrink: 0; /* Mencegah elemen ini mengecil */
+    }
+
+    /* Scroll khusus untuk tabel berita agar filter atas tetap terlihat (sticky) */
+    .table-scrollable-container {
+        flex: 1;
+        overflow-y: auto;
+        max-height: none !important;
+    }
+    /* Membuat header tabel menempel di atas saat di-scroll */
+    .table-scrollable-container thead th {
+        position: sticky;
+        top: 0;
+        background-color: #ffffff; /* Background putih agar tidak transparan saat scroll */
+        z-index: 10; /* Berada di atas baris tabel */
+        box-shadow: inset 0 -1px 0 #f3f4f6; /* Menggantikan garis bawah (border-bottom) */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card-panel" style="border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 0.5rem;">
+    <div class="card-panel-body">
+        <form method="GET" action="{{ url_for('pemberitaan.index') }}" id="filterForm">
+            <!-- Search Bar -->
+            <div style="position: relative; margin: 0 0 1.5rem 0; width: 100%;">
+                <i class="bi bi-search" style="position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 1.1rem; pointer-events: none;"></i>
+                <input type="text" name="keyword" class="form-control" style="width: 100%; font-size: 0.95rem; padding: 0.85rem 1rem 0.85rem 3rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; background-color: #f9fafb; color: #1f2937; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);"
+                       placeholder="Cari Judul Berita Disini" value="{{ filter_keyword }}">
+            </div>
+
+            <!-- Filters -->
+            <div class="row g-3 align-items-end mb-4">
+                <!-- Tanggal -->
+                <div class="col-lg-2 col-md-6">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Tanggal</label>
+                    <div style="position: relative;">
+                        <input type="text" name="tanggal_dari" id="dateInput" class="form-control filter-input date-picker-bg" 
+                               value="{{ filter_tanggal_dari }}">
+                        <input type="hidden" name="tanggal_sampai" id="tanggalSampai" value="{{ filter_tanggal_sampai }}">
+                        <i class="bi bi-calendar3" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;"></i>
+                    </div>
+                </div>
+
+                <!-- Sentimen -->
+                <div class="col-lg-2 col-md-4">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Sentimen</label>
+                    <select name="sentimen" class="form-select select2-no-search" style="width: 100%;">
+                        <option value="">Semua</option>
+                        <option value="Positif" {% if filter_sentimen == 'Positif' %}selected{% endif %}>Positif</option>
+                        <option value="Netral" {% if filter_sentimen == 'Netral' %}selected{% endif %}>Netral</option>
+                        <option value="Negatif" {% if filter_sentimen == 'Negatif' %}selected{% endif %}>Negatif</option>
+                    </select>
+                </div>
+
+                <!-- Topik -->
+                <div class="col-lg-2 col-md-4">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Topik</label>
+                    <select name="topik" class="form-select select2-search" style="width: 100%;">
+                        <option value="">Semua</option>
+                        {% for t in daftar_topik %}
+                        <option value="{{ t }}" {% if filter_topik == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Media -->
+                <div class="col-lg-4 col-md-4">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Media</label>
+                    <select name="media" id="mediaSelect" class="form-select select2-search" style="width: 100%;">
+                        <option value="">Semua</option>
+                        {% for m in daftar_media %}
+                        <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Tombol Filter -->
+                <div class="col-lg-2 col-md-4">
+                    <button type="submit" class="btn-filter w-100" style="background-color: #c8002d; color: white; border-radius: 0.375rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 0.85rem; padding: 0.6rem 1rem;">
+                        <i class="bi bi-funnel-fill"></i> Filter
+                    </button>
+                </div>
+            </div>
+            
+            {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik %}
+            <div class="mb-3 text-end">
+                <a href="{{ url_for('pemberitaan.index') }}" class="btn-reset-filter" style="font-size: 0.8rem; text-decoration: none;">
+                    <i class="bi bi-x-circle"></i> Reset Filter
+                </a>
+            </div>
+            {% endif %}
+        </form>
+
+        <!-- Separator Line -->
+        <hr style="border-top: 1px solid #f3f4f6; margin: 0 0 1rem 0;">
+
+        <!-- Tabel Berita -->
+        {% if berita_list %}
+        <div class="table-responsive table-scrollable-container">
+            <table class="table-berita" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                <thead>
+                    <tr>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 100px;">Waktu</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase;">Judul</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 140px;">Media</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 100px;">Sentimen</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 130px;">Topik</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 60px; text-align: center;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for berita in berita_list %}
+                    <tr>
+                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6; white-space: nowrap;">
+                            {% if berita.tanggal %}
+                            <div style="font-weight: 500; color: #1f2937;">{{ berita.tanggal.strftime('%d/%m/%Y') }}</div>
+                            <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.15rem;">{{ berita.tanggal.strftime('%H:%M') }} WIB</div>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6;">
+                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" style="color: #1f2937; font-size: 0.875rem; font-weight: 500; text-decoration: none; display: block;">
+                                {{ berita.judul }}
+                            </a>
+                        </td>
+                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
+                            {{ berita.media or '-' }}
+                        </td>
+                        <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6;">
+                            <span class="badge-sentimen {{ berita.get_sentimen_badge() }}" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 0.25rem;">
+                                {{ berita.sentimen or 'Netral' }}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
+                            {{ berita.topik or '-' }}
+                        </td>
+                        <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6; text-align: center;">
+                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" style="color: #9ca3af; font-size: 1.1rem; text-decoration: none;">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <div class="pagination-container" style="display: flex; justify-content: center; margin-top: 1.5rem;">
+            <ul style="display: flex; gap: 0.25rem; list-style: none; padding: 0; margin: 0; align-items: center;">
+                {% if pagination.has_prev %}
+                <li>
+                    <a href="{{ url_for('pemberitaan.index', page=pagination.prev_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
+                        <i class="bi bi-chevron-left" style="font-size: 0.8rem;"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                    <li>
+                        <a href="{{ url_for('pemberitaan.index', page=page_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}"
+                           style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 500; text-decoration: none; border-radius: 0.25rem; {% if page_num == pagination.page %}background-color: #c8002d; color: white;{% else %}color: #4b5563;{% endif %}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li><span style="padding: 0.4rem; color: #9ca3af; font-size: 0.85rem;">…</span></li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                <li>
+                    <a href="{{ url_for('pemberitaan.index', page=pagination.next_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
+                        <i class="bi bi-chevron-right" style="font-size: 0.8rem;"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="bi bi-newspaper"></i>
+            </div>
+            <h3 class="empty-title">Belum Ada Berita</h3>
+            <p class="empty-desc">
+                {% if filter_keyword or filter_sentimen or filter_media %}
+                    Tidak ada berita yang cocok dengan filter yang dipilih.
+                    <a href="{{ url_for('pemberitaan.index') }}">Hapus filter</a>
+                {% else %}
+                    Database masih kosong.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    $(document).ready(function() {
+        // Flatpickr untuk input tanggal yang bisa diketik
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+        const yyyy = today.getFullYear();
+        const placeholderDate = dd + '/' + mm + '/' + yyyy + " (dd/mm/yyyy)";
+
+        flatpickr("#dateInput", {
+            dateFormat: "Y-m-d",    // Format yang dikirim ke backend (sesuai kebutuhan logic filter)
+            altInput: true,         // Membuat input bayangan khusus untuk tampilan visual
+            altFormat: "d/m/Y",     // Format visual yang dilihat oleh user (dd/mm/yyyy)
+            allowInput: true,       // Mengizinkan user mengetik langsung
+            placeholder: placeholderDate // Menampilkan tanggal hari ini agak pudar
+        });
+
+        // Sinkronisasi form filter sebelum submit agar tanggal_sampai di-copy 
+        // dan menghindari missing filter dari input yang diketik secara manual
+        $('#filterForm').on('submit', function() {
+            let selectedDate = $('input[name="tanggal_dari"]').val();
+            if (selectedDate) {
+                $('#tanggalSampai').val(selectedDate);
+            } else {
+                $('#tanggalSampai').val('');
+            }
+        });
+
+        // Dropdown yang butuh fitur pencarian (Media, Topik)
+        $('.select2-search').select2({
+            placeholder: "Pilih...",
+            width: '100%'
+        });
+
+        // Dropdown yang isinya sedikit, tidak butuh pencarian (Tanggal, Sentimen)
+        $('.select2-no-search').select2({
+            minimumResultsForSearch: Infinity,
+            placeholder: "Pilih...",
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}

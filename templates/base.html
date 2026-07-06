@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Media Monitoring OJK Jawa Barat - Sistem pemantauan pemberitaan OJK Provinsi Jawa Barat">
+    <title>{% block title %}{{ app_name }}{% endblock %} | OJK Jabar</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- ====== SIDEBAR ====== -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Logo -->
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='img/ojk-logo.png') }}" alt="OJK Logo" class="sidebar-ojk-logo">
+            <div class="sidebar-brand-divider"></div>
+            <div class="sidebar-ojk-text-stack">
+                <span>OTORITAS</span>
+                <span>JASA</span>
+                <span>KEUANGAN</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                        <i class="bi bi-grid-1x2-fill nav-icon"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('pemberitaan.index') }}" class="nav-link {% if active_page == 'pemberitaan' %}active{% endif %}">
+                        <i class="bi bi-newspaper nav-icon"></i>
+                        <span>Pemberitaan</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.analisis') }}" class="nav-link {% if active_page == 'analisis' %}active{% endif %}">
+                        <i class="bi bi-bar-chart-line nav-icon"></i>
+                        <span>Analisis</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.trend') }}" class="nav-link {% if active_page == 'trend' %}active{% endif %}">
+                        <i class="bi bi-graph-up-arrow nav-icon"></i>
+                        <span>Grafik &amp; Tren</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.wilayah') }}" class="nav-link {% if active_page == 'wilayah' %}active{% endif %}">
+                        <i class="bi bi-geo-alt nav-icon"></i>
+                        <span>Peta Sebaran</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.media') }}" class="nav-link {% if active_page == 'media' %}active{% endif %}">
+                        <i class="bi bi-tv nav-icon"></i>
+                        <span>Media</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.laporan') }}" class="nav-link {% if active_page == 'laporan' %}active{% endif %}">
+                        <i class="bi bi-file-earmark-text nav-icon"></i>
+                        <span>Laporan</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.notifikasi') }}" class="nav-link {% if active_page == 'notifikasi' %}active{% endif %}">
+                        <i class="bi bi-bell nav-icon"></i>
+                        <span>Notifikasi</span>
+                        <span class="nav-notif-badge">5</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('halaman.pengaturan') }}" class="nav-link {% if active_page == 'pengaturan' %}active{% endif %}">
+                        <i class="bi bi-gear nav-icon"></i>
+                        <span>Pengaturan</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer">
+            <div class="sidebar-update-info">
+                <i class="bi bi-clock" style="font-size:0.8rem;"></i>
+                <div>
+                    <div style="font-size:0.72rem;color:var(--text-secondary);">Update Berikutnya</div>
+                    <div id="nextUpdateDisplay" style="font-size:0.78rem;font-weight:600;color:var(--text-primary);">Memuat...</div>
+                </div>
+            </div>
+            <button class="btn-export-laporan" onclick="runCrawler()">
+                <i class="bi bi-download"></i>
+                <span>Export Laporan</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ====== MAIN CONTENT ====== -->
+    <div class="main-wrapper" id="mainWrapper">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                    <i class="bi bi-list"></i>
+                </button>
+                <!-- Judul Halaman -->
+                <div class="topbar-title-block">
+                    <h1 class="topbar-app-title">Media Monitoring OJK</h1>
+                    <span class="topbar-page-sub">{% block breadcrumb %}Dashboard{% endblock %}</span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-bell">
+                    <i class="bi bi-bell"></i>
+                    <span class="bell-badge">5</span>
+                </div>
+                <div class="topbar-info">
+                    <i class="bi bi-calendar3"></i>
+                    <div>
+                        <div style="font-size:0.78rem;font-weight:600;">{{ now.strftime('%d %B %Y, %H.%M') }} WIB</div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary);">Data Pemberitaan: {{ now.strftime('%d %B %Y') }}</div>
+                    </div>
+                </div>
+                <div class="topbar-divider"></div>
+                <div class="topbar-user">
+                    <div class="user-avatar-circle">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">Kepala OJK</span>
+                        <span class="user-role">Jawa Barat</span>
+                    </div>
+                    <i class="bi bi-chevron-down" style="font-size:0.75rem;color:var(--text-secondary);"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}-fill me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Page Content -->
+        <main class="content-area">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- ====== CRAWLER MODAL ====== -->
+    <div class="modal fade" id="crawlerModal" tabindex="-1" aria-labelledby="crawlerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                    <h5 class="modal-title" id="crawlerModalLabel" style="color: var(--text-primary);">
+                        <i class="bi bi-arrow-clockwise text-primary me-2"></i>
+                        Status Crawling
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="crawlerModalBody">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-3" style="color: var(--text-secondary);">Sedang mengambil berita dari Google News RSS...</p>
+                    </div>
+                </div>
+                <div class="modal-footer" id="crawlerModalFooter" style="border-top: 1px solid var(--border-color); display:none;">
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Halaman
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+
+    <!-- ===== REAL-TIME UPDATE BERIKUTNYA + AUTO-CRAWLER ===== -->
+    <script>
+    (function() {
+        const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+        function getNextCrawlDate() {
+            // Jadwal update setiap hari jam 09:00 WIB (UTC+7)
+            const now = new Date();
+            // Konversi ke WIB
+            const wibOffset = 7 * 60; // menit
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const wibTime = new Date(utc + (wibOffset * 60000));
+
+            const h = wibTime.getHours();
+            const m = wibTime.getMinutes();
+
+            // Jadwal crawl berikutnya: hari besok jam 09:00 WIB
+            // (karena hari ini jam 09:00 sudah lewat ataupun belum, kita selalu tampilkan HARI BERIKUTNYA)
+            const nextDate = new Date(wibTime);
+            nextDate.setDate(nextDate.getDate() + 1);
+            nextDate.setHours(9, 0, 0, 0);
+
+            return { wibTime, nextDate };
+        }
+
+        function formatDate(d) {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = MONTHS_ID[d.getMonth()];
+            const year = d.getFullYear();
+            return `${day} ${month} ${year}`;
+        }
+
+        function updateNextDisplay() {
+            const el = document.getElementById('nextUpdateDisplay');
+            if (!el) return;
+            const { nextDate } = getNextCrawlDate();
+            el.textContent = formatDate(nextDate) + ' · 09.00 WIB';
+        }
+
+        // Cek apakah sudah waktunya auto-crawl (setiap menit)
+        function checkAutoCrawl() {
+            const { wibTime } = getNextCrawlDate();
+            // Jika sekarang jam 09:00-09:01 WIB dan belum pernah crawl hari ini
+            const h = wibTime.getHours();
+            const m = wibTime.getMinutes();
+            const todayKey = 'lastAutoCrawl_' + wibTime.toDateString();
+            if (h === 9 && m === 0 && !sessionStorage.getItem(todayKey)) {
+                sessionStorage.setItem(todayKey, '1');
+                console.log('[AutoCrawl] Memulai crawl otomatis jam 09:00 WIB...');
+                if (typeof runCrawler === 'function') runCrawler();
+            }
+        }
+
+        // Jalankan saat halaman load
+        updateNextDisplay();
+        checkAutoCrawl();
+
+        // Update setiap menit
+        setInterval(() => {
+            updateNextDisplay();
+            checkAutoCrawl();
+        }, 60000);
+    })();
+    </script>
+</body>
+</html>

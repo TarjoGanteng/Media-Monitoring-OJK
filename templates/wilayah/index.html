@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Sebaran Wilayah{% endblock %}
+{% block breadcrumb %}Sebaran Wilayah{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Sebaran Wilayah</h1>
+        <p class="page-subtitle">Peta & daftar kota dengan berita terbanyak di Jawa Barat</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Peta Placeholder -->
+    <div class="col-lg-7">
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <div>
+                    <h5 class="card-panel-title">Peta Sebaran Jawa Barat</h5>
+                    <p class="card-panel-subtitle">Visualisasi sebaran pemberitaan per kota</p>
+                </div>
+            </div>
+            <div class="card-panel-body">
+                <div class="map-placeholder">
+                    <i class="bi bi-map"></i>
+                    <h3>Peta Interaktif</h3>
+                    <p>Visualisasi peta Jawa Barat akan tersedia di pembaruan berikutnya.</p>
+                    <p class="map-note">Gunakan tabel sebaran di samping untuk melihat data per kota.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daftar Wilayah -->
+    <div class="col-lg-5">
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <div>
+                    <h5 class="card-panel-title">Daftar Kota</h5>
+                    <p class="card-panel-subtitle">{{ sebaran | length }} kota terdeteksi</p>
+                </div>
+            </div>
+            <div class="card-panel-body p-0">
+                {% if sebaran %}
+                {% set max_jumlah = sebaran[0].jumlah if sebaran else 1 %}
+                <div class="wilayah-list">
+                    {% for item in sebaran %}
+                    <div class="wilayah-item">
+                        <div class="wilayah-rank">{{ loop.index }}</div>
+                        <div class="wilayah-info">
+                            <span class="wilayah-name">{{ item.wilayah }}</span>
+                            <div class="wilayah-bar-wrap">
+                                <div class="wilayah-bar" style="width: {{ (item.jumlah / max_jumlah * 100) | round(1) }}%"></div>
+                            </div>
+                        </div>
+                        <div class="wilayah-count">
+                            <span class="count-badge">{{ item.jumlah }}</span>
+                            <small>berita</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small py-5">
+                    <i class="bi bi-geo-alt"></i>
+                    <p>Belum ada data wilayah</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

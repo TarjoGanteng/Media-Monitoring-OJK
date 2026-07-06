@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Trend Pemberitaan{% endblock %}
+{% block breadcrumb %}Trend{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Trend Pemberitaan</h1>
+        <p class="page-subtitle">Grafik tren pemberitaan dari waktu ke waktu</p>
+    </div>
+    <div class="page-header-actions">
+        <div class="btn-group-tabs" id="trendTabGroup">
+            <button class="tab-btn active" data-target="daily">7 Hari</button>
+            <button class="tab-btn" data-target="monthly">6 Bulan</button>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Summary -->
+<div class="stats-grid stats-grid-3 mb-4">
+    <div class="stat-card stat-card-total">
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">Total Berita</span>
+                <span class="stat-value">{{ statistik.total }}</span>
+            </div>
+            <div class="stat-icon"><i class="bi bi-newspaper"></i></div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-positif">
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">Positif</span>
+                <span class="stat-value">{{ statistik.positif }}</span>
+            </div>
+            <div class="stat-icon"><i class="bi bi-emoji-smile"></i></div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-negatif">
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">Negatif</span>
+                <span class="stat-value">{{ statistik.negatif }}</span>
+            </div>
+            <div class="stat-icon"><i class="bi bi-emoji-frown"></i></div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Panel -->
+<div class="card-panel">
+    <div class="card-panel-header">
+        <div>
+            <h5 class="card-panel-title" id="chartTitle">Trend Harian (7 Hari Terakhir)</h5>
+            <p class="card-panel-subtitle">Jumlah berita per hari berdasarkan sentimen</p>
+        </div>
+        <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot legend-total"></span>Total</span>
+            <span class="legend-item"><span class="legend-dot legend-positif"></span>Positif</span>
+            <span class="legend-item"><span class="legend-dot legend-negatif"></span>Negatif</span>
+        </div>
+    </div>
+    <div class="card-panel-body">
+        <canvas id="trendLineChart" height="350"></canvas>
+    </div>
+</div>
+
+<!-- Bar Chart -->
+<div class="card-panel mt-4">
+    <div class="card-panel-header">
+        <div>
+            <h5 class="card-panel-title">Distribusi Bulanan</h5>
+            <p class="card-panel-subtitle">Jumlah berita per bulan (6 bulan terakhir)</p>
+        </div>
+    </div>
+    <div class="card-panel-body">
+        <canvas id="trendBarChart" height="280"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trendHarian = {{ trend_harian_json | safe }};
+const trendBulanan = {{ trend_bulanan_json | safe }};
+
+// Line Chart - Trend Harian
+const ctxLine = document.getElementById('trendLineChart').getContext('2d');
+const lineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+        labels: trendHarian.labels,
+        datasets: [
+            {
+                label: 'Total',
+                data: trendHarian.total,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.1)',
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+            },
+            {
+                label: 'Positif',
+                data: trendHarian.positif,
+                borderColor: '#10b981',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: false,
+                pointRadius: 4,
+            },
+            {
+                label: 'Negatif',
+                data: trendHarian.negatif,
+                borderColor: '#ef4444',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: false,
+                pointRadius: 4,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#94a3b8',
+                bodyColor: '#f1f5f9',
+                borderColor: '#334155',
+                borderWidth: 1,
+                padding: 12,
+            }
+        },
+        scales: {
+            x: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b' } },
+            y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b' }, beginAtZero: true }
+        }
+    }
+});
+
+// Bar Chart - Trend Bulanan
+const ctxBar = document.getElementById('trendBarChart').getContext('2d');
+new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+        labels: trendBulanan.labels,
+        datasets: [{
+            label: 'Jumlah Berita',
+            data: trendBulanan.data,
+            backgroundColor: 'rgba(59,130,246,0.7)',
+            borderColor: '#3b82f6',
+            borderWidth: 1.5,
+            borderRadius: 6,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#94a3b8',
+                bodyColor: '#f1f5f9',
+                borderColor: '#334155',
+                borderWidth: 1,
+                padding: 12,
+            }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { color: '#64748b' } },
+            y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b' }, beginAtZero: true }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Analisis AI{% endblock %}
+{% block breadcrumb %}Analisis AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Analisis AI</h1>
+        <p class="page-subtitle">Analisis berita secara mendalam menggunakan kecerdasan buatan</p>
+    </div>
+</div>
+
+<!-- Coming Soon State -->
+<div class="card-panel">
+    <div class="card-panel-body">
+        <div class="coming-soon-container">
+            <div class="coming-soon-icon">
+                <i class="bi bi-robot"></i>
+            </div>
+            <h2 class="coming-soon-title">Fitur Analisis AI Segera Hadir</h2>
+            <p class="coming-soon-desc">
+                Modul Analisis AI sedang dalam pengembangan untuk tahap berikutnya. 
+                Fitur yang akan tersedia meliputi:
+            </p>
+            <div class="feature-list-grid">
+                <div class="feature-item">
+                    <i class="bi bi-bar-chart-fill text-primary"></i>
+                    <span>Analisis Sentimen Otomatis</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-tags-fill text-success"></i>
+                    <span>Klasifikasi Topik</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-file-text-fill text-warning"></i>
+                    <span>Ringkasan Berita</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-people-fill text-info"></i>
+                    <span>Ekstraksi Narasumber</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-geo-alt-fill text-danger"></i>
+                    <span>Deteksi Wilayah</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-lightbulb-fill" style="color:#a855f7"></i>
+                    <span>Insight Otomatis</span>
+                </div>
+            </div>
+
+            <!-- Preview Stats -->
+            <div class="preview-stats">
+                <div class="preview-stat">
+                    <span class="preview-stat-value">{{ statistik.total }}</span>
+                    <span class="preview-stat-label">Berita Siap Dianalisis</span>
+                </div>
+                <div class="preview-stat">
+                    <span class="preview-stat-value">{{ statistik.netral }}</span>
+                    <span class="preview-stat-label">Menunggu Klasifikasi</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
