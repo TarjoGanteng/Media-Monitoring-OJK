@@ -105,13 +105,22 @@
 
             <!-- Filters -->
             <div class="row g-3 align-items-end mb-4">
-                <!-- Tanggal -->
-                <div class="col-lg-2 col-md-6">
-                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Tanggal</label>
+                <!-- Tanggal Dari -->
+                <div class="col-lg-2 col-md-4">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Tanggal Dari</label>
                     <div style="position: relative;">
-                        <input type="text" name="tanggal_dari" id="dateInput" class="form-control filter-input date-picker-bg" 
-                               value="{{ filter_tanggal_dari }}">
-                        <input type="hidden" name="tanggal_sampai" id="tanggalSampai" value="{{ filter_tanggal_sampai }}">
+                        <input type="text" name="tanggal_dari" id="dateInputDari" class="form-control filter-input date-picker-bg" 
+                               value="{{ filter_tanggal_dari }}" placeholder="Pilih Tanggal">
+                        <i class="bi bi-calendar3" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;"></i>
+                    </div>
+                </div>
+
+                <!-- Tanggal Hingga -->
+                <div class="col-lg-2 col-md-4">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Tanggal Hingga</label>
+                    <div style="position: relative;">
+                        <input type="text" name="tanggal_sampai" id="dateInputSampai" class="form-control filter-input date-picker-bg" 
+                               value="{{ filter_tanggal_sampai }}" placeholder="Pilih Tanggal">
                         <i class="bi bi-calendar3" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;"></i>
                     </div>
                 </div>
@@ -139,7 +148,7 @@
                 </div>
 
                 <!-- Media -->
-                <div class="col-lg-4 col-md-4">
+                <div class="col-lg-2 col-md-4">
                     <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Media</label>
                     <select name="media" id="mediaSelect" class="form-select select2-search" style="width: 100%;">
                         <option value="">Semua</option>
@@ -291,22 +300,30 @@
         const yyyy = today.getFullYear();
         const placeholderDate = dd + '/' + mm + '/' + yyyy + " (dd/mm/yyyy)";
 
-        flatpickr("#dateInput", {
-            dateFormat: "Y-m-d",    // Format yang dikirim ke backend (sesuai kebutuhan logic filter)
-            altInput: true,         // Membuat input bayangan khusus untuk tampilan visual
-            altFormat: "d/m/Y",     // Format visual yang dilihat oleh user (dd/mm/yyyy)
-            allowInput: true,       // Mengizinkan user mengetik langsung
-            placeholder: placeholderDate // Menampilkan tanggal hari ini agak pudar
+        flatpickr("#dateInputDari", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            allowInput: true,
+            placeholder: "Dari Tanggal"
         });
 
-        // Sinkronisasi form filter sebelum submit agar tanggal_sampai di-copy 
-        // dan menghindari missing filter dari input yang diketik secara manual
+        flatpickr("#dateInputSampai", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            allowInput: true,
+            placeholder: "Hingga Tanggal"
+        });
+
+        // Sinkronisasi form filter sebelum submit
         $('#filterForm').on('submit', function() {
-            let selectedDate = $('input[name="tanggal_dari"]').val();
-            if (selectedDate) {
-                $('#tanggalSampai').val(selectedDate);
-            } else {
-                $('#tanggalSampai').val('');
+            let dari = $('input[name="tanggal_dari"]').val();
+            let sampai = $('input[name="tanggal_sampai"]').val();
+            
+            // Jika "Dari" diisi tapi "Hingga" kosong, samakan tanggalnya agar mencari 1 hari itu saja
+            if (dari && !sampai) {
+                $('input[name="tanggal_sampai"]').val(dari);
             }
         });
 

@@ -5,94 +5,87 @@
 {% block content %}
 <!-- ====== ROW 1: MORNING BRIEF + STAT CARDS ====== -->
 <div class="dash-top-row">
-    <!-- Morning Brief -->
-    <div class="morning-brief-card">
-        <div class="morning-brief-header">
-            <span class="morning-sun">&#9728;</span>
-            <span class="morning-label">MORNING BRIEF</span>
-        </div>
-        <div class="morning-date">{{ now.strftime('%d %B %Y') }}</div>
-        <div class="morning-time">{{ now.strftime('%H.%M') }} WIB</div>
-        <div class="morning-data-label">Data Pemberitaan</div>
-        <div class="morning-data-date">{{ now.strftime('%d %B %Y') }}</div>
-        <p class="morning-desc" style="flex:1;">Berikut ringkasan pemberitaan OJK selama 24 jam terakhir yang telah dianalisis oleh sistem.</p>
-        <a href="{{ url_for('pemberitaan.index') }}" class="btn-morning-detail">Lihat Selengkapnya &rarr;</a>
-    </div>
+
 
     <!-- Stat Cards -->
     <div class="dash-stat-cards">
         <div class="stat-card-v2 stat-total">
-            <div class="stat-v2-label">Total Berita</div>
+            <div class="stat-v2-top">
+                <span class="stat-v2-label">TOTAL BERITA</span>
+            </div>
             <div class="stat-v2-value">{{ statistik.total }}</div>
-            <div class="stat-v2-sub">Berita</div>
             <div class="stat-v2-change up">
                 <i class="bi bi-arrow-up-short"></i> 18%
                 <span class="stat-v2-vs">vs 01 Juli 2026</span>
             </div>
         </div>
-        <div class="stat-card-v2 stat-positif">
+            <div class="stat-card-v2 stat-positif">
             <div class="stat-v2-top">
-                <span class="stat-v2-dot dot-positif">&#9679;</span>
-                <span class="stat-v2-label">Positif</span>
+                <span class="stat-v2-label">POSITIF</span>
             </div>
             <div class="stat-v2-value">{{ statistik.positif }}</div>
-            <div class="stat-v2-sub">Berita</div>
             <div class="stat-v2-pct positif-pct">{{ statistik.pct_positif }}%</div>
         </div>
         <div class="stat-card-v2 stat-netral">
             <div class="stat-v2-top">
-                <span class="stat-v2-dot dot-netral">&#9728;</span>
-                <span class="stat-v2-label">Netral</span>
+                <span class="stat-v2-label">NETRAL</span>
             </div>
             <div class="stat-v2-value">{{ statistik.netral }}</div>
-            <div class="stat-v2-sub">Berita</div>
             <div class="stat-v2-pct netral-pct">{{ statistik.pct_netral }}%</div>
         </div>
         <div class="stat-card-v2 stat-negatif">
             <div class="stat-v2-top">
                 <span class="stat-v2-dot dot-negatif">&#9675;</span>
-                <span class="stat-v2-label">Negatif</span>
+                <span class="stat-v2-label">NEGATIF</span>
             </div>
             <div class="stat-v2-value">{{ statistik.negatif }}</div>
-            <div class="stat-v2-sub">Berita</div>
             <div class="stat-v2-pct negatif-pct">{{ statistik.pct_negatif }}%</div>
+        </div>
+        
+        <!-- Ringkasan AI -->
+        <div class="stat-card-v2 stat-ai">
+            <div class="stat-v2-top">
+                <span class="stat-v2-label" style="font-weight:700; color:var(--text-primary); letter-spacing:0.5px;">RINGKASAN AI</span>
+            </div>
+            <div class="stat-ai-content" style="flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); font-size:0.85rem; font-style:italic;">
+                Belum ada ringkasan
+            </div>
         </div>
     </div>
 </div>
 
-<!-- ====== ROW 2: TREND CHART + TOPIK DONUT ====== -->
+<!-- ====== ROW 2: TREND CHART + TOPIK DONUT + KOTA TERBANYAK ====== -->
 <div class="row g-3 mb-3">
-    <div class="col-lg-8">
-        <div class="card-panel h-100">
+    <!-- Trend -->
+    <div class="col-lg-5">
+        <div class="card-panel h-100" style="margin-bottom:0;">
             <div class="card-panel-header">
-                <h5 class="card-panel-title">TREND JUMLAH BERITA</h5>
-                <select class="filter-select-sm" id="trendPeriod">
-                    <option>7 Hari Terakhir</option>
-                    <option>30 Hari Terakhir</option>
-                </select>
+                <h5 class="card-panel-title">TREN JUMLAH BERITA <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);text-transform:uppercase;">(7 Hari Terakhir)</span></h5>
             </div>
-            <div class="card-panel-body" style="height:190px;">
+            <div class="card-panel-body" style="height:185px; padding: 0.75rem 1rem;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
     </div>
+    
+    <!-- Topik -->
     <div class="col-lg-4">
-        <div class="card-panel h-100">
+        <div class="card-panel h-100" style="margin-bottom:0;">
             <div class="card-panel-header">
                 <h5 class="card-panel-title">TOPIK TERBANYAK</h5>
             </div>
-            <div class="card-panel-body d-flex align-items-center gap-3" style="flex-wrap:wrap;">
-                <div style="width:130px;height:130px;flex-shrink:0;">
+            <div class="card-panel-body d-flex align-items-center gap-3" style="flex-wrap:wrap; height:185px; padding: 0.75rem 1rem;">
+                <div style="width:100px;height:100px;flex-shrink:0;">
                     <canvas id="topikDonut"></canvas>
                 </div>
                 <div class="topik-legend">
                     {% set topik_colors = ['#c8002d','#f59e0b','#3b82f6','#8b5cf6','#6b7280'] %}
                     {% if topik_terbanyak %}
                         {% for item in topik_terbanyak[:5] %}
-                        <div class="topik-legend-item">
-                            <span class="topik-legend-dot" style="background:{{ topik_colors[loop.index0 % 5] }};"></span>
-                            <span class="topik-legend-name">{{ item.topik }}</span>
-                            <span class="topik-legend-pct">{{ item.pct }}%</span>
+                        <div class="topik-legend-item" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                            <span class="topik-legend-dot" style="background:{{ topik_colors[loop.index0 % 5] }}; width:10px; height:10px; display:inline-block;"></span>
+                            <span class="topik-legend-name" style="width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.8rem;">{{ item.topik }}</span>
+                            <span class="topik-legend-pct" style="font-weight:700; font-size:0.8rem;">{{ item.pct }}%</span>
                         </div>
                         {% endfor %}
                     {% else %}
@@ -102,136 +95,119 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- ====== ROW 3: BERITA TERBARU + SEBARAN PETA ====== -->
-<div class="row g-3 mb-3">
-    <!-- Berita Terbaru -->
-    <div class="col-lg-6">
-        <div class="card-panel">
+    <!-- Kota Terbanyak -->
+    <div class="col-lg-3">
+        <div class="card-panel h-100" style="margin-bottom:0;">
             <div class="card-panel-header">
-                <h5 class="card-panel-title">BERITA TERBARU <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary);">({{ now.strftime('%d %B %Y') }})</span></h5>
-                <div style="display:flex;align-items:center;gap:0.75rem;">
-                    <a href="{{ url_for('pemberitaan.index') }}" class="btn-panel-link">Lihat Semua &rarr;</a>
-                </div>
+                <h5 class="card-panel-title">KOTA TERBANYAK</h5>
             </div>
-            <div class="card-panel-body p-0">
-                {% if berita_terbaru %}
-                <div class="berita-list">
-                    {% for berita in berita_terbaru %}
-                    <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" class="berita-item-v2">
-                        <div class="berita-v2-time">{{ berita.get_tanggal_formatted()[-8:-3] if berita.get_tanggal_formatted()|length > 8 else '--:--' }} WIB</div>
-                        <div class="berita-v2-thumb">
-                            {% if berita.gambar_url %}
-                            <img src="{{ berita.gambar_url }}"
-                                 alt="{{ berita.judul[:30] }}"
-                                 class="berita-thumb-img"
-                                 onerror="this.onerror=null; this.src='https://www.google.com/s2/favicons?domain={{ berita.media | lower | replace(' ','') }}.com&sz=64'; this.style.objectFit='contain'; this.style.padding='8px';">
-                            {% else %}
-                            <img src="{{ berita.get_media_favicon() }}"
-                                 alt="{{ berita.media }}"
-                                 class="berita-thumb-img"
-                                 style="object-fit:contain; padding:10px; background:#f9fafb;">
-                            {% endif %}
-                        </div>
-                        <div class="berita-v2-content">
-                            <div class="berita-v2-source">{{ berita.media or 'Unknown' }}</div>
-                            <p class="berita-v2-title">{{ berita.judul }}</p>
-                            <div class="berita-v2-badges">
-                                <span class="badge-sentimen {{ berita.get_sentimen_badge() }}">{{ berita.sentimen or 'Netral' }}</span>
-                                {% if berita.topik %}
-                                <span class="badge-topik-v2">{{ berita.topik }}</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="empty-state-table">
-                    <i class="bi bi-inbox"></i>
-                    <p>Belum ada berita. <a href="#" onclick="runCrawler(); return false;">Jalankan crawler</a></p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Sebaran Peta -->
-    <div class="col-lg-6">
-        <div class="card-panel">
-            <div class="card-panel-header">
-                <h5 class="card-panel-title">SEBARAN PEMBERITAAN JAWA BARAT</h5>
-                <a href="{{ url_for('halaman.wilayah') }}" class="btn-panel-link">Lihat Detail &rarr;</a>
-            </div>
-            <div class="card-panel-body p-0">
-                <div class="sebaran-layout">
-                    <div class="sebaran-map-area">
-                        <div class="map-placeholder-v2">
-                            <svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-                                <ellipse cx="150" cy="100" rx="130" ry="70" fill="#fca5a5" opacity="0.4"/>
-                                <ellipse cx="160" cy="95" rx="60" ry="40" fill="#f87171" opacity="0.5"/>
-                                <ellipse cx="155" cy="93" rx="30" ry="22" fill="#c8002d" opacity="0.7"/>
-                                <text x="145" y="97" font-size="8" fill="#fff" font-family="Inter">Bandung</text>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="sebaran-list">
-                        {% for item in kota_terbanyak %}
-                        <div class="sebaran-city-item">
-                            <span class="sebaran-city-name">{{ item.kota }}</span>
-                            <span class="sebaran-city-count">{{ item.jumlah }}</span>
+            <div class="card-panel-body" style="padding: 0.75rem 1.25rem; display:flex; flex-direction:column; height:185px;">
+                <div class="kota-list-v2" style="flex:1;">
+                    {% if kota_terbanyak %}
+                        {% for item in kota_terbanyak[:5] %}
+                        <div class="kota-item-v2" style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                            <span style="font-size:0.85rem; color:var(--text-primary);">{{ loop.index }}. {{ item.kota }}</span>
+                            <span style="font-size:0.85rem; font-weight:600;">{{ item.jumlah }}</span>
                         </div>
                         {% endfor %}
-                    </div>
+                    {% else %}
+                        <p style="color:var(--text-secondary);font-size:0.8rem;">Belum ada data</p>
+                    {% endif %}
                 </div>
+                <a href="{{ url_for('halaman.wilayah') }}" class="btn-panel-link" style="text-decoration:underline; font-size:0.8rem;">Lihat Peta</a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ====== ROW 4: INSIGHT AI + MEDIA PALING AKTIF ====== -->
+<!-- ====== ROW 3: BERITA TERBARU + MEDIA PALING AKTIF ====== -->
 <div class="row g-3">
-    <div class="col-lg-6">
-        <div class="card-panel">
+    <!-- Berita Terbaru (Table) -->
+    <div class="col-lg-9">
+        <div class="card-panel h-100" style="margin-bottom:0;">
             <div class="card-panel-header">
-                <h5 class="card-panel-title">INSIGHT AI</h5>
+                <h5 class="card-panel-title">BERITA TERBARU</h5>
             </div>
-            <div class="card-panel-body">
-                <div class="insight-list">
-                    <div class="insight-item insight-success">
-                        <i class="bi bi-check-circle-fill"></i>
-                        <p>Jumlah berita meningkat 18% dibanding hari sebelumnya.</p>
-                    </div>
-                    <div class="insight-item insight-success">
-                        <i class="bi bi-check-circle-fill"></i>
-                        <p>Sentimen positif mendominasi dengan {{ statistik.pct_positif }}% dari total berita.</p>
-                    </div>
-                    <div class="insight-item insight-warning">
-                        <i class="bi bi-exclamation-circle-fill"></i>
-                        <p>Topik Pinjaman Online menjadi sorotan utama di berbagai media.</p>
-                    </div>
-                    <div class="insight-item insight-info">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <p>Bandung menjadi kota dengan pemberitaan terbanyak.</p>
-                    </div>
+            <div class="card-panel-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0" style="font-size:0.85rem;">
+                        <thead style="border-bottom: 2px solid var(--border-color); color:var(--text-secondary); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">
+                            <tr>
+                                <th style="padding:0.75rem 1rem; width:130px;">WAKTU</th>
+                                <th style="padding:0.75rem 0;">JUDUL</th>
+                                <th style="padding:0.75rem 1rem; width:130px;">MEDIA</th>
+                                <th style="padding:0.75rem 1rem; text-align:center; width:100px;">SENTIMEN</th>
+                                <th style="padding:0.75rem 1rem; width:120px;">TOPIK</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if berita_terbaru %}
+                                {% for berita in berita_terbaru[:3] %}
+                                <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
+                                    <td style="padding:0.75rem 1rem; white-space:nowrap; vertical-align:middle;">
+                                        {% if berita.tanggal %}
+                                        <div style="line-height:1.3;">
+                                            <span style="display:block; color:var(--text-primary); font-weight:600; font-size:0.8rem;">{{ berita.get_tanggal_formatted()[:-6] }}</span>
+                                            <span style="display:block; color:var(--text-secondary); font-size:0.75rem; font-weight:500;">{{ berita.tanggal.strftime('%H:%M') }} WIB</span>
+                                        </div>
+                                        {% else %}
+                                        <span style="color:var(--text-secondary);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding:0.75rem 0;">
+                                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                                            <div style="width:44px; height:44px; border-radius:6px; overflow:hidden; flex-shrink:0; background:#f9fafb; border:1px solid var(--border-color);">
+                                                {% if berita.gambar_url %}
+                                                <img src="{{ berita.gambar_url }}" alt="thumb" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='{{ berita.get_media_favicon() }}'; this.style.objectFit='contain'; this.style.padding='6px';">
+                                                {% else %}
+                                                <img src="{{ berita.get_media_favicon() }}" alt="thumb" style="width:100%; height:100%; object-fit:contain; padding:6px;">
+                                                {% endif %}
+                                            </div>
+                                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" style="color:var(--text-primary); font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" class="title-link">{{ berita.judul }}</a>
+                                        </div>
+                                    </td>
+                                    <td style="padding:0.75rem 1rem; color:var(--text-secondary); font-size:0.8rem;">{{ berita.media or 'Unknown' }}</td>
+                                    <td style="padding:0.75rem 1rem; text-align:center;">
+                                        <span class="badge-sentimen {{ berita.get_sentimen_badge() }}" style="padding:0.35rem 0.85rem; font-size:0.7rem;">{{ berita.sentimen or 'Netral' }}</span>
+                                    </td>
+                                    <td style="padding:0.75rem 1rem; color:var(--text-secondary); font-size:0.8rem;">{{ berita.topik or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center" style="padding: 3rem; color:var(--text-secondary);">Belum ada berita.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-6">
-        <div class="card-panel">
+
+    <!-- Media Paling Aktif -->
+    <div class="col-lg-3">
+        <div class="card-panel h-100" style="margin-bottom:0;">
             <div class="card-panel-header">
                 <h5 class="card-panel-title">MEDIA PALING AKTIF</h5>
             </div>
-            <div class="card-panel-body p-0">
-                {% for item in media_teraktif %}
-                <div class="media-aktif-item">
-                    <span class="media-aktif-rank">{{ loop.index }}</span>
-                    <span class="media-aktif-name">{{ item.media }}</span>
-                    <span class="media-aktif-count">{{ item.jumlah }}</span>
+            <div class="card-panel-body" style="padding:1rem 1.25rem; display:flex; flex-direction:column; height:100%;">
+                <div class="media-list-v2" style="flex:1;">
+                    {% if media_teraktif %}
+                        {% for item in media_teraktif[:5] %}
+                        <div class="media-item-v2" style="display:flex; justify-content:space-between; margin-bottom:0.75rem; align-items:center;">
+                            <span style="font-size:0.95rem; color:var(--text-primary);">{{ loop.index }}. {{ item.media }}</span>
+                            <span style="font-size:0.95rem; font-weight:600; color:var(--text-primary);">{{ item.jumlah }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:var(--text-secondary);font-size:0.8rem;">Belum ada data</p>
+                    {% endif %}
                 </div>
-                {% endfor %}
+                <div style="margin-top:auto; padding-top:1rem;">
+                    <a href="{{ url_for('halaman.media') }}" class="btn-panel-link" style="text-decoration:underline; font-size:0.9rem; font-weight:500;">Lihat Semua</a>
+                </div>
             </div>
         </div>
     </div>

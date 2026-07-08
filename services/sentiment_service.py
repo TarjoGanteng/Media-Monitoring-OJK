@@ -244,8 +244,7 @@ class SentimentAnalyzer:
             "bandung", "bekasi", "bogor", "cirebon", "depok",
             "sukabumi", "karawang", "tasikmalaya", "garut", "cianjur",
             "subang", "purwakarta", "indramayu", "majalengka", "sumedang",
-            "kuningan", "ciamis", "banjar", "pangandaran",
-            "jawa barat", "jabar",
+            "kuningan", "ciamis", "banjar", "pangandaran"
         ]
 
         for wilayah in wilayah_list:

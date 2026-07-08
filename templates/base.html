@@ -63,12 +63,7 @@
                         <span>Peta Sebaran</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="{{ url_for('halaman.media') }}" class="nav-link {% if active_page == 'media' %}active{% endif %}">
-                        <i class="bi bi-tv nav-icon"></i>
-                        <span>Media</span>
-                    </a>
-                </li>
+
                 <li class="nav-item">
                     <a href="{{ url_for('halaman.laporan') }}" class="nav-link {% if active_page == 'laporan' %}active{% endif %}">
                         <i class="bi bi-file-earmark-text nav-icon"></i>
@@ -100,10 +95,6 @@
                     <div id="nextUpdateDisplay" style="font-size:0.78rem;font-weight:600;color:var(--text-primary);">Memuat...</div>
                 </div>
             </div>
-            <button class="btn-export-laporan" onclick="runCrawler()">
-                <i class="bi bi-download"></i>
-                <span>Export Laporan</span>
-            </button>
         </div>
     </aside>
 
@@ -118,7 +109,18 @@
                 <!-- Judul Halaman -->
                 <div class="topbar-title-block">
                     <h1 class="topbar-app-title">Media Monitoring OJK</h1>
-                    <span class="topbar-page-sub">{% block breadcrumb %}Dashboard{% endblock %}</span>
+                    <div class="topbar-page-sub" style="color: var(--accent-color); font-weight: 600; font-size: 0.85rem; margin-top: 2px;">
+                        {% set hour = now.hour %}
+                        {% if hour >= 4 and hour < 11 %}
+                            <span style="font-size: 0.9rem;">&#9728;</span> Morning Brief
+                        {% elif hour >= 11 and hour < 15 %}
+                            <span style="font-size: 0.9rem;">&#9728;</span> Noon Brief
+                        {% elif hour >= 15 and hour < 18 %}
+                            <span style="font-size: 0.9rem;">&#9925;</span> Afternoon Brief
+                        {% else %}
+                            <span style="font-size: 0.9rem;">&#127769;</span> Night Brief
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             <div class="topbar-right">
@@ -126,10 +128,16 @@
                     <i class="bi bi-bell"></i>
                     <span class="bell-badge">4</span>
                 </div>
-                <div class="topbar-info">
-                    <i class="bi bi-calendar3"></i>
-                    <div>
-                        <div style="font-size:0.78rem;font-weight:600;">{{ now.strftime('%d %B %Y, %H.%M') }} WIB</div>
+                
+                <!-- Tombol Crawler -->
+                <button onclick="runCrawler()" style="background-color: var(--accent-color); color: white; border-radius: 6px; padding: 0.4rem 1rem; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; border: none; box-shadow: 0 2px 4px rgba(200, 0, 45, 0.2); cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(200, 0, 45, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(200, 0, 45, 0.2)'">
+                    <i class="bi bi-cloud-download-fill" style="font-size: 1.1rem;"></i>
+                    Tarik Berita Terbaru
+                </button>
+                <div class="topbar-info" style="border: 1px solid var(--border-color); padding: 0.4rem 0.8rem; border-radius: 6px; display: flex; align-items: center; gap: 0.75rem; background: #fff;">
+                    <i class="bi bi-calendar3" style="font-size: 1.2rem; color: var(--text-secondary);"></i>
+                    <div style="line-height: 1.2;">
+                        <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">{{ now.strftime('%d %B %Y') }}</div>
                         <div style="font-size:0.7rem;color:var(--text-secondary);">Data Pemberitaan: {{ now.strftime('%d %B %Y') }}</div>
                     </div>
                 </div>

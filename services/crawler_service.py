@@ -178,7 +178,44 @@ class CrawlerService:
             hasil = self.crawl_satu_keyword(keyword)
             semua_hasil.append(hasil)
 
+        # Jalankan pembersihan otomatis untuk berita lama (lebih dari 5 tahun)
+        self.cleanup_berita_lama(tahun=5)
+
         return semua_hasil
+
+    def cleanup_berita_lama(self, tahun: int = 5) -> int:
+        """
+        Menghapus berita yang usianya lebih dari batas tahun yang ditentukan.
+        Ini menjaga efisiensi database untuk monitoring OJK Jabar.
+
+        Args:
+            tahun: Batas usia berita dalam tahun
+
+        Returns:
+            Jumlah berita yang dihapus
+        """
+        from datetime import timedelta
+        
+        batas_waktu = datetime.now() - timedelta(days=tahun * 365)
+        
+        try:
+            # Cari dan hapus berita yang lebih tua dari batas_waktu
+            berita_lama = Berita.query.filter(Berita.tanggal < batas_waktu).all()
+            jumlah_dihapus = len(berita_lama)
+            
+            if jumlah_dihapus > 0:
+                for berita in berita_lama:
+                    db.session.delete(berita)
+                db.session.commit()
+                logger.info(f"Berhasil menghapus otomatis {jumlah_dihapus} berita yang lebih dari {tahun} tahun.")
+            else:
+                logger.info(f"Tidak ada berita yang usianya lebih dari {tahun} tahun.")
+                
+            return jumlah_dihapus
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Gagal saat pembersihan otomatis berita lama: {e}")
+            return 0
 
     def get_statistik_crawl(self) -> dict:
         """

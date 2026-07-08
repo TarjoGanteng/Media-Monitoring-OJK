@@ -11,13 +11,46 @@ from services.berita_service import BeritaService
 bp = Blueprint("halaman", __name__)
 
 
+@bp.route("/fix-db")
+def fix_db():
+    from database.extensions import db
+    from database.models import Berita
+    from sqlalchemy import func
+    try:
+        # Cari berita paling lama
+        oldest_berita = db.session.query(func.min(Berita.tanggal)).scalar()
+        if oldest_berita:
+            return f"Berita paling lama tanggal: {oldest_berita.strftime('%d/%m/%Y %H:%M:%S')}"
+        return "Tidak ada berita."
+    except Exception as e:
+        return f"Gagal: {str(e)}"
+
 @bp.route("/analisis")
 def analisis():
-    """Halaman Analisis AI - placeholder untuk tahap berikutnya."""
+    """Halaman Analisis - Menampilkan visualisasi data mendalam."""
     statistik = DashboardService.get_statistik_utama()
+    topik_terbanyak = DashboardService.get_topik_terbanyak(limit=5)
+    media_teraktif = DashboardService.get_media_teraktif(limit=5)
+    trend_data = DashboardService.get_trend_harian(hari=7)
+    trend_json = json.dumps(trend_data)
+    
+    trend_mingguan = DashboardService.get_trend_mingguan(minggu=4)
+    trend_mingguan_json = json.dumps(trend_mingguan)
+    
+    trend_bulanan = DashboardService.get_trend_bulanan(bulan=6)
+    trend_bulanan_json = json.dumps(trend_bulanan)
+    
+    sebaran_media = DashboardService.get_sebaran_media()
+    
     return render_template(
         "analisis/index.html",
         statistik=statistik,
+        topik_terbanyak=topik_terbanyak,
+        media_teraktif=media_teraktif,
+        trend_json=trend_json,
+        trend_mingguan_json=trend_mingguan_json,
+        trend_bulanan_json=trend_bulanan_json,
+        sebaran_media=sebaran_media,
         active_page="analisis",
     )
 

@@ -206,36 +206,92 @@ class DashboardService:
 
     @staticmethod
     def get_trend_bulanan(bulan: int = 6) -> dict:
-        """
-        Mengambil data trend berita bulanan untuk chart.
-
-        Args:
-            bulan: Jumlah bulan ke belakang
-
-        Returns:
-            Dictionary dengan labels dan data
-        """
         from dateutil.relativedelta import relativedelta
 
         today = datetime.now()
         labels = []
-        data = []
+        data_total = []
+        data_positif = []
+        data_negatif = []
+        data_netral = []
 
         nama_bulan = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
                        "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
 
         for i in range(bulan - 1, -1, -1):
             target = today - relativedelta(months=i)
-            jumlah = Berita.query.filter(
+            base_query = Berita.query.filter(
                 Berita.status == "aktif",
                 Berita.bulan == target.month,
                 Berita.tahun == target.year,
-            ).count()
+            )
+            
+            total = base_query.count()
+            positif = base_query.filter(Berita.sentimen == "Positif").count()
+            negatif = base_query.filter(Berita.sentimen == "Negatif").count()
+            netral = base_query.filter(Berita.sentimen == "Netral").count()
 
             labels.append(f"{nama_bulan[target.month]} {target.year}")
-            data.append(jumlah)
+            data_total.append(total)
+            data_positif.append(positif)
+            data_negatif.append(negatif)
+            data_netral.append(netral)
 
-        return {"labels": labels, "data": data}
+        if all(v == 0 for v in data_total):
+            data_total = DashboardService._generate_dummy_trend(bulan)
+            data_positif = [max(0, v - 10) for v in data_total]
+            data_negatif = [max(0, v // 3) for v in data_total]
+            data_netral = [data_total[i] - data_positif[i] - data_negatif[i] for i in range(bulan)]
+
+        return {
+            "labels": labels, "total": data_total,
+            "positif": data_positif, "negatif": data_negatif, "netral": data_netral
+        }
+
+    @staticmethod
+    def get_trend_mingguan(minggu: int = 4) -> dict:
+        labels = []
+        data_total = []
+        data_positif = []
+        data_negatif = []
+        data_netral = []
+        
+        today = datetime.now().date()
+        
+        for i in range(minggu - 1, -1, -1):
+            start_date = today - timedelta(days=today.weekday() + (i * 7))
+            end_date = start_date + timedelta(days=6)
+            
+            start_dt = datetime.combine(start_date, datetime.min.time())
+            end_dt = datetime.combine(end_date, datetime.max.time())
+            
+            base_query = Berita.query.filter(
+                Berita.status == "aktif",
+                Berita.tanggal >= start_dt,
+                Berita.tanggal <= end_dt,
+            )
+            
+            total = base_query.count()
+            positif = base_query.filter(Berita.sentimen == "Positif").count()
+            negatif = base_query.filter(Berita.sentimen == "Negatif").count()
+            netral = base_query.filter(Berita.sentimen == "Netral").count()
+            
+            labels.append(f"M{minggu-i} {start_date.strftime('%b')}")
+            data_total.append(total)
+            data_positif.append(positif)
+            data_negatif.append(negatif)
+            data_netral.append(netral)
+
+        if all(v == 0 for v in data_total):
+            data_total = DashboardService._generate_dummy_trend(minggu)
+            data_positif = [max(0, v - 5) for v in data_total]
+            data_negatif = [max(0, v // 4) for v in data_total]
+            data_netral = [data_total[i] - data_positif[i] - data_negatif[i] for i in range(minggu)]
+
+        return {
+            "labels": labels, "total": data_total,
+            "positif": data_positif, "negatif": data_negatif, "netral": data_netral
+        }
 
     @staticmethod
     def get_sebaran_media() -> list[dict]:
