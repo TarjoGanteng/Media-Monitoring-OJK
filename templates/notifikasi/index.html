@@ -3,45 +3,15 @@
 {% block breadcrumb %}Notifikasi{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Notifikasi</h1>
-        <p class="page-subtitle">Notifikasi penting untuk pimpinan · Terakhir diperbarui {{ now.strftime('%H:%M') }} WIB</p>
-    </div>
-    <div class="page-header-actions">
-        <button class="btn-action-secondary" onclick="location.reload()">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-    </div>
-</div>
-
-<!-- Notifikasi List -->
 <div class="card-panel">
     <div class="card-panel-header">
-        <div>
-            <h5 class="card-panel-title">Semua Notifikasi</h5>
-            <p class="card-panel-subtitle">{{ notifikasi_list | length }} notifikasi hari ini</p>
-        </div>
-        <span class="badge-live">
-            <span class="live-dot"></span> Live
-        </span>
+        <h5 class="card-panel-title">Pusat Notifikasi</h5>
     </div>
-    <div class="card-panel-body p-0">
-        <div class="notif-list">
-            {% for notif in notifikasi_list %}
-            <div class="notif-item notif-{{ notif.tipe }}">
-                <div class="notif-icon-wrap">
-                    <i class="bi {{ notif.icon }}"></i>
-                </div>
-                <div class="notif-content">
-                    <div class="notif-header">
-                        <span class="notif-title">{{ notif.judul }}</span>
-                        <span class="notif-time">{{ notif.waktu }}</span>
-                    </div>
-                    <p class="notif-msg">{{ notif.pesan }}</p>
-                </div>
-            </div>
-            {% endfor %}
+    <div class="card-panel-body">
+        <div class="empty-state-table" style="padding: 4rem 2rem; text-align: center;">
+            <i class="bi bi-bell" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: inline-block;"></i>
+            <h4 class="empty-title">Modul Notifikasi Sedang Dibangun</h4>
+            <p class="empty-desc">Halaman ini nantinya akan terintegrasi dengan modul AI untuk memberikan peringatan dini *(Early Warning System)* terkait sentimen pemberitaan OJK Jawa Barat.</p>
         </div>
     </div>
 </div>

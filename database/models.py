@@ -183,3 +183,34 @@ class Keyword(db.Model):
 
     def __repr__(self):
         return f"<Keyword id={self.id} kata='{self.kata}'>"
+
+class User(db.Model):
+    """Model untuk menyimpan data pengguna dan role (RBAC)."""
+
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default="staff") # super_admin, admin, pemimpin, staff
+    status = db.Column(db.String(20), nullable=False, default="aktif") # aktif, nonaktif
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # Implementasi properties wajib untuk Flask-Login (UserMixin fallback)
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_active(self):
+        return self.status == "aktif"
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return str(self.id)
+
+    def __repr__(self):
+        return f"<User id={self.id} username='{self.username}' role='{self.role}'>"

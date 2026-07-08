@@ -11,7 +11,7 @@ import os
 import logging
 from flask import Flask, render_template
 from config import get_config
-from database.extensions import db
+from database.extensions import db, login_manager
 from routes import register_blueprints
 
 # Konfigurasi logging
@@ -47,6 +47,13 @@ def create_app(env: str = None) -> Flask:
 
     # Inisialisasi ekstensi
     db.init_app(app)
+    login_manager.init_app(app)
+
+    # Konfigurasi user_loader untuk Flask-Login
+    from database.models import User
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
 
     # Daftarkan semua blueprint
     register_blueprints(app)
@@ -70,8 +77,9 @@ def initialize_database():
     Membuat semua tabel database dan mengisi data awal.
     Dipanggil sekali saat aplikasi pertama kali dijalankan.
     """
-    from database.models import Berita, CrawlLog, Keyword
+    from database.models import Berita, CrawlLog, Keyword, User
     from services.database_service import DatabaseService
+    from werkzeug.security import generate_password_hash
 
     # Buat semua tabel jika belum ada
     db.create_all()
@@ -79,6 +87,18 @@ def initialize_database():
 
     # Isi keyword default jika tabel kosong
     DatabaseService.inisialisasi_keyword_default()
+    
+    # Buat user super_admin default jika belum ada user
+    if User.query.count() == 0:
+        default_admin = User(
+            username="super_admin",
+            password_hash=generate_password_hash("ojkjabar2026"),
+            role="super_admin",
+            status="aktif"
+        )
+        db.session.add(default_admin)
+        db.session.commit()
+        logger.info("Default user 'super_admin' berhasil dibuat (password: ojkjabar2026).")
 
 
 def register_error_handlers(app: Flask):

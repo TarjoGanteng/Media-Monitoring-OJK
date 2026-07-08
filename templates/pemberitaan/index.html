@@ -5,6 +5,7 @@
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
 <style>
     /* Styling Select2 agar menyerupai input Bootstrap 5 yang ada */
     .select2-container .select2-selection--single {
@@ -29,16 +30,19 @@
     .select2-results__options {
         max-height: 300px !important;
     }
-    /* Memaksa input flatpickr (termasuk altInput yang digenerate) agar selalu berwarna putih */
+    /* Memaksa input flatpickr agar warnanya seragam dengan form lain */
     .date-picker-bg {
-        background-color: #ffffff !important;
-        border-color: #e5e7eb !important;
+        background-color: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
         color: #1f2937 !important;
-        border-radius: 0.375rem !important;
         font-size: 0.85rem !important;
         height: 38px !important;
-        padding-right: 2.5rem !important;
-        opacity: 1 !important; /* Mencegah opacity bawaan readonly */
+        opacity: 1 !important;
+    }
+    .date-picker-bg:focus {
+        border-color: #c8002d !important;
+        box-shadow: 0 0 0 0.2rem rgba(200, 0, 45, 0.25) !important;
+        background-color: #ffffff !important;
     }
     /* ----- LAYOUT FULL SCREEN UNTUK MENGHILANGKAN SCROLL UTAMA HALAMAN ----- */
     body {
@@ -105,23 +109,17 @@
 
             <!-- Filters -->
             <div class="row g-3 align-items-end mb-4">
-                <!-- Tanggal Dari -->
-                <div class="col-lg-2 col-md-4">
-                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Tanggal Dari</label>
-                    <div style="position: relative;">
-                        <input type="text" name="tanggal_dari" id="dateInputDari" class="form-control filter-input date-picker-bg" 
-                               value="{{ filter_tanggal_dari }}" placeholder="Pilih Tanggal">
-                        <i class="bi bi-calendar3" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;"></i>
-                    </div>
-                </div>
-
-                <!-- Tanggal Hingga -->
-                <div class="col-lg-2 col-md-4">
-                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Tanggal Hingga</label>
-                    <div style="position: relative;">
-                        <input type="text" name="tanggal_sampai" id="dateInputSampai" class="form-control filter-input date-picker-bg" 
-                               value="{{ filter_tanggal_sampai }}" placeholder="Pilih Tanggal">
-                        <i class="bi bi-calendar3" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none;"></i>
+                <!-- Rentang Tanggal -->
+                <div class="col-lg-4 col-md-12">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Rentang Tanggal</label>
+                    <div class="input-group">
+                        <input type="text" name="tanggal_dari" id="dateInputDari" class="form-control date-picker-bg" 
+                               value="{{ filter_tanggal_dari }}" placeholder="Dari Tanggal">
+                        <span class="input-group-text" style="background-color: #f3f4f6; border-color: #e5e7eb; color: #6b7280; font-size: 0.85rem;">
+                            <i class="bi bi-arrow-right"></i>
+                        </span>
+                        <input type="text" name="tanggal_sampai" id="dateInputSampai" class="form-control date-picker-bg" 
+                               value="{{ filter_tanggal_sampai }}" placeholder="Hingga Tanggal">
                     </div>
                 </div>
 
@@ -166,13 +164,11 @@
                 </div>
             </div>
             
-            {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik %}
-            <div class="mb-3 text-end">
+            <div class="mb-3 text-end" id="resetFilterContainer" style="display: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik %}block{% else %}none{% endif %};">
                 <a href="{{ url_for('pemberitaan.index') }}" class="btn-reset-filter" style="font-size: 0.8rem; text-decoration: none;">
                     <i class="bi bi-x-circle"></i> Reset Filter
                 </a>
             </div>
-            {% endif %}
         </form>
 
         <!-- Separator Line -->
@@ -300,20 +296,63 @@
         const yyyy = today.getFullYear();
         const placeholderDate = dd + '/' + mm + '/' + yyyy + " (dd/mm/yyyy)";
 
-        flatpickr("#dateInputDari", {
+        // Fungsi untuk menangkap Enter agar tidak submit form secara tidak sengaja
+        function setupSmartDateInput(fpInstance) {
+            if (fpInstance.altInput) {
+                // Gunakan jQuery untuk menangkap keydown dan keypress dengan kuat
+                $(fpInstance.altInput).on('keydown keypress', function(e) {
+                    if (e.keyCode === 13 || e.key === 'Enter') {
+                        e.preventDefault();  // Mencegah form tersubmit (refresh halaman)
+                        e.stopPropagation(); // Mencegah event bocor ke elemen lain
+                        
+                        // Secara manual panggil blur agar flatpickr memicu update nilai
+                        $(this).blur(); 
+                        
+                        // Tutup kalender jika masih terbuka
+                        fpInstance.close();
+                        
+                        return false; // Blokir ganda untuk jQuery
+                    }
+                });
+            }
+        }
+
+        // Custom parser untuk flatpickr agar mengenali input 1-2 digit sebagai hari di bulan ini
+        function smartParseDate(datestr, format) {
+            let val = datestr.trim();
+            if (/^\d{1,2}$/.test(val)) {
+                let d = parseInt(val, 10);
+                if (d >= 1 && d <= 31) {
+                    let today = new Date();
+                    return new Date(today.getFullYear(), today.getMonth(), d);
+                }
+            }
+            // Kembalikan ke parser bawaan flatpickr
+            return flatpickr.parseDate(datestr, format);
+        }
+
+        const fpDari = flatpickr("#dateInputDari", {
             dateFormat: "Y-m-d",
             altInput: true,
             altFormat: "d/m/Y",
             allowInput: true,
-            placeholder: "Dari Tanggal"
+            placeholder: "Dari Tanggal",
+            parseDate: smartParseDate,
+            onReady: function(selectedDates, dateStr, instance) {
+                setupSmartDateInput(instance);
+            }
         });
 
-        flatpickr("#dateInputSampai", {
+        const fpSampai = flatpickr("#dateInputSampai", {
             dateFormat: "Y-m-d",
             altInput: true,
             altFormat: "d/m/Y",
             allowInput: true,
-            placeholder: "Hingga Tanggal"
+            placeholder: "Hingga Tanggal",
+            parseDate: smartParseDate,
+            onReady: function(selectedDates, dateStr, instance) {
+                setupSmartDateInput(instance);
+            }
         });
 
         // Sinkronisasi form filter sebelum submit
@@ -333,11 +372,49 @@
             width: '100%'
         });
 
-        // Dropdown yang isinya sedikit, tidak butuh pencarian (Tanggal, Sentimen)
+        // Khusus untuk dropdown select2
         $('.select2-no-search').select2({
             minimumResultsForSearch: Infinity,
             placeholder: "Pilih...",
             width: '100%'
+        });
+
+        // ==========================================
+        // Logika Dinamis Tombol Reset Filter
+        // ==========================================
+        function checkFilterState() {
+            let hasValue = false;
+            
+            // Cek input text (termasuk search dan hidden input flatpickr)
+            $('#filterForm input[type="text"], #filterForm input[type="hidden"]').not('input[name="tanggal_sampai"]').each(function() {
+                if ($(this).val() && $(this).val().trim() !== '') {
+                    hasValue = true;
+                }
+            });
+            
+            // Cek dropdown select
+            $('#filterForm select').each(function() {
+                if ($(this).val() && $(this).val() !== '') {
+                    hasValue = true;
+                }
+            });
+            
+            // Tampilkan atau sembunyikan tombol
+            if (hasValue) {
+                $('#resetFilterContainer').stop(true, true).fadeIn(200);
+            } else {
+                $('#resetFilterContainer').stop(true, true).fadeOut(200);
+            }
+        }
+
+        // Pantau setiap kali user mengetik atau mengubah pilihan
+        $('#filterForm').on('input change', 'input, select', function() {
+            checkFilterState();
+        });
+
+        // Pantau khusus untuk perubahan dari plugin Select2
+        $('#filterForm select').on('change.select2', function() {
+            checkFilterState();
         });
     });
 </script>

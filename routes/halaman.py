@@ -8,24 +8,32 @@ from flask import Blueprint, render_template, request
 from services.dashboard_service import DashboardService
 from services.berita_service import BeritaService
 
+from routes.auth import role_required
+from flask_login import login_required
+
 bp = Blueprint("halaman", __name__)
 
-
 @bp.route("/fix-db")
+@login_required
+@role_required("super_admin")
 def fix_db():
     from database.extensions import db
     from database.models import Berita
     from sqlalchemy import func
     try:
-        # Cari berita paling lama
+        # 1. Cek tanggal paling lama
         oldest_berita = db.session.query(func.min(Berita.tanggal)).scalar()
-        if oldest_berita:
-            return f"Berita paling lama tanggal: {oldest_berita.strftime('%d/%m/%Y %H:%M:%S')}"
-        return "Tidak ada berita."
+        
+        # 2. Cek duplikasi judul
+        duplikat_count = db.session.query(Berita.judul, func.count(Berita.id)).group_by(Berita.judul).having(func.count(Berita.id) > 1).count()
+        
+        return f"Berita paling lama: {oldest_berita.strftime('%d/%m/%Y %H:%M:%S') if oldest_berita else 'Tidak ada'}<br>Jumlah judul berita yang terindikasi duplikat: {duplikat_count}"
     except Exception as e:
         return f"Gagal: {str(e)}"
 
 @bp.route("/analisis")
+@login_required
+@role_required("super_admin", "admin", "pemimpin")
 def analisis():
     """Halaman Analisis - Menampilkan visualisasi data mendalam."""
     statistik = DashboardService.get_statistik_utama()
@@ -56,6 +64,8 @@ def analisis():
 
 
 @bp.route("/trend")
+@login_required
+@role_required("super_admin", "admin", "pemimpin")
 def trend():
     """Halaman Trend - grafik tren berita dari waktu ke waktu."""
     # Data trend 30 hari terakhir
@@ -75,6 +85,8 @@ def trend():
 
 
 @bp.route("/wilayah")
+@login_required
+@role_required("super_admin", "admin", "pemimpin")
 def wilayah():
     """Halaman Sebaran Wilayah - peta dan daftar kota dengan berita terbanyak."""
     sebaran = DashboardService.get_sebaran_wilayah()
@@ -87,6 +99,8 @@ def wilayah():
 
 
 @bp.route("/media")
+@login_required
+@role_required("super_admin", "admin", "pemimpin")
 def media():
     """Halaman Media - daftar media yang paling aktif memberitakan OJK."""
     sebaran_media = DashboardService.get_sebaran_media()
@@ -98,6 +112,8 @@ def media():
 
 
 @bp.route("/laporan")
+@login_required
+@role_required("super_admin", "admin", "pemimpin")
 def laporan():
     """Halaman Laporan - arsip laporan dengan berbagai filter."""
     berita_terbaru = DashboardService.get_berita_terbaru(limit=10)
@@ -111,6 +127,7 @@ def laporan():
 
 
 @bp.route("/notifikasi")
+@login_required
 def notifikasi():
     """Halaman Notifikasi - notifikasi penting untuk pimpinan."""
     # Data notifikasi dummy
@@ -152,6 +169,7 @@ def notifikasi():
 
 
 @bp.route("/pencarian")
+@login_required
 def pencarian():
     """Halaman Pencarian - cari berita dengan berbagai filter."""
     query_text = request.args.get("q", "")
@@ -200,6 +218,8 @@ def pencarian():
 
 
 @bp.route("/pengaturan")
+@login_required
+@role_required("super_admin", "admin")
 def pengaturan():
     """Halaman Pengaturan."""
     return render_template(

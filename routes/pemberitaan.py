@@ -8,7 +8,10 @@ from services.berita_service import BeritaService
 bp = Blueprint("pemberitaan", __name__, url_prefix="/pemberitaan")
 
 
+from flask_login import login_required
+
 @bp.route("/")
+@login_required
 def index():
     """
     Halaman daftar berita dengan filter dan pagination.
@@ -56,6 +59,7 @@ def index():
 
 
 @bp.route("/<int:berita_id>")
+@login_required
 def detail(berita_id: int):
     """
     Halaman detail berita.

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Media Monitoring OJK</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ojk-red: #c8002d;
+            --ojk-dark: #1f2937;
+            --font-family: 'Inter', sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: var(--font-family);
+            background-color: #f8f9fa;
+        }
+
+        .login-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ----- LEFT SIDE (HERO) ----- */
+        .login-hero {
+            flex: 1.2;
+            background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 100%), 
+                        url('https://images.unsplash.com/photo-1541888086968-3561ed1bc588?auto=format&fit=crop&q=80&w=2070') center/cover no-repeat;
+            position: relative;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3rem 3rem 5rem 3rem; /* Sediakan ruang di bawah untuk footer */
+        }
+
+        .hero-content {
+            max-width: 600px;
+        }
+
+        .hero-logo {
+            height: 45px;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .hero-title {
+            font-size: 2.3rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            color: #111827; /* Tulisan gelap seperti di desain */
+        }
+        
+        /* Modifikasi karena di desain backgroundnya langit cerah, jadi tulisan hero warnanya gelap */
+        .login-hero {
+            /* Background sementara menggunakan gradient merah lembut OJK, menunggu gambar asli */
+            background: linear-gradient(135deg, rgba(200,0,45,0.05) 0%, rgba(200,0,45,0.15) 100%);
+            color: var(--ojk-dark);
+        }
+
+        .hero-desc {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #374151;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        .hero-features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: auto;
+            margin-bottom: 2rem;
+        }
+
+        .feature-item {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            color: var(--ojk-red);
+        }
+
+        .feature-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #111827;
+            margin-bottom: 0.2rem;
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
+
+        /* Footer Kiri */
+        .hero-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #1a1e29;
+            padding: 1rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #9ca3af;
+            font-size: 0.85rem;
+        }
+
+        .btn-about {
+            border: 1px solid #4b5563;
+            background: transparent;
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-about:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        /* ----- RIGHT SIDE (FORM) ----- */
+        .login-form-side {
+            flex: 0.8;
+            background-color: #f9fafb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+        }
+
+        .login-card {
+            background: white;
+            width: 100%;
+            max-width: 440px;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .brand-block {
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .brand-logo {
+            height: 65px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .brand-divider {
+            width: 2px;
+            background: #e5e7eb;
+            align-self: stretch;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: left;
+            gap: 0;
+        }
+
+        .brand-text span {
+            font-size: 1.05rem;
+            font-weight: 900;
+            color: #1a1a2e;
+            line-height: 1.25;
+            letter-spacing: 0.035em;
+        }
+
+        /* Khusus brand block di sisi hero */
+        .brand-block-hero {
+            justify-content: flex-start;
+            margin-bottom: 2.5rem;
+        }
+
+        .brand-block-hero .brand-logo {
+            height: 55px;
+        }
+
+        .brand-block-hero .brand-divider {
+            background: #d1d5db;
+        }
+
+        .brand-block-hero .brand-text span {
+            font-size: 0.95rem;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.25rem;
+        }
+
+        .login-subtitle {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.2rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group-custom {
+            display: flex;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.25rem 1rem;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .input-group-custom:focus-within {
+            border-color: var(--ojk-red);
+            box-shadow: 0 0 0 3px rgba(200, 0, 45, 0.1);
+        }
+
+        .input-icon {
+            color: #9ca3af;
+            font-size: 1.1rem;
+            margin-right: 0.75rem;
+        }
+
+        .form-control-custom {
+            border: none;
+            padding: 0.75rem 0;
+            width: 100%;
+            font-size: 0.95rem;
+            color: #1f2937;
+        }
+
+        .form-control-custom:focus {
+            outline: none;
+            box-shadow: none;
+        }
+
+        .form-control-custom::placeholder {
+            color: #9ca3af;
+        }
+
+        .password-toggle {
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .login-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-login {
+            background-color: var(--ojk-red);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-login:hover {
+            background-color: #a00024;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(200, 0, 45, 0.2);
+        }
+
+        .app-version {
+            color: #9ca3af;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* Flash Message */
+        .alert-custom {
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 992px) {
+            .login-hero {
+                display: none;
+            }
+            .login-form-side {
+                flex: 1;
+                padding: 1rem;
+            }
+            .login-card {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-layout">
+        
+        <!-- Bagian Kiri (Hero) -->
+        <div class="login-hero">
+            <div class="hero-content">
+                <!-- Logo di kiri atas dihapus sesuai permintaan -->
+
+                <h1 class="hero-title">Monitoring Media,<br>Transparansi Informasi,<br>Untuk Keuangan Indonesia</h1>
+                <p class="hero-desc">Sistem monitoring pemberitaan OJK secara otomatis, akurat, dan real-time untuk mendukung pengambilan keputusan yang lebih baik.</p>
+            </div>
+
+            <div class="hero-features">
+                <div class="feature-item">
+                    <i class="bi bi-shield-check feature-icon"></i>
+                    <div>
+                        <div class="feature-title">Terpercaya</div>
+                        <div class="feature-desc">Data aman dan terlindungi</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-bar-chart-line feature-icon"></i>
+                    <div>
+                        <div class="feature-title">Real-time</div>
+                        <div class="feature-desc">Update setiap hari pukul 09:00 WIB</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-check-circle feature-icon"></i>
+                    <div>
+                        <div class="feature-title">Akurat</div>
+                        <div class="feature-desc">Analisis cerdas berbasis AI</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Gelap -->
+            <div class="hero-footer">
+                <div><i class="bi bi-lock-fill me-2"></i> Sistem ini hanya untuk penggunaan internal OJK</div>
+                <div>© 2026 Otoritas Jasa Keuangan</div>
+                <a href="#" class="btn-about"><i class="bi bi-info-circle"></i> About Us</a>
+            </div>
+        </div>
+
+        <!-- Bagian Kanan (Form) -->
+        <div class="login-form-side">
+            <div class="login-card">
+                
+                <div class="brand-block">
+                    <img src="{{ url_for('static', filename='img/ojk-logo.png') }}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4e/Otoritas_Jasa_Keuangan_Logo.png'" alt="OJK Logo" class="brand-logo">
+                    <div class="brand-divider"></div>
+                    <div class="brand-text">
+                        <span>OTORITAS</span>
+                        <span>JASA</span>
+                        <span>KEUANGAN</span>
+                    </div>
+                </div>
+                
+                <h2 class="login-title">Selamat Datang</h2>
+                <p class="login-subtitle">Silakan masuk untuk melanjutkan ke dashboard</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-custom">
+                                <i class="bi bi-exclamation-circle-fill"></i>
+                                <div>{{ message }}</div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <div class="input-group-custom">
+                            <i class="bi bi-person input-icon"></i>
+                            <input type="text" name="username" class="form-control-custom" placeholder="Masukkan username Anda" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <div class="input-group-custom">
+                            <i class="bi bi-lock input-icon"></i>
+                            <input type="password" name="password" id="passwordInput" class="form-control-custom" placeholder="Masukkan password Anda" required>
+                            <i class="bi bi-eye password-toggle" id="togglePassword"></i>
+                        </div>
+                    </div>
+
+                    <div class="login-actions">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="remember" id="rememberMe">
+                            <label class="form-check-label" for="rememberMe" style="color: #4b5563;">
+                                Ingat saya
+                            </label>
+                        </div>
+                        <a href="#" style="color: #3b82f6; text-decoration: none; font-weight: 500;">Lupa password?</a>
+                    </div>
+
+                    <button type="submit" class="btn-login">Masuk</button>
+                </form>
+
+                <div class="app-version">Versi 1.0.0</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Toggle Password Visibility
+        document.getElementById('togglePassword').addEventListener('click', function (e) {
+            const passwordInput = document.getElementById('passwordInput');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Ubah icon
+            this.classList.toggle('bi-eye');
+            this.classList.toggle('bi-eye-slash');
+        });
+    </script>
+</body>
+</html>

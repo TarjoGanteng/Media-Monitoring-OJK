@@ -9,8 +9,10 @@ import json
 bp = Blueprint("dashboard", __name__)
 
 
-@bp.route("/")
+from flask_login import login_required
+
 @bp.route("/dashboard")
+@login_required
 def index():
     """
     Halaman dashboard utama.
