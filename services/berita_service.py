@@ -157,6 +157,23 @@ class BeritaService:
         return [r[0] for r in result if r[0]]
 
     @staticmethod
+    def get_daftar_wilayah() -> list[str]:
+        """
+        Mengambil daftar wilayah unik yang ada di database.
+
+        Returns:
+            List wilayah yang sudah diurutkan
+        """
+        result = (
+            db.session.query(Berita.wilayah)
+            .filter(Berita.wilayah.isnot(None), Berita.status == "aktif")
+            .distinct()
+            .order_by(Berita.wilayah)
+            .all()
+        )
+        return [r[0] for r in result if r[0]]
+
+    @staticmethod
     def cari_berita(
         query_text: str,
         sentimen: str = None,

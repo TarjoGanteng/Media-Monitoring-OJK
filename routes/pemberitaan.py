@@ -25,6 +25,7 @@ def index():
     topik = request.args.get("topik", "")
     sentimen = request.args.get("sentimen", "")
     keyword = request.args.get("keyword", "")
+    wilayah = request.args.get("wilayah", "")
 
     # Ambil data dengan filter
     pagination = BeritaService.get_berita_paginated(
@@ -35,11 +36,13 @@ def index():
         topik=topik or None,
         sentimen=sentimen or None,
         keyword=keyword or None,
+        wilayah=wilayah or None,
     )
 
-    # Ambil daftar media dan topik untuk dropdown filter
+    # Ambil daftar media, topik, dan wilayah untuk dropdown filter
     daftar_media = BeritaService.get_daftar_media()
     daftar_topik = BeritaService.get_daftar_topik()
+    daftar_wilayah = BeritaService.get_daftar_wilayah()
 
     return render_template(
         "pemberitaan/index.html",
@@ -47,11 +50,13 @@ def index():
         berita_list=pagination.items,
         daftar_media=daftar_media,
         daftar_topik=daftar_topik,
+        daftar_wilayah=daftar_wilayah,
         # Kirim kembali nilai filter untuk mempertahankan state
         filter_tanggal_dari=tanggal_dari,
         filter_tanggal_sampai=tanggal_sampai,
         filter_media=media,
         filter_topik=topik,
+        filter_wilayah=wilayah,
         filter_sentimen=sentimen,
         filter_keyword=keyword,
         active_page="pemberitaan",

@@ -3,93 +3,16 @@
 {% block breadcrumb %}Laporan{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Laporan</h1>
-        <p class="page-subtitle">Arsip laporan dengan berbagai filter periode data</p>
-    </div>
-    <div class="page-header-actions">
-        <button class="btn-action-secondary" onclick="window.print()">
-            <i class="bi bi-printer"></i> Cetak
-        </button>
-    </div>
-</div>
-
-<!-- Ringkasan Stats -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="laporan-stat-card">
-            <i class="bi bi-newspaper text-primary"></i>
-            <span class="laporan-stat-val">{{ statistik.total }}</span>
-            <span class="laporan-stat-label">Total Laporan</span>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="laporan-stat-card">
-            <i class="bi bi-emoji-smile text-success"></i>
-            <span class="laporan-stat-val">{{ statistik.positif }}</span>
-            <span class="laporan-stat-label">Sentimen Positif</span>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="laporan-stat-card">
-            <i class="bi bi-emoji-frown text-danger"></i>
-            <span class="laporan-stat-val">{{ statistik.negatif }}</span>
-            <span class="laporan-stat-label">Sentimen Negatif</span>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="laporan-stat-card">
-            <i class="bi bi-emoji-neutral text-warning"></i>
-            <span class="laporan-stat-val">{{ statistik.netral }}</span>
-            <span class="laporan-stat-label">Sentimen Netral</span>
-        </div>
-    </div>
-</div>
-
-<!-- Daftar Laporan Terbaru -->
 <div class="card-panel">
     <div class="card-panel-header">
-        <div>
-            <h5 class="card-panel-title">Laporan Terbaru</h5>
-            <p class="card-panel-subtitle">10 berita terbaru dalam sistem</p>
-        </div>
+        <h5 class="card-panel-title">Laporan Media Monitoring</h5>
     </div>
-    <div class="card-panel-body p-0">
-        {% if berita_terbaru %}
-        <div class="laporan-list">
-            {% for berita in berita_terbaru %}
-            <div class="laporan-item">
-                <div class="laporan-date">{{ berita.get_tanggal_formatted() }}</div>
-                <div class="laporan-content">
-                    <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" class="laporan-title">{{ berita.judul }}</a>
-                    <div class="laporan-meta">
-                        <span><i class="bi bi-tv me-1"></i>{{ berita.media or '-' }}</span>
-                        <span class="badge-sentimen {{ berita.get_sentimen_badge() }} ms-2">{{ berita.sentimen or 'Netral' }}</span>
-                    </div>
-                </div>
-                <div class="laporan-actions">
-                    <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" class="btn-detail-sm" title="Lihat">
-                        <i class="bi bi-eye"></i>
-                    </a>
-                    <a href="{{ berita.link }}" target="_blank" class="btn-detail-sm" title="Buka Artikel">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
+    <div class="card-panel-body">
+        <div class="empty-state-table" style="padding: 4rem 2rem; text-align: center;">
+            <i class="bi bi-file-earmark-text" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: inline-block;"></i>
+            <h4 class="empty-title">Modul Laporan Sedang Dibangun</h4>
+            <p class="empty-desc">Halaman ini nantinya akan menyediakan fitur pembuatan laporan analisis secara otomatis (PDF/Excel) berdasarkan data pemberitaan OJK Jawa Barat yang dapat diunduh langsung.</p>
         </div>
-        <div class="text-center py-3">
-            <a href="{{ url_for('pemberitaan.index') }}" class="btn-panel-link">
-                Lihat Semua Berita <i class="bi bi-arrow-right"></i>
-            </a>
-        </div>
-        {% else %}
-        <div class="empty-state py-5">
-            <i class="bi bi-file-earmark-bar-graph"></i>
-            <p>Belum ada data laporan.</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

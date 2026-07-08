@@ -846,7 +846,7 @@ a {
 
 .card-panel { background:#fff; border:1px solid var(--border-color); border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.05); margin-bottom:0; }
 .card-panel-header { padding:0.875rem 1.25rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; }
-.card-panel-title { font-size:0.78rem; font-weight:700; letter-spacing:0.04em; color:var(--text-primary); margin:0; }
+.card-panel-title { font-size:0.95rem; font-weight:700; letter-spacing:0.04em; color:var(--text-primary); margin:0; }
 .card-panel-body { padding:1rem 1.25rem; }
 .btn-panel-link { font-size:0.75rem; color:#c8002d; font-weight:600; white-space:nowrap; text-decoration:none; }
 .btn-panel-link:hover { color:#a0001f; }
