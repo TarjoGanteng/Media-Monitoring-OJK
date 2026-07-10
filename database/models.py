@@ -191,9 +191,11 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    nama_lengkap = db.Column(db.String(150), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="staff") # super_admin, admin, pemimpin, staff
+    role = db.Column(db.String(20), nullable=False, default="staff") # super_admin, pemimpin, staff (karyawan)
     status = db.Column(db.String(20), nullable=False, default="aktif") # aktif, nonaktif
+    last_login = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     # Implementasi properties wajib untuk Flask-Login (UserMixin fallback)

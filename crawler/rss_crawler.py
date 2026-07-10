@@ -282,8 +282,9 @@ class RSSCrawler:
                     if not judul or not link:
                         continue
 
-                    # Ambil gambar thumbnail dari halaman artikel
-                    gambar_url = self.ekstrak_gambar(link)
+                    # Gambar TIDAK diambil di sini agar crawl tetap cepat.
+                    # Gunakan endpoint /api/crawler/fetch-images secara terpisah.
+                    gambar_url = None
 
                     article = {
                         "judul": judul,

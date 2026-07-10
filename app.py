@@ -83,6 +83,23 @@ def initialize_database():
 
     # Buat semua tabel jika belum ada
     db.create_all()
+    
+    # Migrasi manual kolom nama_lengkap (diabaikan jika sudah ada)
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("ALTER TABLE users ADD COLUMN nama_lengkap VARCHAR(150)"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    # Migrasi manual kolom last_login (diabaikan jika sudah ada)
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        
     logger.info("Skema database berhasil diinisialisasi.")
 
     # Isi keyword default jika tabel kosong

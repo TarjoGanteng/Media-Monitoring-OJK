@@ -27,19 +27,31 @@
         .login-layout {
             display: flex;
             min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+            background: url("{{ url_for('static', filename='img/kantor-regional.png') }}") center/cover no-repeat;
+        }
+
+        .login-layout::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45); /* Overlay gelap tipis agar teks putih tetap terbaca */
+            z-index: 1;
         }
 
         /* ----- LEFT SIDE (HERO) ----- */
         .login-hero {
-            flex: 1.2;
-            background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 100%), 
-                        url('https://images.unsplash.com/photo-1541888086968-3561ed1bc588?auto=format&fit=crop&q=80&w=2070') center/cover no-repeat;
+            flex: none;
+            width: 66.666%;
             position: relative;
+            z-index: 2;
             color: white;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 3rem 3rem 5rem 3rem; /* Sediakan ruang di bawah untuk footer */
+            padding: 3rem 3rem 5rem 3rem;
+            transition: opacity 0.4s ease, transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
         }
 
         .hero-content {
@@ -58,22 +70,15 @@
             line-height: 1.2;
             margin-bottom: 1rem;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            color: #111827; /* Tulisan gelap seperti di desain */
-        }
-        
-        /* Modifikasi karena di desain backgroundnya langit cerah, jadi tulisan hero warnanya gelap */
-        .login-hero {
-            /* Background sementara menggunakan gradient merah lembut OJK, menunggu gambar asli */
-            background: linear-gradient(135deg, rgba(200,0,45,0.05) 0%, rgba(200,0,45,0.15) 100%);
-            color: var(--ojk-dark);
+            color: #ffffff;
         }
 
         .hero-desc {
             font-size: 1rem;
             line-height: 1.5;
-            color: #374151;
+            color: #f3f4f6;
             margin-bottom: 2rem;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .hero-features {
@@ -92,19 +97,19 @@
 
         .feature-icon {
             font-size: 1.5rem;
-            color: var(--ojk-red);
+            color: #fca5a5;
         }
 
         .feature-title {
             font-weight: 700;
             font-size: 1rem;
-            color: #111827;
+            color: #ffffff;
             margin-bottom: 0.2rem;
         }
 
         .feature-desc {
             font-size: 0.85rem;
-            color: #4b5563;
+            color: #e5e7eb;
         }
 
         /* Footer Kiri */
@@ -123,7 +128,7 @@
         }
 
         .btn-about {
-            border: 1px solid #4b5563;
+            border: 1px solid rgba(255,255,255,0.4);
             background: transparent;
             color: white;
             padding: 0.4rem 1rem;
@@ -133,21 +138,146 @@
             gap: 0.5rem;
             text-decoration: none;
             transition: all 0.2s;
+            cursor: pointer;
         }
 
         .btn-about:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.15);
             color: white;
         }
 
-        /* ----- RIGHT SIDE (FORM) ----- */
+        /* ----- RIGHT SIDE (FORM / ABOUT CONTAINER) ----- */
         .login-form-side {
-            flex: 0.8;
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            z-index: 3;
             background-color: #f9fafb;
+            transform: translateX(133.334%);
+            transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+            will-change: transform;
+            overflow: hidden;
+        }
+
+        .login-content-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 66.666%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 3rem;
+            padding: 2rem;
+            transition: opacity 0.4s ease, transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+        }
+
+        .about-content-container {
+            position: absolute;
+            inset: 0;
+            padding: 1.5rem 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            transform: translateX(-50px);
+            transition: opacity 0.4s ease, transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+            pointer-events: none;
+            overflow-y: hidden;
+        }
+
+        .about-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            color: #ffffff;
+        }
+
+        .about-desc {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #e5e7eb;
+            margin-bottom: 2rem;
+        }
+
+        .btn-back-login {
+            align-self: flex-start;
+            background: var(--ojk-red);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-back-login:hover {
+            background: #a00024;
+            color: white;
+        }
+
+        .btn-back-floating {
+            position: absolute;
+            top: 50%;
+            right: 42%;
+            background: var(--ojk-red);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(50%, -50%) translateX(20px);
+            transition: all 0.4s cubic-bezier(0.77, 0, 0.175, 1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .btn-back-floating:hover {
+            background: #a00024;
+            color: white;
+            transform: translate(50%, -50%) scale(1.05);
+        }
+
+        .login-layout.is-about .btn-back-floating {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(50%, -50%);
+        }
+
+        /* ----- ANIMATION CLASSES ----- */
+        .login-layout.is-about .login-hero {
+            opacity: 0;
+            transform: translateX(-50px);
+            pointer-events: none;
+        }
+
+        .login-layout.is-about .login-form-side {
+            transform: translateX(0);
+            /* Membaur secara tipis di sisi kanan saat berada di kiri */
+            -webkit-mask-image: linear-gradient(to right, black 97%, transparent 100%);
+            mask-image: linear-gradient(to right, black 97%, transparent 100%);
+        }
+
+        .login-layout.is-about .login-content-container {
+            opacity: 0;
+            transform: translateX(50px);
+            pointer-events: none;
+        }
+
+        .login-layout.is-about .about-content-container {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
         }
 
         .login-card {
@@ -379,20 +509,130 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Footer Gelap -->
             <div class="hero-footer">
                 <div><i class="bi bi-lock-fill me-2"></i> Sistem ini hanya untuk penggunaan internal OJK</div>
                 <div>© 2026 Otoritas Jasa Keuangan</div>
-                <a href="#" class="btn-about"><i class="bi bi-info-circle"></i> About Us</a>
+                <button type="button" class="btn-about" id="btnAboutUs"><i class="bi bi-info-circle"></i> About Us</button>
             </div>
         </div>
 
-        <!-- Bagian Kanan (Form) -->
+        <!-- Bagian Kanan (Form & About) -->
         <div class="login-form-side">
-            <div class="login-card">
+
+            <!-- Inner: About Us -->
+            <div class="about-content-container">
+                <div style="max-width: 800px; width: 100%;">
+                    <h1 style="color: #0f172a; font-weight: 800; font-size: 2.2rem; margin-bottom: 0.5rem;">About Us</h1>
                 
-                <div class="brand-block">
+                <p style="color: #475569; font-size: 0.95rem; line-height: 1.4; margin-bottom: 0.5rem;">
+                    Media Monitoring OJK adalah sistem yang dikembangkan untuk memantau dan menganalisis pemberitaan terkait Otoritas Jasa Keuangan secara otomatis, akurat, dan real-time.
+                </p>
+                <p style="color: #475569; font-size: 0.95rem; line-height: 1.4; margin-bottom: 1rem;">
+                    Sistem ini bertujuan untuk mendukung pengambilan keputusan yang lebih cepat dan tepat melalui informasi yang relevan, terpercaya, dan mudah diakses.
+                </p>
+
+                <!-- Cards -->
+                <div class="d-flex gap-2 mb-2">
+                    <div class="text-center p-3 rounded-4" style="border: 1px solid #e2e8f0; flex: 1; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                        <div class="mb-2 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-size: 1.3rem;">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <div class="fw-bold mb-1" style="color: #0f172a; font-size: 0.95rem;">Terpercaya</div>
+                        <p class="text-muted mb-0" style="font-size: 0.8rem; line-height: 1.2;">Data aman dan<br>terlindungi.</p>
+                    </div>
+                    <div class="text-center p-3 rounded-4" style="border: 1px solid #e2e8f0; flex: 1; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                        <div class="mb-2 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-size: 1.3rem;">
+                            <i class="bi bi-bar-chart-line"></i>
+                        </div>
+                        <div class="fw-bold mb-1" style="color: #0f172a; font-size: 0.95rem;">Real-time</div>
+                        <p class="text-muted mb-0" style="font-size: 0.8rem; line-height: 1.2;">Update setiap hari<br>pukul 09:00 WIB.</p>
+                    </div>
+                    <div class="text-center p-3 rounded-4" style="border: 1px solid #e2e8f0; flex: 1; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                        <div class="mb-2 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-size: 1.3rem;">
+                            <i class="bi bi-bullseye"></i>
+                        </div>
+                        <div class="fw-bold mb-1" style="color: #0f172a; font-size: 0.95rem;">Akurat</div>
+                        <p class="text-muted mb-0" style="font-size: 0.8rem; line-height: 1.2;">Analisis cerdas<br>berbasis AI.</p>
+                    </div>
+                </div>
+
+                <!-- Footer content of About Us -->
+                <div class="fw-bold mb-2" style="color: #0f172a; margin-top: 1.5rem; font-size: 1rem;">Tim Pengembang & Kolaborator Institusi</div>
+                <div class="row g-2 mb-1">
+                    <!-- UNY -->
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-4 h-100 d-flex flex-column" style="border: 1px solid #e2e8f0; background: #f8fafc; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                            <div class="mb-3 d-flex justify-content-center">
+                                <div style="width: 55px; height: 55px; background: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; overflow: hidden; padding: 4px;">
+                                    <img src="{{ url_for('static', filename='img/Logo-UNY.png') }}" alt="Logo UNY" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                            </div>
+                            <div class="text-center mb-3 flex-grow-1 d-flex flex-column justify-content-start">
+                                <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem; line-height: 1.2;">Universitas Negeri<br>Yogyakarta</div>
+                                <div style="font-size: 0.7rem; color: #64748b; line-height: 1.3; margin-top: 6px;">Jl. Colombo Yogyakarta No.1,<br>Sleman, DI Yogyakarta 55281</div>
+                            </div>
+                            <div class="mt-auto pt-3 d-flex flex-column gap-2 justify-content-center" style="border-top: 1px dashed #cbd5e1; height: 110px;">
+                                <div class="d-flex align-items-center gap-2" style="color: #475569; font-size: 0.85rem; font-weight: 500;">
+                                    <i class="bi bi-person-fill text-primary" style="font-size: 0.95rem;"></i> Naufal Hanif R. D.
+                                </div>
+                                <div class="d-flex align-items-center gap-2" style="color: #475569; font-size: 0.85rem; font-weight: 500;">
+                                    <i class="bi bi-person-fill text-primary" style="font-size: 0.95rem;"></i> Angga Baihaki Y.
+                                </div>
+                                <div class="d-flex align-items-center gap-2" style="color: #475569; font-size: 0.85rem; font-weight: 500;">
+                                    <i class="bi bi-person-fill text-primary" style="font-size: 0.95rem;"></i> Daffa Taufiqurahman
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telkom -->
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-4 h-100 d-flex flex-column" style="border: 1px solid #e2e8f0; background: #f8fafc; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                            <div class="mb-3 d-flex justify-content-center">
+                                <div style="width: 55px; height: 55px; background: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; overflow: hidden; padding: 4px;">
+                                    <img src="{{ url_for('static', filename='img/Logo_Telkom_University.png') }}" alt="Logo Telkom University" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                            </div>
+                            <div class="text-center mb-3 flex-grow-1 d-flex flex-column justify-content-start">
+                                <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem; line-height: 1.2;">Telkom University</div>
+                                <div style="font-size: 0.7rem; color: #64748b; line-height: 1.3; margin-top: 6px;">Jl. Telekomunikasi No. 1,<br>Bandung, Jawa Barat 40257</div>
+                            </div>
+                            <div class="mt-auto pt-3 d-flex flex-column gap-2 justify-content-center" style="border-top: 1px dashed #cbd5e1; height: 110px;">
+                                <div class="d-flex align-items-center gap-2" style="color: #475569; font-size: 0.85rem; font-weight: 500;">
+                                    <i class="bi bi-person-fill text-primary" style="font-size: 0.95rem;"></i> Bunga Nazwa Shafira
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ITB -->
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-4 h-100 d-flex flex-column" style="border: 1px solid #e2e8f0; background: #f8fafc; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                            <div class="mb-3 d-flex justify-content-center">
+                                <div style="width: 55px; height: 55px; background: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; overflow: hidden; padding: 4px;">
+                                    <img src="{{ url_for('static', filename='img/Logo_Institut_Teknologi_Bandung.png') }}" alt="Logo ITB" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                            </div>
+                            <div class="text-center mb-3 flex-grow-1 d-flex flex-column justify-content-start">
+                                <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem; line-height: 1.2;">Institut Teknologi<br>Bandung</div>
+                                <div style="font-size: 0.7rem; color: #64748b; line-height: 1.3; margin-top: 6px;">Jl. Ganesa No. 10,<br>Bandung, Jawa Barat 40132</div>
+                            </div>
+                            <div class="mt-auto pt-3 d-flex flex-column gap-2 justify-content-center" style="border-top: 1px dashed #cbd5e1; height: 110px;">
+                                <div class="d-flex align-items-center gap-2" style="color: #475569; font-size: 0.85rem; font-weight: 500;">
+                                    <i class="bi bi-person-fill text-primary" style="font-size: 0.95rem;"></i> Ratukhansa Salsabila
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+            <!-- Inner: Login Form -->
+            <div class="login-content-container">
+                <div class="login-card">
+                    
+                    <div class="brand-block">
                     <img src="{{ url_for('static', filename='img/ojk-logo.png') }}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4e/Otoritas_Jasa_Keuangan_Logo.png'" alt="OJK Logo" class="brand-logo">
                     <div class="brand-divider"></div>
                     <div class="brand-text">
@@ -450,20 +690,46 @@
                 <div class="app-version">Versi 1.0.0</div>
             </div>
         </div>
+        </div>
 
+        <!-- Floating Back Button -->
+        <button type="button" class="btn-back-floating" id="btnBackLogin">
+            Kembali ke Beranda <i class="bi bi-arrow-right ms-2"></i>
+        </button>
     </div>
 
     <script>
         // Toggle Password Visibility
-        document.getElementById('togglePassword').addEventListener('click', function (e) {
-            const passwordInput = document.getElementById('passwordInput');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            
-            // Ubah icon
-            this.classList.toggle('bi-eye');
-            this.classList.toggle('bi-eye-slash');
-        });
+        const togglePassword = document.querySelector('#togglePassword');
+        const passwordInput = document.querySelector('#passwordInput');
+
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function (e) {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.classList.toggle('bi-eye');
+                this.classList.toggle('bi-eye-slash');
+            });
+        }
+
+        // About Us Sliding Animation
+        const btnAboutUs = document.getElementById('btnAboutUs');
+        const btnBackLogin = document.getElementById('btnBackLogin');
+        const loginLayout = document.querySelector('.login-layout');
+
+        if (btnAboutUs && loginLayout) {
+            btnAboutUs.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginLayout.classList.add('is-about');
+            });
+        }
+
+        if (btnBackLogin && loginLayout) {
+            btnBackLogin.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginLayout.classList.remove('is-about');
+            });
+        }
     </script>
 </body>
 </html>

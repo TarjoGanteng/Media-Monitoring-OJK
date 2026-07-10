@@ -3,16 +3,516 @@
 {% block breadcrumb %}Pengaturan Sistem{% endblock %}
 
 {% block content %}
-<div class="card-panel">
-    <div class="card-panel-header">
-        <h5 class="card-panel-title">Pengaturan Aplikasi</h5>
+<div class="row g-4">
+    <!-- Sidebar Pengaturan -->
+    <div class="col-lg-3">
+        <div class="card-panel">
+            <div class="list-group list-group-flush" style="border-radius: 12px; overflow: hidden;">
+                <a href="#profil" class="list-group-item list-group-item-action active" data-bs-toggle="pill">
+                    <i class="bi bi-person me-2"></i> Profil
+                </a>
+                {% if current_user.role != 'staff' %}
+                <a href="#manajemen-user" class="list-group-item list-group-item-action" data-bs-toggle="pill">
+                    <i class="bi bi-people me-2"></i> Manajemen User
+                </a>
+                <a href="#sistem" class="list-group-item list-group-item-action" data-bs-toggle="pill">
+                    <i class="bi bi-gear me-2"></i> Sistem
+                </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    <div class="card-panel-body">
-        <div class="empty-state-table" style="padding: 4rem 2rem;">
-            <i class="bi bi-gear" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: inline-block;"></i>
-            <h4 class="empty-title">Modul Pengaturan Sedang Dibangun</h4>
-            <p class="empty-desc">Halaman ini nantinya akan berisi pengaturan kata kunci crawler, jadwal penarikan otomatis, dan manajemen pengguna.</p>
+
+    <!-- Konten Pengaturan -->
+    <div class="col-lg-9">
+        <div class="tab-content">
+            <!-- Tab Profil -->
+            <div class="tab-pane fade show active" id="profil">
+                <!-- Profil Gabungan (Satu Kotak) -->
+                <div class="card-panel">
+                    <div class="card-panel-header pb-2">
+                        <h5 class="card-panel-title">Profil Pengguna</h5>
+                    </div>
+                    <div class="card-panel-body pt-3 pb-2">
+                        <!-- Informasi Akun -->
+                        <h6 class="fw-bold mb-3 text-danger" style="font-size: 0.95rem;">Informasi Akun</h6>
+                        <div class="row align-items-center mb-1">
+                            <div class="col-md-6 d-flex mb-2 mb-md-0">
+                                <div class="text-muted py-1" style="width: 130px;"><label class="col-form-label m-0 p-0">Nama Lengkap</label></div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fw-bold text-dark text-truncate" style="max-width: 150px;">{{ current_user.nama_lengkap or (current_user.username | title) }}</span>
+                                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="toggleUbahProfil()" style="border-radius: 4px; font-size: 0.75rem;">
+                                        <i class="bi bi-pencil"></i> Ubah
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 d-flex">
+                                <div class="text-muted py-1" style="width: 130px;"><label class="col-form-label m-0 p-0">Username</label></div>
+                                <div class="d-flex align-items-center">
+                                    <span class="fw-bold text-dark">{{ current_user.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Form Ubah Profil (Hidden by default) -->
+                        <div id="form-ubah-profil" class="mt-2 pt-2 border-top d-none" style="animation: fadeIn 0.3s ease;">
+                            <form action="{{ url_for('halaman.update_profil') }}" method="POST" class="d-flex align-items-center flex-wrap gap-2">
+                                <label class="form-label mb-0 text-muted" style="font-size: 0.85rem;">Nama Lengkap Baru:</label>
+                                <input type="text" class="form-control form-control-sm" style="max-width: 250px;" name="nama_lengkap" value="{{ current_user.nama_lengkap or (current_user.username | title) }}" required>
+                                <button type="submit" class="btn btn-sm btn-danger px-3" style="border-radius: 4px;">Simpan</button>
+                                <button type="button" class="btn btn-sm btn-light px-3 border" onclick="toggleUbahProfil()" style="border-radius: 4px;">Batal</button>
+                            </form>
+                        </div>
+
+                        <hr class="my-3" style="opacity: 0.1;">
+
+                        <!-- Keamanan Akun (hanya untuk non-staff) -->
+                        {% if current_user.role != 'staff' %}
+                        <h6 class="fw-bold mb-3 text-danger" style="font-size: 0.95rem;">Keamanan Akun</h6>
+                        <div class="row align-items-center mb-1">
+                            <label class="col-sm-3 col-form-label text-muted py-1">Password</label>
+                            <div class="col-sm-9 d-flex align-items-center gap-3 py-1">
+                                <span class="fw-bold text-dark">********</span>
+                                <button class="btn btn-sm btn-outline-danger px-3 py-1" onclick="toggleUbahPassword()" style="border-radius: 6px; font-size: 0.8rem;">
+                                    <i class="bi bi-pencil me-1"></i> Ubah Password
+                                </button>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Form Ubah Password (Hidden by default) -->
+                        <div id="form-ubah-password" class="mt-2 pt-2 border-top d-none" style="animation: fadeIn 0.3s ease;">
+                            <form id="form-password" action="{{ url_for('halaman.update_password') }}" method="POST" autocomplete="off">
+                                <!-- Honeypot: dummy field untuk menjebak autofill browser -->
+                                <input type="text" style="display:none;" tabindex="-1" autocomplete="username">
+                                <input type="password" style="display:none;" tabindex="-1" autocomplete="current-password">
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label mb-1 text-muted" style="font-size: 0.75rem;">Password Saat Ini</label>
+                                        <input type="text" onfocus="this.type='password'" class="form-control form-control-sm" name="old_password" id="old_password" required placeholder="Password lama" autocomplete="new-password">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label mb-1 text-muted" style="font-size: 0.75rem;">Password Baru</label>
+                                        <input type="password" class="form-control form-control-sm" name="new_password" id="new_password" required placeholder="Password baru" autocomplete="new-password" oninput="checkPasswordRules()">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label mb-1 text-muted" style="font-size: 0.75rem;">Konfirmasi Baru</label>
+                                        <input type="password" class="form-control form-control-sm" name="confirm_password" id="confirm_password" required placeholder="Ulangi baru" autocomplete="new-password" oninput="checkPasswordRules()">
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <div class="p-1 px-2 rounded" style="background-color: #f8fafc; font-size: 0.75rem;">
+                                        <div class="d-flex flex-wrap gap-3 align-items-center">
+                                            <span class="fw-bold">Aturan:</span>
+                                            <div id="rule-length" class="text-danger"><i class="bi bi-x-circle me-1"></i> Min 8 char</div>
+                                            <div id="rule-uppercase" class="text-danger"><i class="bi bi-x-circle me-1"></i> Huruf besar</div>
+                                            <div id="rule-number" class="text-danger"><i class="bi bi-x-circle me-1"></i> Angka</div>
+                                            <div id="rule-match" class="text-danger"><i class="bi bi-x-circle me-1"></i> Cocok</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-sm btn-danger px-3" style="border-radius: 4px;">Simpan</button>
+                                        <button type="button" class="btn btn-sm btn-light px-3 border" onclick="toggleUbahPassword()" style="border-radius: 4px;">Batal</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <hr class="my-3" style="opacity: 0.1;">
+
+                        <!-- Informasi Tambahan -->
+                        <h6 class="fw-bold mb-3 text-danger" style="font-size: 0.95rem;">Informasi Tambahan</h6>
+                        <div class="row mb-1">
+                            <div class="col-md-6 d-flex mb-2 mb-md-0">
+                                <div class="text-muted py-1" style="width: 130px;"><label class="col-form-label m-0 p-0">Role (Hak Akses)</label></div>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-danger px-2 py-1" style="border-radius: 4px; font-size: 0.75rem;">{{ current_user.role | title }}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 d-flex">
+                                <div class="text-muted py-1" style="width: 130px;"><label class="col-form-label m-0 p-0">Terakhir Login</label></div>
+                                <div class="d-flex align-items-center">
+                                <span class="fw-bold text-dark">
+                                    {% if current_user.last_login %}
+                                        {{ current_user.last_login.strftime('%d %b %Y, %H:%M') }} WIB
+                                    {% else %}
+                                        Belum tercatat
+                                    {% endif %}
+                                </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Manajemen User -->
+            <div class="tab-pane fade" id="manajemen-user">
+                <div class="card-panel">
+                    <div class="card-panel-header d-flex align-items-center justify-content-between pb-2">
+                        <h5 class="card-panel-title mb-0">Manajemen User</h5>
+                        {% if current_user.role == 'super_admin' %}
+                        <button class="btn btn-sm btn-danger px-3" onclick="openModalTambah()" style="border-radius: 6px; font-size: 0.85rem;">
+                            <i class="bi bi-person-plus me-1"></i> Tambah User
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="card-panel-body pt-2 pb-1">
+                        {% if daftar_user %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="background: #f8fafc; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                                        <th class="py-2 ps-3" style="width: 40px;">No</th>
+                                        <th class="py-2">Nama Lengkap</th>
+                                        <th class="py-2">Username</th>
+                                        <th class="py-2">Role</th>
+                                        <th class="py-2">Status</th>
+                                        <th class="py-2">Dibuat</th>
+                                        <th class="py-2 text-center" style="width: 100px;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in daftar_user %}
+                                    <tr>
+                                        <td class="ps-3 text-muted">{{ loop.index }}</td>
+                                        <td class="fw-semibold">{{ user.nama_lengkap or (user.username | title) }}</td>
+                                        <td class="text-muted">{{ user.username }}</td>
+                                        <td>
+                                            {% set role_colors = {'super_admin': 'danger', 'pemimpin': 'info', 'staff': 'secondary'} %}
+                                            <span class="badge bg-{{ role_colors.get(user.role, 'secondary') }}" style="font-size: 0.7rem; border-radius: 4px;">
+                                                {% if user.role == 'staff' %}Karyawan
+                                                {% else %}{{ user.role.replace('_', ' ') | title }}
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if user.status == 'aktif' %}
+                                                <span class="badge bg-success" style="font-size: 0.7rem; border-radius: 4px;">Aktif</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary" style="font-size: 0.7rem; border-radius: 4px;">Nonaktif</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted" style="font-size: 0.78rem;">{{ user.created_at.strftime('%d %b %Y') if user.created_at else '-' }}</td>
+                                        <td class="text-center">
+                                            {% if current_user.role == 'super_admin' %}
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1"
+                                                onclick="openModalEdit({{ user.id }}, '{{ user.nama_lengkap or '' }}', '{{ user.username }}', '{{ user.role }}', '{{ user.status }}')"
+                                                title="Edit" style="border-radius: 4px; font-size: 0.75rem;">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            {% if user.id != current_user.id %}
+                                            <button class="btn btn-sm btn-outline-danger py-0 px-2"
+                                                onclick="openModalHapus({{ user.id }}, '{{ user.username }}')"
+                                                title="Hapus" style="border-radius: 4px; font-size: 0.75rem;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-sm btn-outline-danger py-0 px-2 disabled" disabled title="Tidak bisa menghapus diri sendiri" style="border-radius: 4px; font-size: 0.75rem; opacity: 0.3;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-people" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                            <p class="mt-2 mb-0">Belum ada user terdaftar.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Tambah User -->
+            <div class="modal fade" id="modalTambahUser" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content" style="border-radius: 12px; border: 1px solid var(--border-color);">
+                        <div class="modal-header border-0 pb-0">
+                            <h6 class="modal-title fw-bold"><i class="bi bi-person-plus me-2 text-danger"></i>Tambah User Baru</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form action="{{ url_for('halaman.tambah_user') }}" method="POST">
+                            <div class="modal-body pt-3">
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size: 0.85rem;">Nama Lengkap</label>
+                                    <input type="text" class="form-control form-control-sm" name="nama_lengkap" placeholder="Nama lengkap user" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size: 0.85rem;">Username</label>
+                                    <input type="text" class="form-control form-control-sm" name="username" placeholder="Username (unik)" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size: 0.85rem;">Password</label>
+                                    <input type="password" class="form-control form-control-sm" name="password" placeholder="Minimal 8 karakter, huruf besar, angka" autocomplete="new-password" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label class="form-label" style="font-size: 0.85rem;">Role</label>
+                                        <select class="form-select form-select-sm" name="role" required>
+                                            <option value="staff">Karyawan</option>
+                                            <option value="pemimpin">Pemimpin</option>
+                                            <option value="super_admin">Super Admin</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label class="form-label" style="font-size: 0.85rem;">Status</label>
+                                        <select class="form-select form-select-sm" name="status" required>
+                                            <option value="aktif">Aktif</option>
+                                            <option value="nonaktif">Nonaktif</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-sm btn-danger px-3">Simpan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Edit User -->
+            <div class="modal fade" id="modalEditUser" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content" style="border-radius: 12px; border: 1px solid var(--border-color);">
+                        <div class="modal-header border-0 pb-0">
+                            <h6 class="modal-title fw-bold"><i class="bi bi-pencil me-2 text-danger"></i>Edit User</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form id="form-edit-user" action="" method="POST">
+                            <div class="modal-body pt-3">
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size: 0.85rem;">Nama Lengkap</label>
+                                    <input type="text" class="form-control form-control-sm" name="nama_lengkap" id="edit-nama" placeholder="Nama lengkap" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size: 0.85rem;">Username</label>
+                                    <input type="text" class="form-control form-control-sm" name="username" id="edit-username" placeholder="Username" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="font-size: 0.85rem;">Password Baru <span class="text-muted fw-normal">(kosongkan jika tidak diubah)</span></label>
+                                    <input type="password" class="form-control form-control-sm" name="password" placeholder="Isi jika ingin mengganti password" autocomplete="new-password">
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label class="form-label" style="font-size: 0.85rem;">Role</label>
+                                        <select class="form-select form-select-sm" name="role" id="edit-role" required>
+                                            <option value="staff">Karyawan</option>
+                                            <option value="pemimpin">Pemimpin</option>
+                                            <option value="super_admin">Super Admin</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label class="form-label" style="font-size: 0.85rem;">Status</label>
+                                        <select class="form-select form-select-sm" name="status" id="edit-status" required>
+                                            <option value="aktif">Aktif</option>
+                                            <option value="nonaktif">Nonaktif</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-sm btn-danger px-3">Simpan Perubahan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Konfirmasi Hapus -->
+            <div class="modal fade" id="modalHapusUser" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content" style="border-radius: 12px;">
+                        <div class="modal-body text-center py-4">
+                            <div style="font-size: 2.5rem; color: #ef4444; margin-bottom: 0.5rem;"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                            <h6 class="fw-bold mb-1">Hapus User?</h6>
+                            <p class="text-muted mb-3" style="font-size: 0.85rem;">User <strong id="hapus-username-label"></strong> akan dihapus permanen.</p>
+                            <form id="form-hapus-user" action="" method="POST" class="d-flex gap-2 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-sm btn-danger px-3">Ya, Hapus</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Sistem -->
+            <div class="tab-pane fade" id="sistem">
+                <div class="card-panel">
+                    <div class="card-panel-header">
+                        <h5 class="card-panel-title">Sistem</h5>
+                    </div>
+                    <div class="card-panel-body">
+                        <div class="empty-state-small py-5">
+                            <i class="bi bi-gear" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+                            <h5 class="fw-bold">Pengaturan Sistem</h5>
+                            <p class="text-muted">Fitur konfigurasi sistem akan hadir di sini.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+// ---- Aktifkan tab sesuai query parameter ?tab= ----
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+    if (activeTab) {
+        const tabEl = document.querySelector(`a[href="#${activeTab}"]`);
+        if (tabEl) {
+            // Nonaktifkan tab profil dulu
+            document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(el => {
+                el.classList.remove('show', 'active');
+            });
+            // Aktifkan tab yang sesuai
+            tabEl.classList.add('active');
+            const pane = document.getElementById(activeTab);
+            if (pane) pane.classList.add('show', 'active');
+        }
+    }
+});
+
+function toggleUbahPassword() {
+    const form = document.getElementById('form-ubah-password');
+    // Reset field saat toggle
+    if (!form.classList.contains('d-none')) {
+        document.getElementById('old_password').value = '';
+        document.getElementById('new_password').value = '';
+        document.getElementById('confirm_password').value = '';
+        checkPasswordRules();
+    }
+    form.classList.toggle('d-none');
+}
+
+function toggleUbahProfil() {
+    const form = document.getElementById('form-ubah-profil');
+    form.classList.toggle('d-none');
+}
+
+// ---- Manajemen User ----
+function openModalTambah() {
+    new bootstrap.Modal(document.getElementById('modalTambahUser')).show();
+}
+
+function openModalEdit(userId, namaLengkap, username, role, status) {
+    document.getElementById('edit-nama').value = namaLengkap;
+    document.getElementById('edit-username').value = username;
+    document.getElementById('edit-role').value = role;
+    document.getElementById('edit-status').value = status;
+    document.getElementById('form-edit-user').action = `/pengaturan/edit_user/${userId}`;
+    new bootstrap.Modal(document.getElementById('modalEditUser')).show();
+}
+
+function openModalHapus(userId, username) {
+    document.getElementById('hapus-username-label').textContent = username;
+    document.getElementById('form-hapus-user').action = `/pengaturan/hapus_user/${userId}`;
+    new bootstrap.Modal(document.getElementById('modalHapusUser')).show();
+}
+
+
+function checkPasswordRules() {
+    const newPass = document.getElementById('new_password').value;
+    const confPass = document.getElementById('confirm_password').value;
+    
+    const updateRule = (elementId, isValid) => {
+        const el = document.getElementById(elementId);
+        if (isValid) {
+            el.classList.remove('text-danger');
+            el.classList.add('text-success');
+            el.innerHTML = el.innerHTML.replace('bi-x-circle', 'bi-check-circle-fill');
+        } else {
+            el.classList.remove('text-success');
+            el.classList.add('text-danger');
+            el.innerHTML = el.innerHTML.replace('bi-check-circle-fill', 'bi-x-circle');
+        }
+    };
+
+    updateRule('rule-length', newPass.length >= 8);
+    updateRule('rule-uppercase', /[A-Z]/.test(newPass));
+    updateRule('rule-number', /[0-9]/.test(newPass));
+    const isMatch = (newPass === confPass) && newPass.length > 0;
+    updateRule('rule-match', isMatch);
+}
+
+// Validasi form sebelum submit — BLOKIR jika aturan belum terpenuhi
+document.addEventListener('DOMContentLoaded', function() {
+    const formPassword = document.getElementById('form-password');
+    if (formPassword) {
+        formPassword.addEventListener('submit', function(e) {
+            const oldPass = document.getElementById('old_password').value.trim();
+            const newPass = document.getElementById('new_password').value;
+            const confPass = document.getElementById('confirm_password').value;
+
+            const errors = [];
+
+            if (!oldPass) {
+                errors.push('Password saat ini tidak boleh kosong.');
+            }
+            if (newPass.length < 8) {
+                errors.push('Password baru minimal 8 karakter.');
+            }
+            if (!/[A-Z]/.test(newPass)) {
+                errors.push('Password baru harus mengandung huruf besar.');
+            }
+            if (!/[0-9]/.test(newPass)) {
+                errors.push('Password baru harus mengandung angka.');
+            }
+            if (newPass !== confPass || newPass.length === 0) {
+                errors.push('Konfirmasi password baru tidak cocok.');
+            }
+
+            if (errors.length > 0) {
+                e.preventDefault(); // Hentikan pengiriman form
+                // Tampilkan alert di dalam form
+                let existingAlert = document.getElementById('password-alert-inline');
+                if (existingAlert) existingAlert.remove();
+                const alertDiv = document.createElement('div');
+                alertDiv.id = 'password-alert-inline';
+                alertDiv.className = 'alert alert-danger alert-dismissible py-2 mt-2';
+                alertDiv.style.fontSize = '0.8rem';
+                alertDiv.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Gagal:</strong> ' + errors.join(' &bull; ') +
+                    '<button type="button" class="btn-close btn-close-sm" onclick="this.parentElement.remove()"></button>';
+                formPassword.insertBefore(alertDiv, formPassword.firstChild);
+                return false;
+            }
+        });
+    }
+});
+</script>
+
+<style>
+/* Style tambahan untuk Sidebar Tab Pengaturan */
+.list-group-item {
+    border: none;
+    padding: 1rem 1.25rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+.list-group-item:hover {
+    background-color: #f8fafc;
+    color: var(--text-primary);
+}
+.list-group-item.active {
+    background-color: rgba(192, 57, 43, 0.1) !important;
+    border-left: 4px solid #c0392b !important;
+    color: #c0392b !important;
+    font-weight: 600;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
 {% endblock %}

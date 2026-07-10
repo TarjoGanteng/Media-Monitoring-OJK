@@ -51,6 +51,17 @@ def login():
             flash("Akun Anda telah dinonaktifkan.", "error")
             return redirect(url_for('auth.login'))
 
+        # Simpan waktu login terakhir (WIB = UTC+7)
+        from datetime import datetime, timezone, timedelta
+        import uuid
+        wib = timezone(timedelta(hours=7))
+        user.last_login = datetime.now(wib).replace(tzinfo=None)
+        db.session.commit()
+
+        # Buat token unik per sesi login untuk kontrol motivasi
+        from flask import session as flask_session
+        flask_session['login_token'] = str(uuid.uuid4())
+
         # Login berhasil
         login_user(user, remember=remember)
         return redirect(url_for('dashboard.index'))
@@ -63,3 +74,25 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
+
+@bp.route("/api/check-session")
+def check_session():
+    """Endpoint polling ringan untuk mengecek apakah sesi user masih valid."""
+    from flask import jsonify
+    from database.models import User
+    
+    if not current_user.is_authenticated:
+        return jsonify({"status": "unauthenticated"}), 401
+    
+    # Reload user langsung dari database untuk data terkini
+    user = User.query.get(current_user.id)
+    if not user:
+        logout_user()
+        return jsonify({"status": "deleted"}), 401
+    
+    if user.status != "aktif":
+        logout_user()
+        return jsonify({"status": "nonaktif"}), 401
+    
+    return jsonify({"status": "ok"}), 200

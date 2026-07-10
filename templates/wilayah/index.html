@@ -3,42 +3,85 @@
 {% block breadcrumb %}Sebaran Wilayah{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Sebaran Wilayah</h1>
-        <p class="page-subtitle">Peta & daftar kota dengan berita terbanyak di Jawa Barat</p>
-    </div>
-</div>
 
-<div class="row g-4">
-    <!-- Peta Placeholder -->
-    <div class="col-lg-7">
+
+<div class="row g-4" id="mainRow">
+    <!-- Peta Choropleth -->
+    <div class="col-lg-12" id="mapColumn" style="transition: width 0.3s ease;">
         <div class="card-panel">
             <div class="card-panel-header">
                 <div>
-                    <h5 class="card-panel-title">Peta Sebaran Jawa Barat</h5>
-                    <p class="card-panel-subtitle">Visualisasi sebaran pemberitaan per kota</p>
+                    <h5 class="card-panel-title">Sebaran Wilayah Jawa Barat</h5>
+                    <p class="card-panel-subtitle">Warna lebih pekat = berita lebih banyak</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:0.8rem;color:#64748b;">
+                        <span style="width:14px;height:14px;background:#fee5d9;border:1px solid #ccc;border-radius:2px;display:inline-block;"></span> Sedikit
+                        <span style="width:14px;height:14px;background:#c0392b;border:1px solid #ccc;border-radius:2px;display:inline-block;"></span> Banyak
+                    </span>
                 </div>
             </div>
-            <div class="card-panel-body">
-                <div class="map-placeholder">
-                    <i class="bi bi-map"></i>
-                    <h3>Peta Interaktif</h3>
-                    <p>Visualisasi peta Jawa Barat akan tersedia di pembaruan berikutnya.</p>
-                    <p class="map-note">Gunakan tabel sebaran di samping untuk melihat data per kota.</p>
+            <div class="card-panel-body p-0" style="overflow: hidden;">
+                <div id="map-wilayah" style="height: 380px; width: 100%;"></div>
+                
+                <!-- TOP 5 Section -->
+                <div id="top5Section" class="p-3" style="background: var(--card-bg); border-top: 1px solid var(--border-color);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold" style="color: var(--text-primary); font-size: 0.95rem;">Top 5 Kota/Kabupaten</h6>
+                    </div>
+                    {% if sebaran %}
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            {% for item in sebaran[:2] %}
+                            <div class="wilayah-item border-0 p-1 mb-1" style="background: #f8fafc; border-radius: 6px; min-height: 36px;">
+                                <div class="wilayah-rank" style="width: 24px; height: 24px; line-height: 24px; font-size: 0.8rem;">{{ loop.index }}</div>
+                                <div class="wilayah-info ms-2">
+                                    <span class="wilayah-name" style="font-size: 0.85rem;">{{ item.wilayah }}</span>
+                                </div>
+                                <div class="wilayah-count border-0 bg-transparent py-0 pe-2">
+                                    <span class="text-danger fw-bold" style="font-size: 0.95rem;">{{ item.jumlah }}</span> <small class="text-muted" style="font-size: 0.75rem;">berita</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            {% for item in sebaran[2:5] %}
+                            <div class="wilayah-item border-0 p-1 mb-1" style="background: #f8fafc; border-radius: 6px; min-height: 36px;">
+                                <div class="wilayah-rank" style="width: 24px; height: 24px; line-height: 24px; font-size: 0.8rem;">{{ loop.index + 2 }}</div>
+                                <div class="wilayah-info ms-2">
+                                    <span class="wilayah-name" style="font-size: 0.85rem;">{{ item.wilayah }}</span>
+                                </div>
+                                <div class="wilayah-count border-0 bg-transparent py-0 pe-2">
+                                    <span class="text-danger fw-bold" style="font-size: 0.95rem;">{{ item.jumlah }}</span> <small class="text-muted" style="font-size: 0.75rem;">berita</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            <div class="text-end mt-1">
+                                <button onclick="expandMap()" class="btn btn-sm btn-outline-danger py-1 px-3" style="border-radius: 6px; font-weight: 600; font-size: 0.8rem;">
+                                    Lihat Selengkapnya <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Belum ada data wilayah</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Daftar Wilayah -->
-    <div class="col-lg-5">
-        <div class="card-panel">
-            <div class="card-panel-header">
+    <div class="col-lg-5 d-none" id="listColumn" style="transition: width 0.3s ease;">
+        <div class="card-panel h-100">
+            <div class="card-panel-header d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="card-panel-title">Daftar Kota</h5>
                     <p class="card-panel-subtitle">{{ sebaran | length }} kota terdeteksi</p>
                 </div>
+                <button onclick="collapseMap()" class="btn btn-sm btn-light border" title="Kembali" style="border-radius: 6px;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             <div class="card-panel-body p-0">
                 {% if sebaran %}
@@ -70,4 +113,204 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// Data sebaran dari server (Jinja2)
+const sebaranData = {};
+{% for item in sebaran %}
+sebaranData["{{ item.wilayah | lower }}"] = {{ item.jumlah }};
+{% endfor %}
+
+const maxJumlah = Math.max(...Object.values(sebaranData), 1);
+
+// Fungsi kecocokan nama wilayah (fleksibel)
+function getJumlahByName(name) {
+    if (!name) return 0;
+    const normalized = name.toLowerCase()
+        .replace(/^(kab\.|kabupaten|kota)\s+/i, '')
+        .trim();
+    // Cek langsung
+    for (const [k, v] of Object.entries(sebaranData)) {
+        const kNorm = k.replace(/^(kab\.|kabupaten|kota)\s+/i, '').trim();
+        if (kNorm === normalized || kNorm.includes(normalized) || normalized.includes(kNorm)) {
+            return v;
+        }
+    }
+    return 0;
+}
+
+// Warna choropleth: putih ke merah OJK
+function getColor(jumlah) {
+    if (jumlah === 0) return '#f5f5f5';
+    const ratio = Math.min(jumlah / maxJumlah, 1);
+    // Interpolasi: #fee5d9 (merah pudar) → #c0392b (merah tua OJK)
+    const r = Math.round(254 + (192 - 254) * ratio);
+    const g = Math.round(229 + (57  - 229) * ratio);
+    const b = Math.round(217 + (43  - 217) * ratio);
+    return `rgb(${r},${g},${b})`;
+}
+
+// Inisialisasi peta Leaflet
+const map = L.map('map-wilayah', {
+    center: [-6.9175, 107.6191],
+    zoom: 8,
+    zoomControl: true,
+    scrollWheelZoom: true,
+});
+
+// Tile layer OpenStreetMap (latar peta)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 16,
+    opacity: 0.5,
+}).addTo(map);
+
+let geojsonLayer;
+
+function style(feature) {
+    const name = feature.properties.KABKOT || feature.properties.name || feature.properties.NAME_2 || '';
+    const jumlah = getJumlahByName(name);
+    return {
+        fillColor: getColor(jumlah),
+        weight: 1.5,
+        opacity: 1,
+        color: '#adb5bd',
+        fillOpacity: jumlah > 0 ? 0.55 : 0.2,
+    };
+}
+
+function onEachFeature(feature, layer) {
+    const name = feature.properties.KABKOT || feature.properties.name || feature.properties.NAME_2 || 'Unknown';
+    const jumlah = getJumlahByName(name);
+    const nameDisplay = name.replace(/\b\w/g, c => c.toUpperCase());
+
+    layer.bindTooltip(
+        `<div style="font-family:Inter,sans-serif;padding:8px 12px;min-width:140px;">
+            <strong style="color:#0f172a;font-size:0.9rem;">${nameDisplay}</strong><br>
+            <span style="color:#c0392b;font-weight:700;font-size:1rem;">📰 ${jumlah}</span>
+            <span style="color:#64748b;font-size:0.8rem;"> berita</span>
+        </div>`,
+        { sticky: true, className: 'leaflet-tooltip-custom' }
+    );
+
+    layer.on({
+        mouseover(e) {
+            e.target.setStyle({ weight: 2.5, color: '#c0392b', fillOpacity: 0.8 });
+            e.target.bringToFront();
+        },
+        mouseout(e) { geojsonLayer.resetStyle(e.target); },
+    });
+}
+
+// Load GeoJSON Jawa Barat dari file lokal (static/geojson/)
+// Prioritas: file akurat (dari download) > file simpel (fallback)
+const GEOJSON_URL_ACCURATE = "{{ url_for('static', filename='geojson/jawa-barat.geojson') }}";
+const GEOJSON_URL_SIMPLE   = "{{ url_for('static', filename='geojson/jawa-barat-simple.geojson') }}";
+const GEOJSON_URL = GEOJSON_URL_ACCURATE;
+
+function loadGeojson(url, isFallback) {
+    fetch(url)
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        })
+        .then(data => {
+            geojsonLayer = L.geoJSON(data, {
+                style: style,
+                onEachFeature: onEachFeature,
+            }).addTo(map);
+            map.fitBounds(geojsonLayer.getBounds(), { padding: [5, 5] });
+        })
+        .catch(err => {
+            if (!isFallback) {
+                console.warn('File akurat tidak ditemukan, coba fallback simpel...');
+                loadGeojson(GEOJSON_URL_SIMPLE, true);
+            } else {
+                console.error('Gagal load GeoJSON:', err);
+                document.getElementById('map-wilayah').innerHTML =
+                    `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;flex-direction:column;gap:10px;padding:2rem;text-align:center;">
+                        <i class="bi bi-map" style="font-size:2.5rem;color:#c0392b;"></i>
+                        <p style="margin:0;font-weight:600;">Gagal memuat data peta.</p>
+                        <p style="margin:0;font-size:0.85rem;">Pastikan perangkat terhubung ke internet.</p>
+                    </div>`;
+            }
+        });
+}
+
+function expandMap() {
+    document.getElementById('mapColumn').className = 'col-lg-7';
+    document.getElementById('listColumn').classList.remove('d-none');
+    document.getElementById('top5Section').classList.add('d-none');
+    // Tunggu animasi CSS selesai baru render ulang peta agar Leaflet tidak glitch
+    setTimeout(() => { map.invalidateSize(); }, 350);
+}
+
+function collapseMap() {
+    document.getElementById('mapColumn').className = 'col-lg-12';
+    document.getElementById('listColumn').classList.add('d-none');
+    document.getElementById('top5Section').classList.remove('d-none');
+    setTimeout(() => { map.invalidateSize(); }, 350);
+}
+
+loadGeojson(GEOJSON_URL_ACCURATE, false);
+</script>
+
+<style>
+/* Menghilangkan kotak outline default saat polygon atau peta diklik */
+.leaflet-container,
+.leaflet-container *:focus,
+.leaflet-interactive:focus,
+path.leaflet-interactive:focus {
+    outline: none !important;
+}
+
+/* Custom scrollbar untuk daftar wilayah */
+#listColumn .wilayah-list::-webkit-scrollbar {
+    width: 6px;
+}
+#listColumn .wilayah-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+#listColumn .wilayah-list::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 10px;
+}
+#listColumn .wilayah-list {
+    max-height: 520px; /* Diturunkan sedikit agar aman dari scroll halaman */
+    overflow-y: auto;
+}
+#listColumn .wilayah-item {
+    padding: 0.35rem 0.8rem !important; /* Dirapatkan lagi jarak atas-bawahnya */
+}
+#listColumn .wilayah-name {
+    font-size: 0.85rem !important;
+    margin-bottom: 0.2rem !important;
+}
+#listColumn .wilayah-rank {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 0.75rem !important;
+}
+#listColumn .count-badge {
+    font-size: 0.9rem !important;
+}
+
+.leaflet-tooltip-custom {
+    background: white !important;
+    border: none !important;
+    border-left: 4px solid #c0392b !important;
+    border-radius: 0 8px 8px 0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+    padding: 0 !important;
+}
+.leaflet-tooltip-custom::before { display: none; }
+</style>
 {% endblock %}

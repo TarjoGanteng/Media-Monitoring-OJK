@@ -174,14 +174,94 @@ class CrawlerService:
             return []
 
         semua_hasil = []
-        for keyword in keywords:
-            hasil = self.crawl_satu_keyword(keyword)
-            semua_hasil.append(hasil)
+        max_workers = min(len(keywords), 4)  # Maks 4 thread paralel
+        logger.info(f"Crawling {len(keywords)} keyword dengan {max_workers} thread paralel...")
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from flask import current_app
+
+        app = current_app._get_current_object()
+
+        def crawl_dalam_context(kw):
+            with app.app_context():
+                return self.crawl_satu_keyword(kw)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(crawl_dalam_context, kw): kw for kw in keywords}
+            for future in as_completed(futures):
+                try:
+                    hasil = future.result()
+                    semua_hasil.append(hasil)
+                except Exception as e:
+                    kw = futures[future]
+                    logger.error(f"Thread error crawl '{kw}': {e}")
+                    semua_hasil.append({
+                        "keyword": kw, "jumlah_ditemukan": 0,
+                        "jumlah_disimpan": 0, "jumlah_duplikat": 0,
+                        "jumlah_error": 1, "status": "gagal", "pesan": str(e),
+                    })
 
         # Jalankan pembersihan otomatis untuk berita lama (lebih dari 5 tahun)
         self.cleanup_berita_lama(tahun=5)
 
+        # Jalankan pengambilan gambar di background (tidak memblokir response)
+        import threading
+        t = threading.Thread(
+            target=self._fetch_gambar_background,
+            args=(app,),
+            daemon=True
+        )
+        t.start()
+        logger.info("Thread pengambilan gambar dimulai di background.")
+
         return semua_hasil
+
+    def _fetch_gambar_background(self, app):
+        """
+        Mengambil gambar untuk berita yang belum memiliki gambar_url.
+        Dijalankan di background thread setelah crawl utama selesai.
+        Menggunakan requests biasa (bukan Playwright) agar ringan.
+        """
+        import time
+        time.sleep(2)  # Beri jeda singkat agar crawl utama commit dulu
+
+        with app.app_context():
+            from database.extensions import db
+            from database.models import Berita
+
+            berita_list = (
+                Berita.query.filter(
+                    (Berita.gambar_url == None) | (Berita.gambar_url == "")
+                )
+                .order_by(Berita.tanggal.desc())
+                .limit(30)
+                .all()
+            )
+
+            logger.info(f"[BG] Mulai ambil gambar untuk {len(berita_list)} berita...")
+            diupdate = 0
+
+            for berita in berita_list:
+                try:
+                    link = berita.link or ""
+                    if not link:
+                        continue
+
+                    # ekstrak_gambar sudah handle resolve Google News otomatis
+                    gambar = self.crawler.ekstrak_gambar(link)
+                    if gambar:
+                        berita.gambar_url = gambar
+                        diupdate += 1
+                except Exception as e:
+                    logger.debug(f"[BG] Gagal ambil gambar untuk '{berita.judul[:40]}': {e}")
+                    continue
+
+            try:
+                db.session.commit()
+                logger.info(f"[BG] Selesai: {diupdate} gambar berhasil diperbarui.")
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"[BG] Gagal commit gambar: {e}")
 
     def cleanup_berita_lama(self, tahun: int = 5) -> int:
         """
