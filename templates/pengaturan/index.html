@@ -15,6 +15,8 @@
                 <a href="#manajemen-user" class="list-group-item list-group-item-action" data-bs-toggle="pill">
                     <i class="bi bi-people me-2"></i> Manajemen User
                 </a>
+                {% endif %}
+                {% if current_user.role == 'super_admin' %}
                 <a href="#sistem" class="list-group-item list-group-item-action" data-bs-toggle="pill">
                     <i class="bi bi-gear me-2"></i> Sistem
                 </a>
@@ -65,8 +67,8 @@
 
                         <hr class="my-3" style="opacity: 0.1;">
 
-                        <!-- Keamanan Akun (hanya untuk non-staff) -->
-                        {% if current_user.role != 'staff' %}
+                        <!-- Keamanan Akun (hanya untuk super_admin) -->
+                        {% if current_user.role == 'super_admin' %}
                         <h6 class="fw-bold mb-3 text-danger" style="font-size: 0.95rem;">Keamanan Akun</h6>
                         <div class="row align-items-center mb-1">
                             <label class="col-sm-3 col-form-label text-muted py-1">Password</label>
@@ -77,7 +79,6 @@
                                 </button>
                             </div>
                         </div>
-                        {% endif %}
                         
                         <!-- Form Ubah Password (Hidden by default) -->
                         <div id="form-ubah-password" class="mt-2 pt-2 border-top d-none" style="animation: fadeIn 0.3s ease;">
@@ -116,8 +117,9 @@
                                 </div>
                             </form>
                         </div>
-
+                        
                         <hr class="my-3" style="opacity: 0.1;">
+                        {% endif %}
 
                         <!-- Informasi Tambahan -->
                         <h6 class="fw-bold mb-3 text-danger" style="font-size: 0.95rem;">Informasi Tambahan</h6>
@@ -345,169 +347,146 @@
 
             <!-- Tab Sistem / AI -->
             <div class="tab-pane fade" id="sistem">
-                <!-- Status Koneksi AI -->
-                <div class="card-panel mb-3">
-                    <div class="card-panel-header d-flex align-items-center justify-content-between pb-2">
-                        <h5 class="card-panel-title mb-0">
-                            <i class="bi bi-stars me-2 text-danger"></i>Analisis AI — Google Gemini
-                        </h5>
-                        <span id="ai-status-badge" class="badge bg-secondary" style="font-size: 0.75rem;">Memeriksa...</span>
+                <style>
+                    /* Custom style untuk UI Sistem */
+                    .system-card {
+                        background: #fff;
+                        border-radius: 12px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                        border: 1px solid rgba(0,0,0,0.02);
+                    }
+                    .system-title {
+                        font-weight: 700;
+                        font-size: 1.1rem;
+                        color: #111827;
+                    }
+                    .system-section-title {
+                        font-weight: 700;
+                        font-size: 0.95rem;
+                        color: #111827;
+                    }
+                    .system-label {
+                        font-size: 0.88rem;
+                        color: #6b7280;
+                    }
+                    .system-badge-active {
+                        background-color: #d1fae5;
+                        color: #065f46;
+                        font-weight: 600;
+                        font-size: 0.75rem;
+                        padding: 0.35em 1em;
+                        border-radius: 6px;
+                    }
+                    .system-input-group, .system-select {
+                        border-color: #e5e7eb;
+                        border-radius: 6px;
+                        font-size: 0.85rem;
+                        color: #111827;
+                    }
+                    .system-btn-save {
+                        background-color: #b91c1c;
+                        border-color: #b91c1c;
+                        font-weight: 600;
+                        border-radius: 8px;
+                    }
+                    .system-btn-save:hover {
+                        background-color: #991b1b;
+                        border-color: #991b1b;
+                    }
+                    .custom-checkbox .form-check-input:checked {
+                        background-color: #dc2626;
+                        border-color: #dc2626;
+                    }
+                </style>
+                <form action="{{ url_for('halaman.simpan_sistem') }}" method="POST" class="system-card p-4">
+                    <!-- Header -->
+                    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-light">
+                        <h5 class="system-title mb-0">Konfigurasi Sistem</h5>
+                        <button type="button" class="btn-close" style="font-size: 0.8rem;" aria-label="Close"></button>
                     </div>
-                    <div class="card-panel-body pt-2">
-                        <p class="text-muted mb-3" style="font-size: 0.88rem;">
-                            AI Gemini menganalisis sentimen, topik, wilayah, ringkasan, dan narasumber
-                            setiap berita secara akurat — jauh lebih tepat dibanding analisis kata kunci biasa.
-                        </p>
-                        <div id="ai-status-info" class="alert alert-secondary py-2 mb-3" style="font-size: 0.85rem;">
-                            <i class="bi bi-hourglass-split me-1"></i> Memeriksa koneksi ke Gemini AI...
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label text-muted" style="font-size: 0.82rem;">Jumlah Berita per Batch</label>
-                                <select class="form-select form-select-sm" id="ai-limit-select">
-                                    <option value="10">10 berita</option>
-                                    <option value="20" selected>20 berita</option>
-                                    <option value="30">30 berita</option>
-                                    <option value="50">50 berita (maks)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-5 d-flex align-items-end pb-1">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="ai-only-missing" checked>
-                                    <label class="form-check-label text-muted" for="ai-only-missing" style="font-size: 0.82rem;">
-                                        Hanya berita tanpa ringkasan AI
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button id="btn-ai-analisis" class="btn btn-danger btn-sm px-4"
-                                onclick="jalankanAnalisisAI()" style="border-radius: 6px;">
-                                <i class="bi bi-stars me-1"></i> Jalankan Analisis AI
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm px-3"
-                                onclick="cekStatusAI()" style="border-radius: 6px;">
-                                <i class="bi bi-arrow-clockwise me-1"></i> Cek Koneksi
-                            </button>
-                        </div>
-                        <div id="ai-progress-area" class="mt-3 d-none">
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
-                                <span class="text-muted" style="font-size: 0.85rem;">
-                                    AI sedang menganalisis... harap tunggu (±1.5 detik/artikel)
-                                </span>
-                            </div>
-                        </div>
-                        <div id="ai-hasil-area" class="mt-3 d-none"></div>
-                    </div>
-                </div>
-                <!-- Info Panduan -->
-                <div class="card-panel mb-3">
-                    <div class="card-panel-header pb-2">
-                        <h6 class="card-panel-title" style="font-size: 0.9rem;">
-                            <i class="bi bi-info-circle me-2 text-danger"></i>Informasi & Panduan
-                        </h6>
-                    </div>
-                    <div class="card-panel-body pt-2">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#f8fafc; border: 1px solid #e2e8f0;">
-                                    <div class="fw-bold mb-1" style="font-size: 0.83rem;"><i class="bi bi-lightning-charge me-1 text-warning"></i>Kuota Gratis</div>
-                                    <div class="text-muted" style="font-size: 0.78rem;">Gemini Flash: <strong>15 req/menit</strong>, 1500 req/hari.<br>Gunakan batch ≤20 artikel per sesi.</div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#f8fafc; border: 1px solid #e2e8f0;">
-                                    <div class="fw-bold mb-1" style="font-size: 0.83rem;"><i class="bi bi-bullseye me-1 text-success"></i>Hasil Analisis</div>
-                                    <div class="text-muted" style="font-size: 0.78rem;">Sentimen · Topik · Wilayah<br>Ringkasan · Narasumber</div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#f8fafc; border: 1px solid #e2e8f0;">
-                                    <div class="fw-bold mb-1" style="font-size: 0.83rem;"><i class="bi bi-key me-1 text-danger"></i>Setup API Key</div>
-                                    <div class="text-muted" style="font-size: 0.78rem;">Isi <code>GEMINI_API_KEY</code> di file <code>.env</code> lalu restart aplikasi.</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- ── Panel Manajemen Duplikat ── -->
-                <div class="card-panel">
-                    <div class="card-panel-header d-flex align-items-center justify-content-between pb-2">
-                        <h5 class="card-panel-title mb-0">
-                            <i class="bi bi-copy me-2 text-danger"></i>Manajemen Duplikat Berita
-                        </h5>
-                        <button class="btn btn-outline-secondary btn-sm px-3" onclick="previewDuplikat()" style="border-radius:6px; font-size:0.82rem;">
-                            <i class="bi bi-search me-1"></i> Cek Duplikat
-                        </button>
+                    <!-- Crawler Berita -->
+                    <div class="mb-4">
+                        <h6 class="system-section-title mb-3">Crawler Berita</h6>
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3">
+                            <span class="system-label">Status</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="crawler_aktif" id="crawler_aktif" value="true" {% if system_config.crawler_aktif %}checked{% endif %} style="cursor:pointer;">
+                                <label class="form-check-label system-badge-active ms-2" for="crawler_aktif" style="cursor:pointer;">Aktif</label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-panel-body pt-2">
-                        <p class="text-muted mb-3" style="font-size:0.88rem;">
-                            Sistem mendeteksi duplikat dalam 3 lapis: <strong>URL sama</strong> → <strong>judul sama persis</strong> → <strong>judul sangat mirip</strong>.
-                            Yang paling lengkap datanya (ada gambar, isi, ringkasan) akan dipertahankan.
-                        </p>
 
-                        <!-- Stats Preview -->
-                        <div id="dedup-stats" class="row g-2 mb-3 d-none">
-                            <div class="col-4">
-                                <div class="text-center p-2 rounded" style="background:#fef2f2; border:1px solid #fecaca;">
-                                    <div class="fw-bold text-danger" id="dedup-stat-url" style="font-size:1.4rem;">-</div>
-                                    <div class="text-muted" style="font-size:0.72rem;">Grup URL Duplikat</div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-center p-2 rounded" style="background:#fffbeb; border:1px solid #fde68a;">
-                                    <div class="fw-bold text-warning" id="dedup-stat-judul" style="font-size:1.4rem;">-</div>
-                                    <div class="text-muted" style="font-size:0.72rem;">Grup Judul Sama</div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-center p-2 rounded" style="background:#f0fdf4; border:1px solid #bbf7d0;">
-                                    <div class="fw-bold text-success" id="dedup-stat-mirip" style="font-size:1.4rem;">-</div>
-                                    <div class="text-muted" style="font-size:0.72rem;">Estimasi Mirip</div>
-                                </div>
+                    <!-- Update Otomatis -->
+                    <div class="mb-4">
+                        <h6 class="system-section-title mb-3">Update Otomatis</h6>
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3">
+                            <span class="system-label">Jam Update (Setiap Hari)</span>
+                            <div class="dropdown">
+                                <button class="btn btn-sm dropdown-toggle text-start system-select bg-white" type="button" id="jamUpdateDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="width: 130px; border: 1px solid #e5e7eb;">
+                                    {{ system_config.jam_update|default('09:00') }} WIB
+                                </button>
+                                <ul class="dropdown-menu shadow-sm" aria-labelledby="jamUpdateDropdown" style="max-height: 320px; overflow-y: auto; width: 130px; font-size: 0.88rem;">
+                                    {% for hour in range(0, 24) %}
+                                        {% set jam_str = '%02d:00'|format(hour) %}
+                                        <li>
+                                            <a class="dropdown-item py-2 {% if system_config.jam_update|default('09:00') == jam_str %}active bg-danger border-danger{% endif %}" href="#" 
+                                               onclick="document.getElementById('jam_update_input').value='{{ jam_str }}'; 
+                                                        document.getElementById('jamUpdateDropdown').innerHTML='{{ jam_str }} WIB'; 
+                                                        document.querySelectorAll('#jamUpdateDropdown + .dropdown-menu .dropdown-item').forEach(el => { el.classList.remove('active', 'bg-danger', 'border-danger'); });
+                                                        this.classList.add('active', 'bg-danger', 'border-danger');
+                                                        event.preventDefault();">
+                                                {{ jam_str }} WIB
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                <input type="hidden" name="jam_update" id="jam_update_input" value="{{ system_config.jam_update|default('09:00') }}">
                             </div>
                         </div>
-
-                        <!-- Kontrol Hapus -->
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label text-muted" style="font-size:0.82rem;">Mode Hapus</label>
-                                <select class="form-select form-select-sm" id="dedup-mode-select">
-                                    <option value="semua">Semua Lapis (Rekomendasi)</option>
-                                    <option value="url">Lapis 1 — URL Duplikat Saja</option>
-                                    <option value="judul">Lapis 2 — Judul Sama Persis Saja</option>
-                                    <option value="mirip">Lapis 3 — Judul Sangat Mirip Saja</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label text-muted" style="font-size:0.82rem;">Threshold Kemiripan</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" class="form-control" id="dedup-threshold" value="88" min="70" max="99" step="1">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button id="btn-dedup-hapus" class="btn btn-danger btn-sm px-4" onclick="hapusDuplikat()" style="border-radius:6px;">
-                                <i class="bi bi-trash3 me-1"></i> Hapus Duplikat
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm px-3" onclick="previewDuplikat()" style="border-radius:6px;">
-                                <i class="bi bi-eye me-1"></i> Preview Ulang
-                            </button>
-                        </div>
-
-                        <div id="dedup-progress" class="mt-3 d-none">
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="spinner-border spinner-border-sm text-danger"></div>
-                                <span class="text-muted" style="font-size:0.85rem;">Sedang memproses deduplikasi...</span>
-                            </div>
-                        </div>
-                        <div id="dedup-hasil" class="mt-3 d-none"></div>
                     </div>
-                </div>
+
+                    <!-- Rentang Data -->
+                    <div class="mb-4">
+                        <h6 class="system-section-title mb-3">Rentang Data</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="system-label">Simpan data selama</span>
+                            <select name="rentang_data" class="form-select form-select-sm system-select" style="width: 130px;">
+                                <option value="1" {% if system_config.rentang_data == '1' %}selected{% endif %}>1 Tahun</option>
+                                <option value="3" {% if system_config.rentang_data == '3' %}selected{% endif %}>3 Tahun</option>
+                                <option value="5" {% if system_config.rentang_data == '5' %}selected{% endif %}>5 Tahun</option>
+                            </select>
+                        </div>
+                        <div class="d-flex flex-column border-bottom pb-3 mt-3">
+                            <span class="system-label mb-2" style="font-size: 0.82rem;">Hapus data lebih lama dari periode yang dipilih</span>
+                            <div class="form-check custom-checkbox">
+                                <input class="form-check-input" type="checkbox" name="auto_hapus" value="true" id="checkRentangData" {% if system_config.auto_hapus %}checked{% endif %}>
+                                <label class="form-check-label fw-bold text-dark" for="checkRentangData" style="font-size: 0.85rem;">
+                                    Aktifkan
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Analisis -->
+                    <div class="mb-4">
+                        <h6 class="system-section-title mb-3">AI Analisis</h6>
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3">
+                            <span class="system-label">Status Analisis AI</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="ai_aktif" id="ai_aktif" value="true" {% if system_config.ai_aktif %}checked{% endif %} style="cursor:pointer;">
+                                <label class="form-check-label system-badge-active ms-2" for="ai_aktif" style="cursor:pointer;">Aktif</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backup Data (Dihapus) -->
+
+                    <!-- Tombol Simpan -->
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-danger w-100 py-2 system-btn-save">Simpan Perubahan</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -542,6 +521,8 @@ function cekStatusAI() {
         .then(data => {
             const badge = document.getElementById('ai-status-badge');
             const info  = document.getElementById('ai-status-info');
+            if (!badge || !info) return; // Mencegah error karena elemen sudah dihapus
+            
             if (data.tersedia) {
                 badge.className = 'badge bg-success';
                 badge.textContent = '✓ Terhubung';

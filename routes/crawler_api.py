@@ -264,7 +264,15 @@ def ai_analisis_batch():
         query = query.filter(
             (Berita.ringkasan == None) | (Berita.ringkasan == "")
         )
-    berita_list = query.order_by(Berita.tanggal.desc()).limit(limit).all()
+        
+    from sqlalchemy import case
+    order_case = case(
+        (Berita.sentimen == 'Negatif', 1),
+        (Berita.sentimen == 'Positif', 2),
+        (Berita.sentimen == 'Netral', 3),
+        else_=4
+    )
+    berita_list = query.order_by(order_case, Berita.tanggal.desc()).limit(limit).all()
 
     if not berita_list:
         return jsonify({

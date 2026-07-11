@@ -355,11 +355,13 @@
             const h = wibTime.getHours();
             const m = wibTime.getMinutes();
 
-            // Jadwal crawl berikutnya: hari besok jam 09:00 WIB
-            // (karena hari ini jam 09:00 sudah lewat ataupun belum, kita selalu tampilkan HARI BERIKUTNYA)
+            const configJam = "{{ system_config.jam_update|default('09:00') }}";
+            const [jamUpdate, menitUpdate] = configJam.split(':').map(Number);
+
+            // Jadwal crawl berikutnya: hari besok di jam yang dikonfigurasi
             const nextDate = new Date(wibTime);
             nextDate.setDate(nextDate.getDate() + 1);
-            nextDate.setHours(9, 0, 0, 0);
+            nextDate.setHours(jamUpdate, menitUpdate, 0, 0);
 
             return { wibTime, nextDate };
         }
@@ -375,19 +377,22 @@
             const el = document.getElementById('nextUpdateDisplay');
             if (!el) return;
             const { nextDate } = getNextCrawlDate();
-            el.textContent = formatDate(nextDate) + ' · 09.00 WIB';
+            const configJamStr = "{{ system_config.jam_update|default('09:00') }}".replace(':', '.');
+            el.textContent = formatDate(nextDate) + ' · ' + configJamStr + ' WIB';
         }
 
-        // Cek apakah sudah waktunya auto-crawl (setiap menit)
         function checkAutoCrawl() {
             const { wibTime } = getNextCrawlDate();
-            // Jika sekarang jam 09:00-09:01 WIB dan belum pernah crawl hari ini
+            const configJam = "{{ system_config.jam_update|default('09:00') }}";
+            const [jamUpdate, menitUpdate] = configJam.split(':').map(Number);
+            
+            // Jika sekarang sesuai jam config dan belum pernah crawl hari ini
             const h = wibTime.getHours();
             const m = wibTime.getMinutes();
             const todayKey = 'lastAutoCrawl_' + wibTime.toDateString();
-            if (h === 9 && m === 0 && !sessionStorage.getItem(todayKey)) {
+            if (h === jamUpdate && m === menitUpdate && !sessionStorage.getItem(todayKey)) {
                 sessionStorage.setItem(todayKey, '1');
-                console.log('[AutoCrawl] Memulai crawl otomatis jam 09:00 WIB...');
+                console.log(`[AutoCrawl] Memulai crawl otomatis jam ${configJam} WIB...`);
                 if (typeof runCrawler === 'function') runCrawler();
             }
         }

@@ -179,12 +179,14 @@ def register_context_processors(app: Flask):
         """Menyuntikkan variabel global ke semua template."""
         from config import Config
         from datetime import datetime
+        from services.config_service import ConfigService
 
         return {
             "app_name": Config.APP_NAME,
             "app_subtitle": Config.APP_SUBTITLE,
             "app_version": Config.APP_VERSION,
             "now": datetime.now(),
+            "system_config": ConfigService.get_config(),
         }
 
 

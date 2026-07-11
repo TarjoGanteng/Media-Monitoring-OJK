@@ -163,7 +163,7 @@ Gunakan bahasa Indonesia formal, singkat (maks 20 kata per insight), dan langsun
             from config import Config
             genai.configure(api_key=Config.GEMINI_API_KEY)
             model = genai.GenerativeModel(
-                "gemini-1.5-flash",
+                "gemini-3.5-flash",
                 generation_config={
                     "temperature": 0.3,
                     "response_mime_type": "application/json",
@@ -363,12 +363,50 @@ def pencarian():
 def pengaturan():
     """Halaman Pengaturan."""
     from database.models import User
-    daftar_user = User.query.order_by(User.created_at.asc()).all()
+    from sqlalchemy import case
+    
+    order_case = case(
+        (User.role == 'super_admin', 1),
+        (User.role == 'pemimpin', 2),
+        (User.role == 'staff', 3),
+        else_=4
+    )
+    daftar_user = User.query.order_by(order_case, User.created_at.asc()).all()
     return render_template(
         "pengaturan/index.html",
         active_page="pengaturan",
         daftar_user=daftar_user,
     )
+
+@bp.route("/pengaturan/simpan_sistem", methods=["POST"])
+@login_required
+@role_required("super_admin")
+def simpan_sistem():
+    from services.config_service import ConfigService
+    
+    jam_update = request.form.get("jam_update", "09:00")
+    rentang_data = request.form.get("rentang_data", "5")
+    crawler_aktif = request.form.get("crawler_aktif") == "true"
+    auto_hapus = request.form.get("auto_hapus") == "true"
+    ai_aktif = request.form.get("ai_aktif") == "true"
+    
+    ConfigService.save_config({
+        "jam_update": jam_update,
+        "rentang_data": rentang_data,
+        "crawler_aktif": crawler_aktif,
+        "auto_hapus": auto_hapus,
+        "ai_aktif": ai_aktif
+    })
+    
+    # Trigger cleanup jika auto_hapus aktif
+    if auto_hapus:
+        from services.database_service import DatabaseService
+        deleted_count = DatabaseService.cleanup_old_data()
+        if deleted_count > 0:
+            flash(f"Berhasil menghapus {deleted_count} data usang sesuai rentang data.", "info")
+    
+    flash("Konfigurasi sistem berhasil disimpan dan sinkron dengan jadwal auto-crawler.", "success")
+    return redirect(url_for("halaman.pengaturan", tab="sistem"))
 
 @bp.route("/pengaturan/tambah_user", methods=["POST"])
 @login_required
@@ -473,6 +511,7 @@ def update_profil():
         
 @bp.route("/pengaturan/update_password", methods=["POST"])
 @login_required
+@role_required("super_admin")
 def update_password():
     old_password     = request.form.get("old_password", "")
     new_password     = request.form.get("new_password", "")

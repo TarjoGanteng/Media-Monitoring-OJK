@@ -33,7 +33,7 @@ class GeminiService:
     Mendukung analisis per-artikel maupun batch.
     """
 
-    MODEL_NAME = "gemini-1.5-flash"  # Model gratis dengan kuota tinggi
+    MODEL_NAME = "gemini-3.5-flash"  # Model gratis dengan kuota tinggi
 
     def __init__(self, api_key: str = None):
         """
@@ -124,7 +124,9 @@ Judul: {judul}
 Konten: {konten_pendek}
 
 === FORMAT JSON WAJIB (isi semua field) ===
+PERINGATAN: JANGAN GUNAKAN TANDA KUTIP GANDA (") DI DALAM TEKS JAWABAN ANDA KARENA AKAN MERUSAK FORMAT JSON! Gunakan kutip tunggal (') saja.
 {{
+  "analisis_konteks": "<Tulis 1-2 kalimat analisis Anda terlebih dahulu tentang inti berita ini dan dampak reputasinya terhadap OJK, buktikan bahwa Anda membaca seluruh teks.>",
   "sentimen": "<PILIH SATU: Positif | Negatif | Netral>",
   "topik": "<PILIH SATU: {' | '.join(TOPIK_VALID)}>",
   "wilayah": "<nama kota/wilayah Jawa Barat jika ada, atau null>",
@@ -132,16 +134,22 @@ Konten: {konten_pendek}
   "narasumber": "<nama dan jabatan narasumber yang dikutip dalam berita, atau null>"
 }}
 
-=== PANDUAN SENTIMEN ===
-- Positif  : prestasi OJK, keberhasilan perlindungan konsumen, program literasi, pertumbuhan positif, inovasi
-- Negatif  : penipuan, pinjol ilegal, investasi bodong, kerugian nasabah, sanksi, kriminal, pengaduan
-- Netral   : regulasi baru, informasi umum, berita tanpa konotasi jelas, siaran pers rutin"""
+=== PANDUAN SENTIMEN (SANGAT PENTING - SUDUT PANDANG INSTITUSI OJK) ===
+Anda harus menilai sentimen STRICTLY DARI SUDUT PANDANG REPUTASI OJK. Banyak AI salah menilai berita kriminal/pinjol sebagai negatif. Ikuti aturan mutlak ini:
+- POSITIF : Tindakan tegas OJK (memblokir pinjol ilegal, mencabut izin, sanksi), prestasi OJK, apresiasi, program literasi sukses, peringatan perlindungan konsumen dari OJK.
+- NETRAL  : Kasus penipuan/pinjol ilegal di masyarakat (JIKA OJK TIDAK DISALAHKAN), regulasi, himbauan rutin, edukasi, peringatan kewaspadaan, atau ekonomi umum. *PERHATIAN: Berita tentang maraknya kejahatan keuangan (pinjol/investasi bodong) adalah NETRAL bagi institusi OJK.*
+- NEGATIF : HANYA JIKA berita secara eksplisit MENYUDUTKAN OJK, mengkritik OJK lambat/buruk/gagal mengawasi, protes/demo terhadap OJK, atau masalah internal OJK.
+Jika ragu, atau berita sekadar melaporkan kejahatan keuangan tanpa menyalahkan OJK, WAJIB PILIH NETRAL!"""
 
         try:
             response = self._model.generate_content(prompt)
             result = json.loads(response.text)
 
             # Validasi & normalisasi output AI
+            alasan = result.get("analisis_konteks", "")
+            if alasan:
+                logger.debug(f"[AI Reasoning] {alasan}")
+                
             sentimen = result.get("sentimen", "Netral")
             if sentimen not in ["Positif", "Negatif", "Netral"]:
                 sentimen = "Netral"
@@ -185,7 +193,7 @@ Konten: {konten_pendek}
     def analisis_batch(
         self,
         berita_list: list,
-        delay_per_request: float = 1.5,
+        delay_per_request: float = 4.5,
     ) -> dict:
         """
         Analisis banyak berita secara berurutan dengan jeda antar request.
