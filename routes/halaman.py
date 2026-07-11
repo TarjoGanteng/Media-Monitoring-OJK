@@ -3,13 +3,18 @@ routes/halaman.py - Blueprint untuk halaman-halaman statis/placeholder
 Berisi: Analisis, Trend, Sebaran Wilayah, Media, Laporan, Notifikasi, Pencarian
 """
 
+import re
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask_login import login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import func
+
+from database.extensions import db
+from database.models import User, Berita
 from services.dashboard_service import DashboardService
 from services.berita_service import BeritaService
-
 from routes.auth import role_required
-from flask_login import login_required, current_user
 
 bp = Blueprint("halaman", __name__)
 
@@ -17,16 +22,9 @@ bp = Blueprint("halaman", __name__)
 @login_required
 @role_required("super_admin")
 def fix_db():
-    from database.extensions import db
-    from database.models import Berita
-    from sqlalchemy import func
     try:
-        # 1. Cek tanggal paling lama
         oldest_berita = db.session.query(func.min(Berita.tanggal)).scalar()
-        
-        # 2. Cek duplikasi judul
         duplikat_count = db.session.query(Berita.judul, func.count(Berita.id)).group_by(Berita.judul).having(func.count(Berita.id) > 1).count()
-        
         return f"Berita paling lama: {oldest_berita.strftime('%d/%m/%Y %H:%M:%S') if oldest_berita else 'Tidak ada'}<br>Jumlah judul berita yang terindikasi duplikat: {duplikat_count}"
     except Exception as e:
         return f"Gagal: {str(e)}"
@@ -63,9 +61,151 @@ def analisis():
     )
 
 
+@bp.route("/analisis/ai-insight")
+@login_required
+def ai_insight():
+    """
+    Endpoint JSON untuk 4 Insight AI & Rekomendasi di halaman Analisis.
+    Diambil secara async oleh JavaScript agar tidak memperlambat load halaman.
+    """
+    from flask import jsonify
+    try:
+        # Kumpulkan data aktual dari database
+        statistik      = DashboardService.get_statistik_utama()
+        topik_list     = DashboardService.get_topik_terbanyak(limit=5)
+        media_list     = DashboardService.get_media_teraktif(limit=3)
+        trend_7hr      = DashboardService.get_trend_harian(hari=7)
+
+        # Hitung perubahan tren sentimen (hari ini vs kemarin)
+        labels  = trend_7hr.get("labels", [])
+        total_d = trend_7hr.get("total", [])
+        positif_d = trend_7hr.get("positif", [])
+        negatif_d = trend_7hr.get("negatif", [])
+
+        def pct_change(series):
+            if len(series) >= 2 and series[-2] > 0:
+                return round((series[-1] - series[-2]) / series[-2] * 100, 1)
+            return 0
+
+        perubahan_total   = pct_change(total_d)
+        perubahan_positif = pct_change(positif_d)
+        perubahan_negatif = pct_change(negatif_d)
+
+        topik_utama  = topik_list[0]["topik"]  if topik_list  else "Regulasi"
+        topik_ke2    = topik_list[1]["topik"]  if len(topik_list) > 1 else "-"
+        media_utama  = media_list[0]["media"]  if media_list  else "-"
+        topik_negatif = "-"  # default
+
+        # Cari topik dengan persentase negatif tertinggi (dari data mentah)
+        try:
+            from sqlalchemy import func as sqlfunc
+            from database.models import Berita
+            neg_topik = (
+                db.session.query(Berita.topik, sqlfunc.count(Berita.id).label("jml"))
+                .filter(Berita.status == "aktif", Berita.sentimen == "Negatif", Berita.topik.isnot(None))
+                .group_by(Berita.topik)
+                .order_by(sqlfunc.count(Berita.id).desc())
+                .first()
+            )
+            if neg_topik:
+                topik_negatif = neg_topik.topik
+        except Exception:
+            pass
+
+        # Prompt ke Gemini
+        prompt = f"""Anda adalah analis media senior untuk OJK (Otoritas Jasa Keuangan) Jawa Barat, Indonesia.
+Berdasarkan data pemberitaan berikut, hasilkan tepat 4 insight & rekomendasi yang berbeda, spesifik, dan berbasis data.
+
+=== DATA AKTUAL ===
+Total berita keseluruhan : {statistik['total']}
+Sentimen Positif         : {statistik['positif']} ({statistik['pct_positif']}%)
+Sentimen Netral          : {statistik['netral']} ({statistik['pct_netral']}%)
+Sentimen Negatif         : {statistik['negatif']} ({statistik['pct_negatif']}%)
+Perubahan total berita (vs kemarin): {perubahan_total:+.1f}%
+Perubahan sentimen positif (vs kemarin): {perubahan_positif:+.1f}%
+Perubahan sentimen negatif (vs kemarin): {perubahan_negatif:+.1f}%
+Topik utama  : {topik_utama}
+Topik ke-2   : {topik_ke2}
+Topik negatif terbanyak: {topik_negatif}
+Media paling aktif: {media_utama}
+
+=== FORMAT RESPONS (JSON WAJIB, tanpa teks lain) ===
+{{
+  "insights": [
+    {{
+      "tipe": "positif",
+      "ikon": "bi-graph-up-arrow",
+      "teks": "<insight 1 tentang sentimen/tren positif, spesifik dan berbasis angka di atas>"
+    }},
+    {{
+      "tipe": "negatif",
+      "ikon": "bi-bullseye",
+      "teks": "<insight 2 tentang risiko/isu negatif yang perlu diwaspadai OJK>"
+    }},
+    {{
+      "tipe": "peringatan",
+      "ikon": "bi-megaphone",
+      "teks": "<insight 3 tentang topik yang paling banyak pemberitaan negatif dan rekomendasi tindakan>"
+    }},
+    {{
+      "tipe": "informasi",
+      "ikon": "bi-bar-chart",
+      "teks": "<insight 4 tentang media atau distribusi pemberitaan yang perlu diperhatikan>"
+    }}
+  ]
+}}
+
+Gunakan bahasa Indonesia formal, singkat (maks 20 kata per insight), dan langsung ke inti."""
+
+        try:
+            import google.generativeai as genai
+            import json as _json
+            from config import Config
+            genai.configure(api_key=Config.GEMINI_API_KEY)
+            model = genai.GenerativeModel(
+                "gemini-1.5-flash",
+                generation_config={
+                    "temperature": 0.3,
+                    "response_mime_type": "application/json",
+                },
+            )
+            resp = model.generate_content(prompt)
+            data = _json.loads(resp.text)
+            return jsonify({"success": True, "insights": data.get("insights", [])})
+        except Exception as ai_err:
+            # Fallback: hasilkan insight berbasis data tanpa AI
+            insights = [
+                {
+                    "tipe": "positif",
+                    "ikon": "bi-graph-up-arrow",
+                    "teks": f"Sentimen positif {statistik['pct_positif']}% ({statistik['positif']} berita), "
+                            f"{'meningkat' if perubahan_positif > 0 else 'menurun'} {abs(perubahan_positif):.1f}% dibanding kemarin.",
+                },
+                {
+                    "tipe": "negatif",
+                    "ikon": "bi-bullseye",
+                    "teks": f"Topik '{topik_utama}' mendominasi pemberitaan, perlu pemantauan intensif.",
+                },
+                {
+                    "tipe": "peringatan",
+                    "ikon": "bi-megaphone",
+                    "teks": f"Topik '{topik_negatif}' mencatat pemberitaan negatif terbanyak — disarankan respons proaktif.",
+                },
+                {
+                    "tipe": "informasi",
+                    "ikon": "bi-bar-chart",
+                    "teks": f"'{media_utama}' menjadi media paling aktif memberitakan isu OJK saat ini.",
+                },
+            ]
+            return jsonify({"success": True, "insights": insights, "fallback": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @bp.route("/trend")
 @login_required
-@role_required("super_admin", "admin", "pemimpin")
+@role_required("super_admin", "pemimpin")
 def trend():
     """Halaman Trend - grafik tren berita dari waktu ke waktu."""
     # Data trend 30 hari terakhir
@@ -86,7 +226,7 @@ def trend():
 
 @bp.route("/wilayah")
 @login_required
-@role_required("super_admin", "admin", "pemimpin")
+@role_required("super_admin", "pemimpin")
 def wilayah():
     """Halaman Sebaran Wilayah - peta dan daftar kota dengan berita terbanyak."""
     sebaran = DashboardService.get_sebaran_wilayah()
@@ -100,7 +240,7 @@ def wilayah():
 
 @bp.route("/media")
 @login_required
-@role_required("super_admin", "admin", "pemimpin")
+@role_required("super_admin", "pemimpin")
 def media():
     """Halaman Media - daftar media yang paling aktif memberitakan OJK."""
     sebaran_media = DashboardService.get_sebaran_media()
@@ -113,7 +253,7 @@ def media():
 
 @bp.route("/laporan")
 @login_required
-@role_required("super_admin", "admin", "pemimpin")
+@role_required("super_admin", "pemimpin")
 def laporan():
     """Halaman Laporan - arsip laporan dengan berbagai filter."""
     berita_terbaru = DashboardService.get_berita_terbaru(limit=10)
@@ -234,11 +374,6 @@ def pengaturan():
 @login_required
 @role_required("super_admin")
 def tambah_user():
-    import re
-    from database.extensions import db
-    from database.models import User
-    from werkzeug.security import generate_password_hash
-
     nama_lengkap = request.form.get("nama_lengkap", "").strip()
     username     = request.form.get("username", "").strip()
     password     = request.form.get("password", "")
@@ -273,12 +408,9 @@ def tambah_user():
 @login_required
 @role_required("super_admin")
 def edit_user(user_id):
-    import re
-    from database.extensions import db
-    from database.models import User
-    from werkzeug.security import generate_password_hash
-
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
     nama_lengkap = request.form.get("nama_lengkap", "").strip()
     username     = request.form.get("username", "").strip()
     password     = request.form.get("password", "")
@@ -313,14 +445,13 @@ def edit_user(user_id):
 @login_required
 @role_required("super_admin")
 def hapus_user(user_id):
-    from database.extensions import db
-    from database.models import User
-
     if user_id == current_user.id:
         flash("Tidak bisa menghapus akun sendiri.", "danger")
         return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
 
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
     username = user.username
     db.session.delete(user)
     db.session.commit()
@@ -331,10 +462,6 @@ def hapus_user(user_id):
 @bp.route("/pengaturan/update_profil", methods=["POST"])
 @login_required
 def update_profil():
-    from database.extensions import db
-    from flask import redirect, url_for, flash
-    from flask_login import current_user
-    
     nama_lengkap = request.form.get("nama_lengkap", "").strip()
     if nama_lengkap:
         current_user.nama_lengkap = nama_lengkap
@@ -347,12 +474,6 @@ def update_profil():
 @bp.route("/pengaturan/update_password", methods=["POST"])
 @login_required
 def update_password():
-    import re
-    from database.extensions import db
-    from flask import redirect, url_for, flash, request
-    from flask_login import current_user
-    from werkzeug.security import check_password_hash, generate_password_hash
-    
     old_password     = request.form.get("old_password", "")
     new_password     = request.form.get("new_password", "")
     confirm_password = request.form.get("confirm_password", "")

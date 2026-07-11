@@ -13,17 +13,20 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-# HTTP session untuk fetch og:image
-_session = requests.Session()
-_session.headers.update({
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-})
+
+def _make_session() -> requests.Session:
+    """Buat requests.Session baru per-panggilan agar thread-safe."""
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    })
+    return session
 
 
 def resolve_url_with_playwright(google_news_url: str, timeout_ms: int = 15000) -> str | None:
@@ -92,8 +95,9 @@ def fetch_article_data(url: str) -> dict:
     if not url or "google.com" in url:
         return result
     
+    session = _make_session()  # Setiap panggilan punya session sendiri (thread-safe)
     try:
-        resp = _session.get(url, timeout=10, allow_redirects=True)
+        resp = session.get(url, timeout=10, allow_redirects=True)
         if resp.status_code != 200:
             return result
         soup = BeautifulSoup(resp.text, "html.parser")
@@ -179,7 +183,8 @@ def resolve_and_fetch_image(google_news_url: str) -> dict:
     if not actual_url:
         logger.info("Playwright failed/missing, trying requests fallback...")
         try:
-            resp = _session.get(google_news_url, timeout=10, allow_redirects=True)
+            session = _make_session()
+            resp = session.get(google_news_url, timeout=10, allow_redirects=True)
             if resp.status_code == 200 and "google.com" not in resp.url:
                 actual_url = resp.url
         except Exception as e:

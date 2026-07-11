@@ -9,10 +9,14 @@ Akses website di: http://localhost:5000
 
 import os
 import logging
+from dotenv import load_dotenv
 from flask import Flask, render_template
 from config import get_config
 from database.extensions import db, login_manager
 from routes import register_blueprints
+
+# Muat variabel environment dari file .env (wajib sebelum config dibaca)
+load_dotenv()
 
 # Konfigurasi logging
 logging.basicConfig(
@@ -53,7 +57,7 @@ def create_app(env: str = None) -> Flask:
     from database.models import User
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Daftarkan semua blueprint
     register_blueprints(app)
@@ -66,13 +70,13 @@ def create_app(env: str = None) -> Flask:
 
     # Inisialisasi database
     with app.app_context():
-        initialize_database()
+        initialize_database(app)
 
     logger.info(f"Aplikasi '{config.APP_NAME}' berhasil dibuat (env={env})")
     return app
 
 
-def initialize_database():
+def initialize_database(app=None):
     """
     Membuat semua tabel database dan mengisi data awal.
     Dipanggil sekali saat aplikasi pertama kali dijalankan.
@@ -84,21 +88,24 @@ def initialize_database():
     # Buat semua tabel jika belum ada
     db.create_all()
     
-    # Migrasi manual kolom nama_lengkap (diabaikan jika sudah ada)
+    # Migrasi manual - cek kolom dulu sebelum ALTER agar tidak ada silent exception setiap startup
     try:
-        from sqlalchemy import text
-        db.session.execute(text("ALTER TABLE users ADD COLUMN nama_lengkap VARCHAR(150)"))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+        from sqlalchemy import text, inspect as sa_inspect
+        inspector = sa_inspect(db.engine)
+        existing_columns = [col["name"] for col in inspector.get_columns("users")]
 
-    # Migrasi manual kolom last_login (diabaikan jika sudah ada)
-    try:
-        from sqlalchemy import text
-        db.session.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
-        db.session.commit()
-    except Exception:
+        if "nama_lengkap" not in existing_columns:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN nama_lengkap VARCHAR(150)"))
+            db.session.commit()
+            logger.info("Kolom 'nama_lengkap' berhasil ditambahkan ke tabel users.")
+
+        if "last_login" not in existing_columns:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
+            db.session.commit()
+            logger.info("Kolom 'last_login' berhasil ditambahkan ke tabel users.")
+    except Exception as e:
         db.session.rollback()
+        logger.warning(f"Migrasi kolom users gagal (mungkin tabel belum ada): {e}")
         
     logger.info("Skema database berhasil diinisialisasi.")
 
@@ -115,7 +122,35 @@ def initialize_database():
         )
         db.session.add(default_admin)
         db.session.commit()
-        logger.info("Default user 'super_admin' berhasil dibuat (password: ojkjabar2026).")
+        logger.info("Default user 'super_admin' berhasil dibuat. Segera ganti password melalui halaman pengaturan!")
+
+    # Bersihkan duplikat yang sudah ada di database (jalankan di background)
+    import threading
+
+    def _startup_dedup(flask_app):
+        import time
+        time.sleep(3)  # Tunggu app fully ready
+        with flask_app.app_context():
+            try:
+                from services.dedup_service import DeduplicateService
+                hasil = DeduplicateService.jalankan_semua(threshold_mirip=0.88)
+                if hasil["total_dihapus"] > 0:
+                    logger.info(
+                        f"[Startup Dedup] Selesai: {hasil['total_dihapus']} berita duplikat dihapus "
+                        f"(URL={hasil['lapis_1_url']['dihapus']}, "
+                        f"Judul={hasil['lapis_2_judul']['dihapus']}, "
+                        f"Mirip={hasil['lapis_3_mirip']['dihapus']})"
+                    )
+                else:
+                    logger.info("[Startup Dedup] Tidak ada duplikat ditemukan.")
+            except Exception as e:
+                logger.warning(f"[Startup Dedup] Gagal: {e}")
+
+    # Hanya jalankan di proses utama (bukan reloader werkzeug)
+    import os
+    if app is not None and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        t = threading.Thread(target=_startup_dedup, args=(app,), daemon=True)
+        t.start()
 
 
 def register_error_handlers(app: Flask):

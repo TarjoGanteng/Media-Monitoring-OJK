@@ -27,21 +27,30 @@ class CrawlerService:
         """Inisialisasi crawler service."""
         self.crawler = RSSCrawler()
 
-    def cek_duplikat(self, link: str) -> bool:
+    def cek_duplikat(self, link: str, judul: str = None) -> bool:
         """
-        Mengecek apakah link berita sudah ada di database.
+        Mengecek duplikat berdasarkan link URL dan judul berita.
+        Mencegah berita sama masuk lewat keyword berbeda.
 
         Args:
-            link: URL artikel yang akan dicek
+            link: URL artikel
+            judul: Judul artikel (opsional, cek exact match)
 
         Returns:
-            True jika sudah ada (duplikat), False jika belum ada
+            True jika duplikat, False jika baru
         """
-        return Berita.query.filter_by(link=link).first() is not None
+        # Lapis 1: Cek URL persis
+        if link and Berita.query.filter_by(link=link).first():
+            return True
+        # Lapis 2: Cek judul persis (tangkap duplikat dari keyword berbeda)
+        if judul and Berita.query.filter_by(judul=judul).first():
+            return True
+        return False
 
     def simpan_berita(self, article_data: dict) -> tuple[bool, str]:
         """
         Menyimpan satu artikel ke database setelah melewati pengecekan duplikat.
+        Analisis dilakukan oleh Gemini AI (jika tersedia) atau rule-based (fallback).
 
         Args:
             article_data: Dictionary data artikel dari crawler
@@ -55,16 +64,44 @@ class CrawlerService:
             return False, "Link kosong, artikel dilewat."
 
         # Cek duplikat berdasarkan link
-        if self.cek_duplikat(link):
-            return False, f"Duplikat: {link}"
+        if self.cek_duplikat(link, judul):
+            return False, f"Duplikat: {link or judul}"
 
         judul = article_data.get("judul", "Tanpa Judul")
-        isi = article_data.get("isi")
+        isi   = article_data.get("isi")
+        ringkasan = article_data.get("ringkasan")
 
-        # Analisis sentimen otomatis berbasis keyword
-        hasil_sentimen = SentimentAnalyzer.analisis(judul, isi)
-        topik_auto = SentimentAnalyzer.analisis_topik(judul, isi)
-        wilayah_auto = SentimentAnalyzer.analisis_wilayah(judul, isi)
+        # ── Analisis AI (Gemini) — prioritas utama ────────────────────────────
+        sentimen_final  = None
+        topik_final     = None
+        wilayah_final   = None
+        ringkasan_final = ringkasan
+        narasumber_final = article_data.get("narasumber")
+
+        try:
+            from services.ai_service import gemini
+            if gemini.is_available():
+                ai_result = gemini.analisis_berita(judul, isi, ringkasan)
+                if ai_result:
+                    sentimen_final   = ai_result["sentimen"]
+                    topik_final      = ai_result["topik"]
+                    wilayah_final    = ai_result.get("wilayah")
+                    if ai_result.get("ringkasan"):
+                        ringkasan_final = ai_result["ringkasan"]
+                    if ai_result.get("narasumber"):
+                        narasumber_final = ai_result["narasumber"]
+                    logger.debug(f"[AI] Analisis OK: '{judul[:50]}' → {sentimen_final}, {topik_final}")
+        except Exception as e:
+            logger.warning(f"[AI] Gagal analisis, fallback ke rule-based: {e}")
+
+        # ── Fallback rule-based jika AI tidak menghasilkan data ───────────────
+        if not sentimen_final:
+            hasil_sentimen  = SentimentAnalyzer.analisis(judul, isi)
+            sentimen_final  = hasil_sentimen["sentimen"]
+        if not topik_final:
+            topik_final     = SentimentAnalyzer.analisis_topik(judul, isi)
+        if not wilayah_final:
+            wilayah_final   = SentimentAnalyzer.analisis_wilayah(judul, isi)
 
         berita = Berita(
             judul=judul,
@@ -72,12 +109,12 @@ class CrawlerService:
             media=article_data.get("media"),
             tanggal=article_data.get("tanggal"),
             isi=isi,
-            ringkasan=article_data.get("ringkasan"),
+            ringkasan=ringkasan_final,
             gambar_url=article_data.get("gambar_url"),
-            sentimen=hasil_sentimen["sentimen"],
-            topik=article_data.get("topik") or topik_auto,
-            wilayah=article_data.get("wilayah") or wilayah_auto,
-            narasumber=article_data.get("narasumber"),
+            sentimen=sentimen_final,
+            topik=article_data.get("topik") or topik_final,
+            wilayah=article_data.get("wilayah") or wilayah_final,
+            narasumber=narasumber_final,
             bulan=article_data.get("bulan"),
             tahun=article_data.get("tahun"),
             triwulan=article_data.get("triwulan"),
@@ -93,6 +130,7 @@ class CrawlerService:
             db.session.rollback()
             logger.error(f"Gagal simpan berita: {e}")
             return False, f"Error database: {str(e)}"
+
 
     def crawl_satu_keyword(self, keyword: str) -> dict:
         """
@@ -201,8 +239,22 @@ class CrawlerService:
                         "jumlah_error": 1, "status": "gagal", "pesan": str(e),
                     })
 
-        # Jalankan pembersihan otomatis untuk berita lama (lebih dari 5 tahun)
+        # Jalankan pembersihan otomatis berita lama (lebih dari 5 tahun)
         self.cleanup_berita_lama(tahun=5)
+
+        # Jalankan deduplikasi otomatis setelah crawl selesai
+        try:
+            from services.dedup_service import DeduplicateService
+            hasil_dedup = DeduplicateService.jalankan_semua(threshold_mirip=0.88)
+            if hasil_dedup["total_dihapus"] > 0:
+                logger.info(
+                    f"[Dedup Auto] {hasil_dedup['total_dihapus']} berita duplikat dihapus: "
+                    f"URL={hasil_dedup['lapis_1_url']['dihapus']}, "
+                    f"Judul={hasil_dedup['lapis_2_judul']['dihapus']}, "
+                    f"Mirip={hasil_dedup['lapis_3_mirip']['dihapus']}"
+                )
+        except Exception as e:
+            logger.warning(f"[Dedup Auto] Gagal: {e}")
 
         # Jalankan pengambilan gambar di background (tidak memblokir response)
         import threading

@@ -14,6 +14,9 @@ class Config:
     # Keamanan aplikasi
     SECRET_KEY = os.environ.get("SECRET_KEY", "ojk-jabar-monitoring-secret-2024")
 
+    # Google Gemini AI
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
     # Konfigurasi Database SQLite
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL",

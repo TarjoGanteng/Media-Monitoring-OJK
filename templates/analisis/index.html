@@ -207,41 +207,87 @@
 <div class="d-flex align-items-center gap-2 mb-3 mt-4">
     <i class="bi bi-stars" style="color:#3b82f6; font-size:1.1rem;"></i>
     <h5 style="margin:0; font-weight:700; font-size:0.9rem; color:var(--text-primary);">Insight AI & Rekomendasi</h5>
+    <span id="insight-badge" class="badge bg-secondary ms-1" style="font-size:0.65rem;">Memuat...</span>
 </div>
-<div class="row g-3 mb-4" style="flex-wrap:nowrap; overflow-x:auto; padding-bottom:1rem;">
+
+<!-- Loading shimmer -->
+<div id="insight-loading" class="row g-3 mb-4" style="flex-wrap:nowrap; overflow-x:auto; padding-bottom:1rem;">
+    {% for _ in range(4) %}
     <div class="col-lg-3" style="min-width:240px;">
-        <div style="background:#f0fdf4; border:1px solid #d1fae5; border-radius:10px; padding:1.25rem; height:100%; display:flex; gap:1rem; align-items:flex-start;">
-            <div style="width:36px; height:36px; border-radius:8px; border:1px solid #a7f3d0; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#10b981; font-size:1.2rem;">
-                <i class="bi bi-graph-up-arrow"></i>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem; height:90px; display:flex; gap:1rem; align-items:flex-start;">
+            <div style="width:36px; height:36px; background:#e2e8f0; border-radius:8px; flex-shrink:0; animation:shimmer 1.5s infinite;"></div>
+            <div style="flex:1;">
+                <div style="height:10px; background:#e2e8f0; border-radius:4px; margin-bottom:8px; animation:shimmer 1.5s infinite;"></div>
+                <div style="height:10px; background:#e2e8f0; border-radius:4px; width:75%; animation:shimmer 1.5s infinite;"></div>
             </div>
-            <span style="font-size:0.8rem; color:#064e3b; font-weight:700; line-height:1.5;">Sentimen positif meningkat 18% dibandingkan kemarin</span>
         </div>
     </div>
-    <div class="col-lg-3" style="min-width:240px;">
-        <div style="background:#fef2f2; border:1px solid #fee2e2; border-radius:10px; padding:1.25rem; height:100%; display:flex; gap:1rem; align-items:flex-start;">
-            <div style="width:36px; height:36px; border-radius:8px; border:1px solid #fecaca; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#ef4444; font-size:1.2rem;">
-                <i class="bi bi-bullseye"></i>
-            </div>
-            <span style="font-size:0.8rem; color:#7f1d1d; font-weight:700; line-height:1.5;">Topik pinjaman online menjadi sorotan utama, disarankan untuk monitor lebih lanjut</span>
-        </div>
-    </div>
-    <div class="col-lg-3" style="min-width:240px;">
-        <div style="background:#fffbeb; border:1px solid #fef3c7; border-radius:10px; padding:1.25rem; height:100%; display:flex; gap:1rem; align-items:flex-start;">
-            <div style="width:36px; height:36px; border-radius:8px; border:1px solid #fde68a; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#f59e0b; font-size:1.2rem;">
-                <i class="bi bi-megaphone"></i>
-            </div>
-            <span style="font-size:0.8rem; color:#78350f; font-weight:700; line-height:1.5;">Perhatian negatif tertinggi berasal dari topik Perbankan</span>
-        </div>
-    </div>
-    <div class="col-lg-3" style="min-width:240px;">
-        <div style="background:#eff6ff; border:1px solid #dbeafe; border-radius:10px; padding:1.25rem; height:100%; display:flex; gap:1rem; align-items:flex-start;">
-            <div style="width:36px; height:36px; border-radius:8px; border:1px solid #bfdbfe; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#3b82f6; font-size:1.2rem;">
-                <i class="bi bi-bar-chart"></i>
-            </div>
-            <span style="font-size:0.8rem; color:#1e3a8a; font-weight:700; line-height:1.5;">Media Kompas.com memiliki pemberitaan terbanyak hari ini</span>
-        </div>
-    </div>
+    {% endfor %}
 </div>
+
+<!-- Konten AI (diisi oleh JS) -->
+<div id="insight-content" class="row g-3 mb-4 d-none" style="flex-wrap:nowrap; overflow-x:auto; padding-bottom:1rem;"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Insight AI async load ─────────────────────────────────────────────────
+const INSIGHT_STYLE = {
+    positif:   { bg:'#f0fdf4', border:'#d1fae5', iconBorder:'#a7f3d0', iconColor:'#10b981', textColor:'#064e3b', ikon:'bi-graph-up-arrow' },
+    negatif:   { bg:'#fef2f2', border:'#fee2e2', iconBorder:'#fecaca', iconColor:'#ef4444', textColor:'#7f1d1d', ikon:'bi-bullseye'       },
+    peringatan:{ bg:'#fffbeb', border:'#fef3c7', iconBorder:'#fde68a', iconColor:'#f59e0b', textColor:'#78350f', ikon:'bi-megaphone'      },
+    informasi: { bg:'#eff6ff', border:'#dbeafe', iconBorder:'#bfdbfe', iconColor:'#3b82f6', textColor:'#1e3a8a', ikon:'bi-bar-chart'      },
+};
+
+(function loadInsightAI() {
+    fetch('/analisis/ai-insight')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(resp => {
+            const loading = document.getElementById('insight-loading');
+            const content = document.getElementById('insight-content');
+            const badge   = document.getElementById('insight-badge');
+            loading.classList.add('d-none');
+
+            if (!resp.success || !resp.insights || resp.insights.length === 0) {
+                badge.className = 'badge bg-warning text-dark ms-1';
+                badge.textContent = 'Tidak tersedia';
+                return;
+            }
+
+            badge.className = resp.fallback
+                ? 'badge bg-secondary ms-1'
+                : 'badge bg-primary ms-1';
+            badge.textContent = resp.fallback ? 'Data-driven' : 'Powered by Gemini';
+
+            const html = resp.insights.map(ins => {
+                const s = INSIGHT_STYLE[ins.tipe] || INSIGHT_STYLE.informasi;
+                const ikon = ins.ikon || s.ikon;
+                return `
+                <div class="col-lg-3" style="min-width:240px;">
+                    <div style="background:${s.bg}; border:1px solid ${s.border}; border-radius:10px; padding:1.25rem; height:100%; display:flex; gap:1rem; align-items:flex-start;">
+                        <div style="width:36px; height:36px; border-radius:8px; border:1px solid ${s.iconBorder}; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:${s.iconColor}; font-size:1.2rem;">
+                            <i class="bi ${ikon}"></i>
+                        </div>
+                        <span style="font-size:0.8rem; color:${s.textColor}; font-weight:700; line-height:1.5;">${ins.teks}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            content.innerHTML = html;
+            content.classList.remove('d-none');
+        })
+        .catch(() => {
+            document.getElementById('insight-loading').classList.add('d-none');
+            document.getElementById('insight-badge').className = 'badge bg-danger ms-1';
+            document.getElementById('insight-badge').textContent = 'Error';
+        });
+})();
+</script>
+
+<style>
+@keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
 
 {% endblock %}
 
@@ -302,3 +348,4 @@ new Chart(shareCtx, {
 });
 </script>
 {% endblock %}
+

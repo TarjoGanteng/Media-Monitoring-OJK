@@ -80,13 +80,13 @@ def logout():
 def check_session():
     """Endpoint polling ringan untuk mengecek apakah sesi user masih valid."""
     from flask import jsonify
-    from database.models import User
+    from database.extensions import db
     
     if not current_user.is_authenticated:
         return jsonify({"status": "unauthenticated"}), 401
     
     # Reload user langsung dari database untuk data terkini
-    user = User.query.get(current_user.id)
+    user = db.session.get(User, current_user.id)
     if not user:
         logout_user()
         return jsonify({"status": "deleted"}), 401

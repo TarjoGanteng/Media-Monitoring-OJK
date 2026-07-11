@@ -102,7 +102,7 @@ class BeritaService:
         Returns:
             Objek Berita atau None jika tidak ditemukan
         """
-        return Berita.query.get(berita_id)
+        return db.session.get(Berita, berita_id)
 
     @staticmethod
     def get_berita_terbaru(limit: int = 5) -> list[Berita]:
@@ -254,7 +254,7 @@ class BeritaService:
         Returns:
             Tuple (berhasil, pesan)
         """
-        berita = Berita.query.get(berita_id)
+        berita = db.session.get(Berita, berita_id)
         if not berita:
             return False, "Berita tidak ditemukan."
 

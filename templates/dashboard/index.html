@@ -45,12 +45,32 @@
         </div>
         
         <!-- Ringkasan AI -->
-        <div class="stat-card-v2 stat-ai">
-            <div class="stat-v2-top">
-                <span class="stat-v2-label" style="font-weight:700; color:var(--text-primary); letter-spacing:0.5px;">RINGKASAN AI</span>
+        <div class="stat-card-v2 stat-ai" id="ai-brief-card" style="min-width:280px; cursor:default;">
+            <div class="stat-v2-top d-flex align-items-center justify-content-between">
+                <span class="stat-v2-label" style="font-weight:700; color:var(--text-primary); letter-spacing:0.5px;">
+                    <i class="bi bi-stars me-1" style="color:#c8002d;"></i>RINGKASAN AI
+                </span>
+                <span id="ai-brief-badge" class="badge bg-secondary" style="font-size:0.65rem;">Memuat...</span>
             </div>
-            <div class="stat-ai-content" style="flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); font-size:0.85rem; font-style:italic;">
-                Belum ada ringkasan
+            <!-- Loading State -->
+            <div id="ai-brief-loading" class="stat-ai-content" style="flex:1; padding:0.5rem 0;">
+                <div style="height:10px; background:#f1f5f9; border-radius:4px; margin-bottom:6px; animation:shimmer 1.5s infinite;"></div>
+                <div style="height:10px; background:#f1f5f9; border-radius:4px; margin-bottom:6px; width:85%; animation:shimmer 1.5s infinite;"></div>
+                <div style="height:10px; background:#f1f5f9; border-radius:4px; width:70%; animation:shimmer 1.5s infinite;"></div>
+            </div>
+            <!-- Content State (hidden until loaded) -->
+            <div id="ai-brief-content" class="d-none" style="flex:1; display:flex; flex-direction:column; gap:0.35rem; padding-top:0.25rem;">
+                <p id="ai-brief-text" style="font-size:0.78rem; line-height:1.5; color:var(--text-primary); margin:0; flex:1; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical;"></p>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.25rem;">
+                    <span id="ai-topik-badge" class="badge" style="font-size:0.62rem; background:#fef2f2; color:#c8002d; border:1px solid #fecaca;"></span>
+                    <span id="ai-kota-badge" class="badge" style="font-size:0.62rem; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;"></span>
+                    <span id="ai-media-badge" class="badge" style="font-size:0.62rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;"></span>
+                </div>
+                <div id="ai-brief-footer" style="font-size:0.65rem; color:var(--text-secondary); margin-top:0.1rem;"></div>
+            </div>
+            <!-- Error State -->
+            <div id="ai-brief-error" class="d-none" style="flex:1; display:flex; align-items:center; color:var(--text-secondary); font-size:0.8rem; font-style:italic; gap:0.4rem;">
+                <i class="bi bi-wifi-off"></i> Ringkasan AI tidak tersedia
             </div>
         </div>
     </div>
@@ -300,4 +320,72 @@ async function fetchImages() {
     }
 }
 </script>
+
+<script>
+// ── AI Brief — Async Load ──────────────────────────────────────────────────
+(function loadAIBrief() {
+    const sentimen_warna = {
+        "Positif": { bg: "bg-success", label: "✓ Sentimen Positif" },
+        "Negatif": { bg: "bg-danger",  label: "⚠ Sentimen Negatif" },
+        "Netral":  { bg: "bg-secondary", label: "→ Sentimen Netral" },
+    };
+
+    fetch('/dashboard/ai-brief')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(resp => {
+            const loading = document.getElementById('ai-brief-loading');
+            const content = document.getElementById('ai-brief-content');
+            const error   = document.getElementById('ai-brief-error');
+            const badge   = document.getElementById('ai-brief-badge');
+
+            loading.classList.add('d-none');
+
+            if (!resp.success || !resp.data) {
+                error.classList.remove('d-none');
+                badge.className = 'badge bg-warning text-dark';
+                badge.textContent = '! Error';
+                return;
+            }
+
+            const d = resp.data;
+            const sw = sentimen_warna[d.sentimen_dominan] || sentimen_warna["Netral"];
+
+            // Badge status
+            badge.className = `badge ${sw.bg}`;
+            badge.textContent = sw.label;
+
+            // Teks narasi
+            document.getElementById('ai-brief-text').textContent = d.ringkasan || '—';
+
+            // Badge-badge info
+            if (d.topik_utama && d.topik_utama !== '-')
+                document.getElementById('ai-topik-badge').textContent = '📌 ' + d.topik_utama;
+            if (d.kota_terbanyak && d.kota_terbanyak !== '-')
+                document.getElementById('ai-kota-badge').textContent = '📍 ' + d.kota_terbanyak;
+            if (d.media_terbanyak && d.media_terbanyak !== '-')
+                document.getElementById('ai-media-badge').textContent = '📰 ' + d.media_terbanyak;
+
+            // Footer: jumlah berita & waktu
+            document.getElementById('ai-brief-footer').textContent =
+                `${d.total_hari_ini} berita hari ini · AI: ${d.waktu_generate}`;
+
+            content.classList.remove('d-none');
+            content.style.display = 'flex';
+        })
+        .catch(() => {
+            document.getElementById('ai-brief-loading').classList.add('d-none');
+            document.getElementById('ai-brief-error').classList.remove('d-none');
+            document.getElementById('ai-brief-badge').className = 'badge bg-secondary';
+            document.getElementById('ai-brief-badge').textContent = 'Offline';
+        });
+})();
+</script>
+
+<style>
+@keyframes shimmer {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+</style>
 {% endblock %}

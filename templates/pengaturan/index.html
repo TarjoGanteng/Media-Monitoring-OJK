@@ -343,18 +343,169 @@
                 </div>
             </div>
 
-            <!-- Tab Sistem -->
+            <!-- Tab Sistem / AI -->
             <div class="tab-pane fade" id="sistem">
-                <div class="card-panel">
-                    <div class="card-panel-header">
-                        <h5 class="card-panel-title">Sistem</h5>
+                <!-- Status Koneksi AI -->
+                <div class="card-panel mb-3">
+                    <div class="card-panel-header d-flex align-items-center justify-content-between pb-2">
+                        <h5 class="card-panel-title mb-0">
+                            <i class="bi bi-stars me-2 text-danger"></i>Analisis AI — Google Gemini
+                        </h5>
+                        <span id="ai-status-badge" class="badge bg-secondary" style="font-size: 0.75rem;">Memeriksa...</span>
                     </div>
-                    <div class="card-panel-body">
-                        <div class="empty-state-small py-5">
-                            <i class="bi bi-gear" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
-                            <h5 class="fw-bold">Pengaturan Sistem</h5>
-                            <p class="text-muted">Fitur konfigurasi sistem akan hadir di sini.</p>
+                    <div class="card-panel-body pt-2">
+                        <p class="text-muted mb-3" style="font-size: 0.88rem;">
+                            AI Gemini menganalisis sentimen, topik, wilayah, ringkasan, dan narasumber
+                            setiap berita secara akurat — jauh lebih tepat dibanding analisis kata kunci biasa.
+                        </p>
+                        <div id="ai-status-info" class="alert alert-secondary py-2 mb-3" style="font-size: 0.85rem;">
+                            <i class="bi bi-hourglass-split me-1"></i> Memeriksa koneksi ke Gemini AI...
                         </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted" style="font-size: 0.82rem;">Jumlah Berita per Batch</label>
+                                <select class="form-select form-select-sm" id="ai-limit-select">
+                                    <option value="10">10 berita</option>
+                                    <option value="20" selected>20 berita</option>
+                                    <option value="30">30 berita</option>
+                                    <option value="50">50 berita (maks)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5 d-flex align-items-end pb-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="ai-only-missing" checked>
+                                    <label class="form-check-label text-muted" for="ai-only-missing" style="font-size: 0.82rem;">
+                                        Hanya berita tanpa ringkasan AI
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button id="btn-ai-analisis" class="btn btn-danger btn-sm px-4"
+                                onclick="jalankanAnalisisAI()" style="border-radius: 6px;">
+                                <i class="bi bi-stars me-1"></i> Jalankan Analisis AI
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm px-3"
+                                onclick="cekStatusAI()" style="border-radius: 6px;">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Cek Koneksi
+                            </button>
+                        </div>
+                        <div id="ai-progress-area" class="mt-3 d-none">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+                                <span class="text-muted" style="font-size: 0.85rem;">
+                                    AI sedang menganalisis... harap tunggu (±1.5 detik/artikel)
+                                </span>
+                            </div>
+                        </div>
+                        <div id="ai-hasil-area" class="mt-3 d-none"></div>
+                    </div>
+                </div>
+                <!-- Info Panduan -->
+                <div class="card-panel mb-3">
+                    <div class="card-panel-header pb-2">
+                        <h6 class="card-panel-title" style="font-size: 0.9rem;">
+                            <i class="bi bi-info-circle me-2 text-danger"></i>Informasi & Panduan
+                        </h6>
+                    </div>
+                    <div class="card-panel-body pt-2">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="p-3 rounded" style="background:#f8fafc; border: 1px solid #e2e8f0;">
+                                    <div class="fw-bold mb-1" style="font-size: 0.83rem;"><i class="bi bi-lightning-charge me-1 text-warning"></i>Kuota Gratis</div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">Gemini Flash: <strong>15 req/menit</strong>, 1500 req/hari.<br>Gunakan batch ≤20 artikel per sesi.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 rounded" style="background:#f8fafc; border: 1px solid #e2e8f0;">
+                                    <div class="fw-bold mb-1" style="font-size: 0.83rem;"><i class="bi bi-bullseye me-1 text-success"></i>Hasil Analisis</div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">Sentimen · Topik · Wilayah<br>Ringkasan · Narasumber</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 rounded" style="background:#f8fafc; border: 1px solid #e2e8f0;">
+                                    <div class="fw-bold mb-1" style="font-size: 0.83rem;"><i class="bi bi-key me-1 text-danger"></i>Setup API Key</div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">Isi <code>GEMINI_API_KEY</code> di file <code>.env</code> lalu restart aplikasi.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Panel Manajemen Duplikat ── -->
+                <div class="card-panel">
+                    <div class="card-panel-header d-flex align-items-center justify-content-between pb-2">
+                        <h5 class="card-panel-title mb-0">
+                            <i class="bi bi-copy me-2 text-danger"></i>Manajemen Duplikat Berita
+                        </h5>
+                        <button class="btn btn-outline-secondary btn-sm px-3" onclick="previewDuplikat()" style="border-radius:6px; font-size:0.82rem;">
+                            <i class="bi bi-search me-1"></i> Cek Duplikat
+                        </button>
+                    </div>
+                    <div class="card-panel-body pt-2">
+                        <p class="text-muted mb-3" style="font-size:0.88rem;">
+                            Sistem mendeteksi duplikat dalam 3 lapis: <strong>URL sama</strong> → <strong>judul sama persis</strong> → <strong>judul sangat mirip</strong>.
+                            Yang paling lengkap datanya (ada gambar, isi, ringkasan) akan dipertahankan.
+                        </p>
+
+                        <!-- Stats Preview -->
+                        <div id="dedup-stats" class="row g-2 mb-3 d-none">
+                            <div class="col-4">
+                                <div class="text-center p-2 rounded" style="background:#fef2f2; border:1px solid #fecaca;">
+                                    <div class="fw-bold text-danger" id="dedup-stat-url" style="font-size:1.4rem;">-</div>
+                                    <div class="text-muted" style="font-size:0.72rem;">Grup URL Duplikat</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center p-2 rounded" style="background:#fffbeb; border:1px solid #fde68a;">
+                                    <div class="fw-bold text-warning" id="dedup-stat-judul" style="font-size:1.4rem;">-</div>
+                                    <div class="text-muted" style="font-size:0.72rem;">Grup Judul Sama</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center p-2 rounded" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+                                    <div class="fw-bold text-success" id="dedup-stat-mirip" style="font-size:1.4rem;">-</div>
+                                    <div class="text-muted" style="font-size:0.72rem;">Estimasi Mirip</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kontrol Hapus -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted" style="font-size:0.82rem;">Mode Hapus</label>
+                                <select class="form-select form-select-sm" id="dedup-mode-select">
+                                    <option value="semua">Semua Lapis (Rekomendasi)</option>
+                                    <option value="url">Lapis 1 — URL Duplikat Saja</option>
+                                    <option value="judul">Lapis 2 — Judul Sama Persis Saja</option>
+                                    <option value="mirip">Lapis 3 — Judul Sangat Mirip Saja</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-muted" style="font-size:0.82rem;">Threshold Kemiripan</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control" id="dedup-threshold" value="88" min="70" max="99" step="1">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button id="btn-dedup-hapus" class="btn btn-danger btn-sm px-4" onclick="hapusDuplikat()" style="border-radius:6px;">
+                                <i class="bi bi-trash3 me-1"></i> Hapus Duplikat
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm px-3" onclick="previewDuplikat()" style="border-radius:6px;">
+                                <i class="bi bi-eye me-1"></i> Preview Ulang
+                            </button>
+                        </div>
+
+                        <div id="dedup-progress" class="mt-3 d-none">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="spinner-border spinner-border-sm text-danger"></div>
+                                <span class="text-muted" style="font-size:0.85rem;">Sedang memproses deduplikasi...</span>
+                            </div>
+                        </div>
+                        <div id="dedup-hasil" class="mt-3 d-none"></div>
                     </div>
                 </div>
             </div>
@@ -370,18 +521,163 @@ document.addEventListener('DOMContentLoaded', function() {
     if (activeTab) {
         const tabEl = document.querySelector(`a[href="#${activeTab}"]`);
         if (tabEl) {
-            // Nonaktifkan tab profil dulu
             document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(el => {
                 el.classList.remove('show', 'active');
             });
-            // Aktifkan tab yang sesuai
             tabEl.classList.add('active');
             const pane = document.getElementById(activeTab);
             if (pane) pane.classList.add('show', 'active');
         }
     }
+
+    // Auto-cek status AI saat halaman dimuat
+    cekStatusAI();
 });
+
+// ---- Fungsi AI ----
+function cekStatusAI() {
+    fetch('/api/crawler/ai/status')
+        .then(r => r.json())
+        .then(data => {
+            const badge = document.getElementById('ai-status-badge');
+            const info  = document.getElementById('ai-status-info');
+            if (data.tersedia) {
+                badge.className = 'badge bg-success';
+                badge.textContent = '✓ Terhubung';
+                info.className = 'alert alert-success py-2 mb-3';
+                info.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> <strong>Gemini AI aktif</strong> — Model: ${data.model}. Siap menganalisis berita.`;
+            } else {
+                badge.className = 'badge bg-danger';
+                badge.textContent = '✗ Tidak Terhubung';
+                info.className = 'alert alert-danger py-2 mb-3';
+                info.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>AI tidak tersedia:</strong> ${data.pesan}. Pastikan <code>GEMINI_API_KEY</code> diisi di file <code>.env</code> lalu restart aplikasi.`;
+            }
+        })
+        .catch(() => {
+            document.getElementById('ai-status-badge').className = 'badge bg-warning text-dark';
+            document.getElementById('ai-status-badge').textContent = '? Error';
+        });
+}
+
+function jalankanAnalisisAI() {
+    const limit  = document.getElementById('ai-limit-select').value;
+    const hanyaTanpaRingkasan = document.getElementById('ai-only-missing').checked;
+    const btnAI  = document.getElementById('btn-ai-analisis');
+    const prog   = document.getElementById('ai-progress-area');
+    const hasil  = document.getElementById('ai-hasil-area');
+
+    btnAI.disabled = true;
+    btnAI.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menjalankan...';
+    prog.classList.remove('d-none');
+    hasil.classList.add('d-none');
+
+    fetch('/api/crawler/ai/analisis-batch', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({limit: parseInt(limit), hanya_tanpa_ringkasan: hanyaTanpaRingkasan}),
+    })
+    .then(r => r.json())
+    .then(data => {
+        prog.classList.add('d-none');
+        hasil.classList.remove('d-none');
+        const s = data.statistik || {};
+        if (data.success) {
+            hasil.innerHTML = `
+                <div class="alert alert-success py-2" style="font-size:0.85rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i> <strong>Analisis selesai!</strong> ${data.message}
+                    <div class="mt-1 d-flex gap-3" style="font-size:0.8rem;">
+                        <span>📊 Diproses: <strong>${s.diproses||0}</strong></span>
+                        <span>✅ Berhasil: <strong class="text-success">${s.berhasil||0}</strong></span>
+                        <span>❌ Gagal: <strong class="text-danger">${s.gagal||0}</strong></span>
+                    </div>
+                </div>`;
+        } else {
+            hasil.innerHTML = `<div class="alert alert-danger py-2" style="font-size:0.85rem;">
+                <i class="bi bi-x-circle-fill me-1"></i> <strong>Gagal:</strong> ${data.message}</div>`;
+        }
+    })
+    .catch(e => {
+        prog.classList.add('d-none');
+        hasil.classList.remove('d-none');
+        hasil.innerHTML = `<div class="alert alert-danger py-2" style="font-size:0.85rem;">
+            <i class="bi bi-x-circle-fill me-1"></i> Koneksi gagal: ${e.message}</div>`;
+    })
+    .finally(() => {
+        btnAI.disabled = false;
+        btnAI.innerHTML = '<i class="bi bi-stars me-1"></i> Jalankan Analisis AI';
+    });
+}
+
+// ── Deduplikasi ──────────────────────────────────────────────────────────────
+function previewDuplikat() {
+    document.getElementById('dedup-stats').classList.add('d-none');
+    fetch('/api/crawler/dedup/preview')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const d = data.data;
+                document.getElementById('dedup-stat-url').textContent   = d.grup_duplikat_url   || 0;
+                document.getElementById('dedup-stat-judul').textContent = d.grup_duplikat_judul || 0;
+                document.getElementById('dedup-stat-mirip').textContent = d.estimasi_near_duplicate || 0;
+                document.getElementById('dedup-stats').classList.remove('d-none');
+            }
+        })
+        .catch(e => console.error('Preview gagal:', e));
+}
+
+function hapusDuplikat() {
+    const mode      = document.getElementById('dedup-mode-select').value;
+    const threshold = parseInt(document.getElementById('dedup-threshold').value) / 100;
+    const btn       = document.getElementById('btn-dedup-hapus');
+    const prog      = document.getElementById('dedup-progress');
+    const hasil     = document.getElementById('dedup-hasil');
+
+    if (!confirm(`Hapus duplikat mode "${mode}"? Data yang terhapus TIDAK bisa dikembalikan.`)) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memproses...';
+    prog.classList.remove('d-none');
+    hasil.classList.add('d-none');
+
+    fetch('/api/crawler/dedup/hapus', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ mode, threshold }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        prog.classList.add('d-none');
+        hasil.classList.remove('d-none');
+        if (data.success) {
+            const h = data.hasil || {};
+            let detail = '';
+            if (h.lapis_1_url)   detail += `<span>🔗 URL: <b>${h.lapis_1_url.dihapus}</b></span>`;
+            if (h.lapis_2_judul) detail += `<span>📝 Judul: <b>${h.lapis_2_judul.dihapus}</b></span>`;
+            if (h.lapis_3_mirip) detail += `<span>🔍 Mirip: <b>${h.lapis_3_mirip.dihapus}</b></span>`;
+            hasil.innerHTML = `
+                <div class="alert alert-success py-2" style="font-size:0.85rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i> <strong>${data.message}</strong>
+                    <div class="d-flex gap-3 mt-1" style="font-size:0.78rem;">${detail}</div>
+                </div>`;
+            previewDuplikat(); // Refresh stats
+        } else {
+            hasil.innerHTML = `<div class="alert alert-danger py-2" style="font-size:0.85rem;">
+                <i class="bi bi-x-circle-fill me-1"></i> ${data.message}</div>`;
+        }
+    })
+    .catch(e => {
+        prog.classList.add('d-none');
+        hasil.innerHTML = `<div class="alert alert-danger py-2" style="font-size:0.85rem;">Error: ${e.message}</div>`;
+        hasil.classList.remove('d-none');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash3 me-1"></i> Hapus Duplikat';
+    });
+}
+
+
 
 function toggleUbahPassword() {
     const form = document.getElementById('form-ubah-password');

@@ -23,7 +23,7 @@ class SentimentAnalyzer:
         "berkembang": 2, "maju": 1, "peningkatan": 2, "pertumbuhan": 2,
         "rekor": 2, "tertinggi": 1, "surplus": 2, "positif": 1,
         # Keberhasilan & Pencapaian
-        "berhasil": 3, "sukses": 3, "berhasil": 3, "prestasi": 2, "capaian": 2,
+        "berhasil": 3, "sukses": 3, "prestasi": 2, "capaian": 2,
         "pencapaian": 2, "capai": 2, "raih": 2, "meraih": 2, "memenangkan": 2,
         "juara": 2, "terbaik": 2, "unggul": 2, "unggulan": 2,
         # Perlindungan & Keamanan
@@ -157,11 +157,10 @@ class SentimentAnalyzer:
             # Cek kata tunggal
             if kata in kamus:
                 bobot = kamus[kata]
-                # Cek negasi (2 kata sebelumnya)
+                # Cek negasi (2 kata sebelumnya) - gunakan elif agar tidak tumpang tindih
                 if i > 0 and kata_list[i-1] in cls.NEGASI:
                     bobot *= -0.5  # Balik makna sebagian
-                # Cek amplifier (kata sebelumnya)
-                if i > 0 and kata_list[i-1] in cls.AMPLIFIER:
+                elif i > 0 and kata_list[i-1] in cls.AMPLIFIER:
                     bobot *= cls.AMPLIFIER[kata_list[i-1]]
                 skor += bobot
 
@@ -249,9 +248,6 @@ class SentimentAnalyzer:
 
         for wilayah in wilayah_list:
             if wilayah in teks:
-                # Normalisasi nama
-                if wilayah == "jabar":
-                    return "Jawa Barat"
                 return wilayah.title()
 
         return None

@@ -150,6 +150,7 @@ class DashboardService:
     def get_trend_harian(hari: int = 7) -> dict:
         """
         Mengambil data trend berita harian untuk chart.
+        Dioptimasi: menggunakan 1 query GROUP BY, bukan N×4 query.
 
         Args:
             hari: Jumlah hari ke belakang
@@ -158,33 +159,38 @@ class DashboardService:
             Dictionary dengan labels (tanggal) dan data (jumlah berita)
         """
         today = datetime.now().date()
-        labels = []
-        data_total = []
-        data_positif = []
-        data_negatif = []
-        data_netral = []
+        start_date = today - timedelta(days=hari - 1)
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(today, datetime.max.time())
 
-        for i in range(hari - 1, -1, -1):
-            tanggal = today - timedelta(days=i)
-            tanggal_dt = datetime.combine(tanggal, datetime.min.time())
-            tanggal_dt_end = tanggal_dt + timedelta(days=1)
+        # Satu query dengan GROUP BY tanggal dan agregasi sentimen
+        rows = db.session.query(
+            func.strftime("%Y-%m-%d", Berita.tanggal).label("tgl"),
+            func.count(Berita.id).label("total"),
+            func.sum(case((Berita.sentimen == "Positif", 1), else_=0)).label("positif"),
+            func.sum(case((Berita.sentimen == "Negatif", 1), else_=0)).label("negatif"),
+            func.sum(case((Berita.sentimen == "Netral", 1), else_=0)).label("netral"),
+        ).filter(
+            Berita.status == "aktif",
+            Berita.tanggal >= start_dt,
+            Berita.tanggal <= end_dt,
+        ).group_by(func.strftime("%Y-%m-%d", Berita.tanggal)).all()
 
-            berita_hari = Berita.query.filter(
-                Berita.status == "aktif",
-                Berita.tanggal >= tanggal_dt,
-                Berita.tanggal < tanggal_dt_end,
-            )
+        # Buat mapping tanggal -> data row
+        data_map = {r.tgl: r for r in rows}
 
-            total = berita_hari.count()
-            positif = berita_hari.filter(Berita.sentimen == "Positif").count()
-            negatif = berita_hari.filter(Berita.sentimen == "Negatif").count()
-            netral = berita_hari.filter(Berita.sentimen == "Netral").count()
+        date_range = [
+            (today - timedelta(days=i)) for i in range(hari - 1, -1, -1)
+        ]
+        labels = [d.strftime("%d %b") for d in date_range]
+        data_total, data_positif, data_negatif, data_netral = [], [], [], []
 
-            labels.append(tanggal.strftime("%d %b"))
-            data_total.append(total)
-            data_positif.append(positif)
-            data_negatif.append(negatif)
-            data_netral.append(netral)
+        for d in date_range:
+            r = data_map.get(d.strftime("%Y-%m-%d"))
+            data_total.append(int(r.total) if r else 0)
+            data_positif.append(int(r.positif) if r else 0)
+            data_negatif.append(int(r.negatif) if r else 0)
+            data_netral.append(int(r.netral) if r else 0)
 
         # Jika semua data 0, tambahkan dummy data agar chart terlihat
         if all(v == 0 for v in data_total):
@@ -413,3 +419,142 @@ class DashboardService:
             {"wilayah": "Sukabumi", "jumlah": 4},
             {"wilayah": "Cianjur", "jumlah": 3},
         ]
+
+    # ======= AI DASHBOARD SUMMARY =======
+
+    @staticmethod
+    def get_ringkasan_ai_dashboard() -> dict:
+        """
+        Membuat ringkasan/analisis harian berbasis AI (Gemini) untuk ditampilkan
+        di card 'RINGKASAN AI' pada dashboard.
+
+        Mengambil berita 24 jam terakhir, menyusun konteks lengkap, lalu
+        meminta Gemini membuat analisis naratif singkat dalam Bahasa Indonesia.
+
+        Returns:
+            Dict {
+                tersedia: bool,
+                ringkasan: str,        # Narasi utama 2-3 kalimat
+                topik_utama: str,      # Topik yang paling banyak dibahas
+                sentimen_dominan: str, # Positif/Negatif/Netral
+                total_hari_ini: int,   # Jumlah berita hari ini
+                kota_terbanyak: str,   # Kota paling banyak disebut hari ini
+                media_terbanyak: str,  # Media paling aktif hari ini
+                waktu_generate: str,   # Waktu analisis dibuat
+            }
+        """
+        from datetime import datetime, timedelta
+
+        # --- Kumpulkan data berita hari ini ---
+        now = datetime.now()
+        sejak = now - timedelta(hours=24)
+
+        berita_hari_ini = (
+            Berita.query.filter(
+                Berita.status == "aktif",
+                Berita.tanggal >= sejak,
+            )
+            .order_by(Berita.tanggal.desc())
+            .limit(30)  # Maks 30 berita terbaru sebagai konteks
+            .all()
+        )
+
+        # Statistik sentimen hari ini
+        total = len(berita_hari_ini)
+        positif = sum(1 for b in berita_hari_ini if b.sentimen == "Positif")
+        negatif = sum(1 for b in berita_hari_ini if b.sentimen == "Negatif")
+        netral  = sum(1 for b in berita_hari_ini if b.sentimen == "Netral")
+
+        # Topik terbanyak
+        from collections import Counter
+        topik_counter  = Counter(b.topik  for b in berita_hari_ini if b.topik)
+        wilayah_counter = Counter(b.wilayah for b in berita_hari_ini if b.wilayah)
+        media_counter  = Counter(b.media  for b in berita_hari_ini if b.media)
+
+        topik_utama    = topik_counter.most_common(1)[0][0]  if topik_counter  else "Regulasi"
+        kota_terbanyak = wilayah_counter.most_common(1)[0][0] if wilayah_counter else "-"
+        media_terbanyak = media_counter.most_common(1)[0][0] if media_counter  else "-"
+
+        sentimen_dominan = (
+            "Positif" if positif >= negatif and positif >= netral
+            else "Negatif" if negatif >= positif and negatif >= netral
+            else "Netral"
+        )
+
+        # Jika tidak ada berita hari ini, kembalikan kosong
+        if total == 0:
+            return {
+                "tersedia": False,
+                "ringkasan": "Belum ada berita yang dikumpulkan hari ini.",
+                "topik_utama": "-",
+                "sentimen_dominan": "Netral",
+                "total_hari_ini": 0,
+                "kota_terbanyak": "-",
+                "media_terbanyak": "-",
+                "waktu_generate": now.strftime("%H:%M WIB"),
+            }
+
+        # --- Susun konteks untuk Gemini ---
+        judul_list = "\n".join(
+            f"- [{b.sentimen or 'Netral'}] {b.judul}" for b in berita_hari_ini[:15]
+        )
+        topik_str  = ", ".join(f"{t}({c})" for t, c in topik_counter.most_common(5))
+        kota_str   = ", ".join(f"{k}({c})" for k, c in wilayah_counter.most_common(5))
+
+        prompt = f"""Anda adalah analis media senior OJK (Otoritas Jasa Keuangan) Indonesia.
+Berdasarkan data pemberitaan 24 jam terakhir, buat ringkasan analisis singkat dalam Bahasa Indonesia.
+
+=== DATA PEMBERITAAN HARI INI ===
+Tanggal: {now.strftime('%d %B %Y')}
+Total berita: {total} artikel
+Positif: {positif} | Negatif: {negatif} | Netral: {netral}
+Topik terbanyak: {topik_str}
+Kota paling banyak disebut: {kota_str}
+
+Judul-judul berita terbaru:
+{judul_list}
+
+=== TUGAS ===
+Buat ringkasan analisis naratif dalam 2-3 kalimat yang:
+1. Menjelaskan isu/topik utama yang sedang banyak dibahas
+2. Menyebutkan sentimen dominan dan apa maknanya bagi OJK
+3. Menyebutkan kota atau wilayah yang paling aktif (jika relevan)
+
+Gunakan bahasa formal, padat, dan profesional. Jangan gunakan bullet point.
+Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
+
+        try:
+            from services.ai_service import gemini
+            if not gemini.is_available():
+                raise ValueError("Gemini tidak tersedia")
+
+            # Gunakan model tanpa JSON mode (output narasi bebas)
+            import google.generativeai as genai
+            from config import Config
+            genai.configure(api_key=Config.GEMINI_API_KEY)
+            model_narasi = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                generation_config={"temperature": 0.4},
+            )
+            response = model_narasi.generate_content(prompt)
+            ringkasan_ai = response.text.strip()
+
+        except Exception as e:
+            logger.warning(f"[AI Dashboard] Gagal generate ringkasan: {e}")
+            ringkasan_ai = (
+                f"Hari ini terdapat {total} berita terkait OJK Jawa Barat "
+                f"dengan sentimen {sentimen_dominan.lower()} mendominasi ({positif}P/{negatif}N/{netral}Ntrl). "
+                f"Topik yang paling banyak dibahas adalah {topik_utama}."
+            )
+
+        return {
+            "tersedia": True,
+            "ringkasan": ringkasan_ai,
+            "topik_utama": topik_utama,
+            "sentimen_dominan": sentimen_dominan,
+            "total_hari_ini": total,
+            "kota_terbanyak": kota_terbanyak,
+            "media_terbanyak": media_terbanyak,
+            "waktu_generate": now.strftime("%H:%M WIB"),
+        }
+
