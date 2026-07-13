@@ -14,8 +14,15 @@ class Config:
     # Keamanan aplikasi
     SECRET_KEY = os.environ.get("SECRET_KEY", "ojk-jabar-monitoring-secret-2024")
 
-    # Google Gemini AI
+    # Google Gemini AI (opsional, fallback)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+    # OpenRouter AI (gratis, tanpa batas wilayah)
+    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+
+    # Hugging Face AI (UTAMA - gratis selamanya)
+    # Daftar gratis di: https://huggingface.co/settings/tokens
+    HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY", "")
 
     # Konfigurasi Database SQLite
     SQLALCHEMY_DATABASE_URI = os.environ.get(
