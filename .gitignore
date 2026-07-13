@@ -13,7 +13,8 @@ __pycache__/
 *$py.class
 
 # Flask stuff
-instance/
+instance/*
+!instance/media_monitoring.db
 .webassets-cache
 
 # OS generated files
