@@ -58,18 +58,17 @@ class CrawlerService:
         Returns:
             Tuple (berhasil_disimpan, alasan)
         """
-        link = article_data.get("link", "").strip()
+        link  = article_data.get("link", "").strip()
+        judul = article_data.get("judul", "Tanpa Judul")
+        isi   = article_data.get("isi")
+        ringkasan = article_data.get("ringkasan")
 
         if not link:
             return False, "Link kosong, artikel dilewat."
 
-        # Cek duplikat berdasarkan link
+        # Cek duplikat berdasarkan link dan judul
         if self.cek_duplikat(link, judul):
             return False, f"Duplikat: {link or judul}"
-
-        judul = article_data.get("judul", "Tanpa Judul")
-        isi   = article_data.get("isi")
-        ringkasan = article_data.get("ringkasan")
 
         # ── Analisis AI (Gemini) — prioritas utama ────────────────────────────
         sentimen_final  = None

@@ -33,7 +33,7 @@ class GeminiService:
     Mendukung analisis per-artikel maupun batch.
     """
 
-    MODEL_NAME = "gemini-3.5-flash"  # Model gratis dengan kuota tinggi
+    MODEL_NAME = "gemini-1.5-flash"  # Model gratis dengan kuota tinggi
 
     def __init__(self, api_key: str = None):
         """
