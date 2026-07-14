@@ -16,18 +16,43 @@ logger = logging.getLogger(__name__)
 
 # Topik valid sesuai sistem (konsisten dengan config.py)
 TOPIK_VALID = [
-    "Pinjaman Online", "Literasi Keuangan", "Investasi", "Perbankan",
-    "Asuransi", "Pasar Modal", "Fintech", "Perlindungan Konsumen",
-    "Pengawasan", "Regulasi", "Investasi Ilegal",
+    "Pinjaman Online",
+    "Literasi Keuangan",
+    "Investasi",
+    "Perbankan",
+    "Asuransi",
+    "Pasar Modal",
+    "Fintech",
+    "Perlindungan Konsumen",
+    "Pengawasan",
+    "Regulasi",
+    "Investasi Ilegal",
 ]
 
 # Wilayah valid (kota/kabupaten di Jawa Barat)
 WILAYAH_VALID = [
-    "Bandung", "Bekasi", "Bogor", "Cirebon", "Depok", "Sukabumi",
-    "Karawang", "Tasikmalaya", "Garut", "Cianjur", "Subang",
-    "Purwakarta", "Indramayu", "Majalengka", "Sumedang", "Kuningan",
-    "Ciamis", "Banjar", "Pangandaran", "Jawa Barat",
+    "Bandung",
+    "Bekasi",
+    "Bogor",
+    "Cirebon",
+    "Depok",
+    "Sukabumi",
+    "Karawang",
+    "Tasikmalaya",
+    "Garut",
+    "Cianjur",
+    "Subang",
+    "Purwakarta",
+    "Indramayu",
+    "Majalengka",
+    "Sumedang",
+    "Kuningan",
+    "Ciamis",
+    "Banjar",
+    "Pangandaran",
+    "Jawa Barat",
 ]
+
 
 # ─── Prompt Analisis (dipakai oleh semua provider) ────────────────────────────
 def _build_prompt(judul: str, konten: str) -> str:
@@ -42,7 +67,7 @@ Konten: {konten}
 {{
   "analisis_konteks": "<1-2 kalimat analisis inti berita dan dampaknya terhadap reputasi OJK>",
   "sentimen": "<PILIH SATU: Positif | Negatif | Netral>",
-  "topik": "<PILIH SATU: {' | '.join(TOPIK_VALID)}>",
+  "topik": "<PILIH SATU: {" | ".join(TOPIK_VALID)}>",
   "wilayah": "<nama kota/wilayah Jawa Barat jika ada, atau null>",
   "ringkasan": "<ringkasan 1-2 kalimat bahasa Indonesia>",
   "narasumber": "<nama dan jabatan narasumber yang dikutip, atau null>"
@@ -52,13 +77,14 @@ Konten: {konten}
 - POSITIF : Tindakan tegas OJK, prestasi OJK, apresiasi, literasi sukses, perlindungan konsumen dari OJK.
 - NETRAL  : Kasus pinjol/penipuan di masyarakat (OJK TIDAK disalahkan), regulasi, edukasi, peringatan.
 - NEGATIF : HANYA JIKA berita secara EKSPLISIT menyudutkan/mengkritik OJK, protes terhadap OJK.
-Jika ragu → pilih NETRAL."""
+- TIDAK RELEVAN : Jika berita SAMA SEKALI BUKAN tentang wilayah Jawa Barat (misal murni nasional/daerah lain), ATAU sama sekali tidak membahas OJK.
+Jika ragu sentimennya → pilih NETRAL."""
 
 
 def _parse_result(result: dict) -> dict:
     """Validasi dan normalisasi output JSON dari AI."""
     sentimen = result.get("sentimen", "Netral")
-    if sentimen not in ["Positif", "Negatif", "Netral"]:
+    if sentimen not in ["Positif", "Negatif", "Netral", "Tidak Relevan"]:
         sentimen = "Netral"
 
     topik = result.get("topik", "Regulasi")
@@ -81,18 +107,18 @@ def _parse_result(result: dict) -> dict:
 
 
 # =============================================================================
-# Provider 0: Hugging Face (UTAMA - Gratis Selamanya)
+# Provider 0: Cohere AI (UTAMA - Sangat Cerdas, Gratis, Anti Cloudflare)
 # =============================================================================
 
-class HuggingFaceService:
+
+class CohereService:
     """
-    Analisis berita menggunakan Hugging Face Inference API.
-    Menggunakan endpoint OpenAI-compatible dengan model Mistral gratis.
-    Daftar gratis di: https://huggingface.co/settings/tokens
+    Analisis berita menggunakan Cohere API (Model Command-R).
+    Sangat stabil untuk NLP dan parsing JSON.
     """
 
-    MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.3"
-    API_BASE   = "https://api-inference.huggingface.co/v1/chat/completions"
+    MODEL_NAME = "command-r-plus-08-2024"
+    API_BASE = "https://api.cohere.ai/v1/chat"
 
     def __init__(self, api_key: str = None):
         self._api_key = api_key
@@ -108,56 +134,59 @@ class HuggingFaceService:
             try:
                 import os
                 from dotenv import load_dotenv
+
                 load_dotenv(override=True)
-                self._api_key = os.environ.get("HUGGINGFACE_API_KEY", "")
+                self._api_key = os.environ.get("COHERE_API_KEY", "")
                 if not self._api_key:
                     from config import Config
-                    self._api_key = getattr(Config, "HUGGINGFACE_API_KEY", "")
+
+                    self._api_key = getattr(Config, "COHERE_API_KEY", "")
             except Exception:
                 pass
 
         if not self._api_key:
-            logger.debug("[HuggingFace] API Key tidak ditemukan. Dilewat.")
+            logger.debug("[Cohere] API Key tidak ditemukan. Dilewat.")
             return False
 
         self._available = True
-        logger.info(f"[HuggingFace] Siap digunakan dengan model {self.MODEL_NAME}")
+        logger.info(f"[Cohere] Siap digunakan dengan model {self.MODEL_NAME}")
         return True
 
     def is_available(self) -> bool:
         return self._init()
 
-    def analisis_berita(self, judul: str, isi: str = None, ringkasan: str = None) -> dict | None:
+    def analisis_berita(
+        self, judul: str, isi: str = None, ringkasan: str = None
+    ) -> dict | None:
         if not self._init():
             return None
 
         konten = isi or ringkasan or ""
-        konten_pendek = konten[:2000] if konten else "Konten tidak tersedia."
+        konten_pendek = konten[:2500] if konten else "Konten tidak tersedia."
         prompt = _build_prompt(judul, konten_pendek)
 
         try:
             import requests
+
             headers = {
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
             }
             payload = {
                 "model": self.MODEL_NAME,
-                "messages": [
-                    {"role": "system", "content": "You are a JSON-only assistant. Always respond with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
+                "message": prompt,
                 "temperature": 0.1,
-                "max_tokens": 500,
-                "stream": False,
+                "response_format": {"type": "json_object"},
             }
-            resp = requests.post(self.API_BASE, headers=headers, json=payload, timeout=45)
+            resp = requests.post(
+                self.API_BASE, headers=headers, json=payload, timeout=45
+            )
             resp.raise_for_status()
 
             data = resp.json()
-            content = data["choices"][0]["message"]["content"].strip()
+            content = data["text"].strip()
 
-            # Coba parse JSON - kadang ada teks sebelum/sesudah JSON
+            # Ekstrak json jika ada teks lain
             if not content.startswith("{"):
                 start = content.find("{")
                 end = content.rfind("}") + 1
@@ -167,39 +196,52 @@ class HuggingFaceService:
             result = json.loads(content)
             alasan = result.get("analisis_konteks", "")
             if alasan:
-                logger.debug(f"[HuggingFace] Reasoning: {alasan[:80]}")
+                logger.debug(f"[Cohere] Reasoning: {alasan[:80]}")
             return _parse_result(result)
 
         except json.JSONDecodeError as e:
-            logger.warning(f"[HuggingFace] Gagal parse JSON: {e}")
+            logger.warning(f"[Cohere] Gagal parse JSON: {e}")
             return None
         except Exception as e:
-            err_str = str(e).lower()
-            if "429" in err_str or "rate" in err_str:
-                logger.warning(f"[HuggingFace] Rate limit: {e}")
-            else:
-                logger.error(f"[HuggingFace] Error: {e}")
+            logger.error(f"[Cohere] Error API: {e}")
             return None
 
     def cek_koneksi(self) -> dict:
         if not self._init():
-            return {"ok": False, "pesan": "HUGGINGFACE_API_KEY tidak ditemukan di .env", "model": None}
+            return {
+                "ok": False,
+                "pesan": "COHERE_API_KEY tidak ditemukan di .env",
+                "model": None,
+            }
         try:
             import requests
-            headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
+
+            headers = {
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            }
             payload = {
                 "model": self.MODEL_NAME,
-                "messages": [{"role": "user", "content": 'Balas hanya dengan JSON valid: {"status": "ok"}'}],
-                "max_tokens": 20,
-                "stream": False,
+                "message": 'Balas persis seperti ini: {"status": "ok"}',
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
             }
-            resp = requests.post(self.API_BASE, headers=headers, json=payload, timeout=20)
+            resp = requests.post(
+                self.API_BASE, headers=headers, json=payload, timeout=20
+            )
             resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"]["content"]
-            return {"ok": True, "pesan": f"Koneksi ke Hugging Face berhasil. Response: {content[:30]}", "model": self.MODEL_NAME}
+            content = resp.json()["text"]
+            return {
+                "ok": True,
+                "pesan": f"Koneksi ke Cohere berhasil. Response: {content[:30]}",
+                "model": self.MODEL_NAME,
+            }
         except Exception as e:
-            return {"ok": False, "pesan": f"Gagal terhubung ke Hugging Face: {e}", "model": self.MODEL_NAME}
-
+            return {
+                "ok": False,
+                "pesan": f"Gagal terhubung ke Cohere: {e}",
+                "model": self.MODEL_NAME,
+            }
 
 
 class OpenRouterService:
@@ -211,7 +253,7 @@ class OpenRouterService:
 
     # Model gratis terbaik di OpenRouter untuk analisis teks bahasa Indonesia
     MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"
-    API_BASE   = "https://openrouter.ai/api/v1/chat/completions"
+    API_BASE = "https://openrouter.ai/api/v1/chat/completions"
 
     def __init__(self, api_key: str = None):
         self._api_key = api_key
@@ -227,10 +269,12 @@ class OpenRouterService:
             try:
                 import os
                 from dotenv import load_dotenv
+
                 load_dotenv(override=True)
                 self._api_key = os.environ.get("OPENROUTER_API_KEY", "")
                 if not self._api_key:
                     from config import Config
+
                     self._api_key = getattr(Config, "OPENROUTER_API_KEY", "")
             except Exception:
                 pass
@@ -246,7 +290,9 @@ class OpenRouterService:
     def is_available(self) -> bool:
         return self._init()
 
-    def analisis_berita(self, judul: str, isi: str = None, ringkasan: str = None) -> dict | None:
+    def analisis_berita(
+        self, judul: str, isi: str = None, ringkasan: str = None
+    ) -> dict | None:
         if not self._init():
             return None
 
@@ -256,6 +302,7 @@ class OpenRouterService:
 
         try:
             import requests
+
             headers = {
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
@@ -268,7 +315,9 @@ class OpenRouterService:
                 "temperature": 0.1,
                 "response_format": {"type": "json_object"},
             }
-            resp = requests.post(self.API_BASE, headers=headers, json=payload, timeout=30)
+            resp = requests.post(
+                self.API_BASE, headers=headers, json=payload, timeout=30
+            )
             resp.raise_for_status()
 
             data = resp.json()
@@ -294,30 +343,48 @@ class OpenRouterService:
 
     def cek_koneksi(self) -> dict:
         if not self._init():
-            return {"ok": False, "pesan": "OPENROUTER_API_KEY tidak ditemukan di .env", "model": None}
+            return {
+                "ok": False,
+                "pesan": "OPENROUTER_API_KEY tidak ditemukan di .env",
+                "model": None,
+            }
         try:
             import requests
+
             headers = {
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
             }
             payload = {
                 "model": self.MODEL_NAME,
-                "messages": [{"role": "user", "content": "Balas dengan JSON: {\"status\": \"ok\"}"}],
+                "messages": [
+                    {"role": "user", "content": 'Balas dengan JSON: {"status": "ok"}'}
+                ],
                 "response_format": {"type": "json_object"},
             }
-            resp = requests.post(self.API_BASE, headers=headers, json=payload, timeout=15)
+            resp = requests.post(
+                self.API_BASE, headers=headers, json=payload, timeout=15
+            )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
             json.loads(content)
-            return {"ok": True, "pesan": "Koneksi ke OpenRouter berhasil.", "model": self.MODEL_NAME}
+            return {
+                "ok": True,
+                "pesan": "Koneksi ke OpenRouter berhasil.",
+                "model": self.MODEL_NAME,
+            }
         except Exception as e:
-            return {"ok": False, "pesan": f"Gagal terhubung ke OpenRouter: {e}", "model": self.MODEL_NAME}
+            return {
+                "ok": False,
+                "pesan": f"Gagal terhubung ke OpenRouter: {e}",
+                "model": self.MODEL_NAME,
+            }
 
 
 # =============================================================================
 # Provider 2: Google Gemini (Fallback)
 # =============================================================================
+
 
 class GeminiService:
     """
@@ -341,10 +408,12 @@ class GeminiService:
             try:
                 import os
                 from dotenv import load_dotenv
+
                 load_dotenv(override=True)
                 self._api_key = os.environ.get("GEMINI_API_KEY", "")
                 if not self._api_key:
                     from config import Config
+
                     self._api_key = getattr(Config, "GEMINI_API_KEY", "")
             except Exception:
                 pass
@@ -355,6 +424,7 @@ class GeminiService:
 
         try:
             from google import genai
+
             self._client = genai.Client(api_key=self._api_key)
             logger.info(f"[Gemini] Berhasil diinisialisasi ({self.MODEL_NAME}).")
             return True
@@ -368,7 +438,9 @@ class GeminiService:
     def is_available(self) -> bool:
         return self._init_model()
 
-    def analisis_berita(self, judul: str, isi: str = None, ringkasan: str = None) -> dict | None:
+    def analisis_berita(
+        self, judul: str, isi: str = None, ringkasan: str = None
+    ) -> dict | None:
         if not self._init_model():
             return None
 
@@ -378,13 +450,14 @@ class GeminiService:
 
         try:
             from google.genai import types
+
             response = self._client.models.generate_content(
                 model=self.MODEL_NAME,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,
                     response_mime_type="application/json",
-                )
+                ),
             )
             result = json.loads(response.text)
             alasan = result.get("analisis_konteks", "")
@@ -405,23 +478,39 @@ class GeminiService:
 
     def cek_koneksi(self) -> dict:
         if not self._init_model():
-            return {"ok": False, "pesan": "API Key tidak ditemukan atau library tidak terinstall.", "model": None}
+            return {
+                "ok": False,
+                "pesan": "API Key tidak ditemukan atau library tidak terinstall.",
+                "model": None,
+            }
         try:
             from google.genai import types
+
             response = self._client.models.generate_content(
                 model=self.MODEL_NAME,
                 contents='Balas dengan JSON: {"status": "ok"}',
-                config=types.GenerateContentConfig(response_mime_type="application/json")
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
             )
             json.loads(response.text)
-            return {"ok": True, "pesan": "Koneksi ke Gemini berhasil.", "model": self.MODEL_NAME}
+            return {
+                "ok": True,
+                "pesan": "Koneksi ke Gemini berhasil.",
+                "model": self.MODEL_NAME,
+            }
         except Exception as e:
-            return {"ok": False, "pesan": f"Gagal terhubung ke Gemini: {str(e)}", "model": self.MODEL_NAME}
+            return {
+                "ok": False,
+                "pesan": f"Gagal terhubung ke Gemini: {str(e)}",
+                "model": self.MODEL_NAME,
+            }
 
 
 # =============================================================================
 # Unified AI Service — Otomatis memilih provider yang tersedia
 # =============================================================================
+
 
 class AIService:
     """
@@ -430,18 +519,18 @@ class AIService:
     """
 
     def __init__(self):
-        self._huggingface = HuggingFaceService()
+        self._cohere = CohereService()
         self._openrouter = OpenRouterService()
         self._gemini = GeminiService()
         self._active_provider = None
 
     def _get_provider(self):
-        """Pilih provider yang aktif secara lazy. Prioritas: HuggingFace → OpenRouter → Gemini"""
+        """Pilih provider yang aktif secara lazy. Prioritas: Cohere → OpenRouter → Gemini"""
         if self._active_provider:
             return self._active_provider
-        if self._huggingface.is_available():
-            self._active_provider = self._huggingface
-            logger.info("[AI] Menggunakan provider: Hugging Face")
+        if self._cohere.is_available():
+            self._active_provider = self._cohere
+            logger.info("[AI] Menggunakan provider: Cohere")
         elif self._openrouter.is_available():
             self._active_provider = self._openrouter
             logger.info("[AI] Menggunakan provider: OpenRouter")
@@ -453,7 +542,9 @@ class AIService:
     def is_available(self) -> bool:
         return self._get_provider() is not None
 
-    def analisis_berita(self, judul: str, isi: str = None, ringkasan: str = None) -> dict | None:
+    def analisis_berita(
+        self, judul: str, isi: str = None, ringkasan: str = None
+    ) -> dict | None:
         provider = self._get_provider()
         if not provider:
             return None
@@ -462,7 +553,9 @@ class AIService:
     def analisis_batch(self, berita_list: list, delay_per_request: float = 2.0) -> dict:
         if not self.is_available():
             return {
-                "diproses": 0, "berhasil": 0, "gagal": 0,
+                "diproses": 0,
+                "berhasil": 0,
+                "gagal": 0,
                 "error": "Tidak ada provider AI yang tersedia. Cek OPENROUTER_API_KEY atau GEMINI_API_KEY di .env",
             }
 
@@ -471,10 +564,12 @@ class AIService:
         for berita in berita_list:
             stats["diproses"] += 1
             try:
-                result = self.analisis_berita(berita.judul, berita.isi, berita.ringkasan)
+                result = self.analisis_berita(
+                    berita.judul, berita.isi, berita.ringkasan
+                )
                 if result:
-                    berita.sentimen  = result["sentimen"]
-                    berita.topik     = result["topik"]
+                    berita.sentimen = result["sentimen"]
+                    berita.topik = result["topik"]
                     if result.get("wilayah"):
                         berita.wilayah = result["wilayah"]
                     if result.get("ringkasan"):
@@ -482,7 +577,9 @@ class AIService:
                     if result.get("narasumber"):
                         berita.narasumber = result["narasumber"]
                     stats["berhasil"] += 1
-                    logger.debug(f"[AI] Berita ID {berita.id}: {result['sentimen']}, {result['topik']}")
+                    logger.debug(
+                        f"[AI] Berita ID {berita.id}: {result['sentimen']}, {result['topik']}"
+                    )
                 else:
                     stats["gagal"] += 1
                 time.sleep(delay_per_request)
@@ -494,12 +591,12 @@ class AIService:
 
     def cek_koneksi(self) -> dict:
         """Tes koneksi semua provider dan kembalikan status."""
-        hf_status  = self._huggingface.cek_koneksi()
-        or_status  = self._openrouter.cek_koneksi()
+        co_status = self._cohere.cek_koneksi()
+        or_status = self._openrouter.cek_koneksi()
         gem_status = self._gemini.cek_koneksi()
 
-        if hf_status["ok"]:
-            return {**hf_status, "provider": "Hugging Face"}
+        if co_status["ok"]:
+            return {**co_status, "provider": "Cohere"}
         if or_status["ok"]:
             return {**or_status, "provider": "OpenRouter"}
         if gem_status["ok"]:
@@ -509,7 +606,7 @@ class AIService:
             "ok": False,
             "provider": None,
             "model": None,
-            "pesan": f"HF: {hf_status['pesan']} | OR: {or_status['pesan']} | Gemini: {gem_status['pesan']}",
+            "pesan": f"Cohere: {co_status['pesan']} | OR: {or_status['pesan']} | Gemini: {gem_status['pesan']}",
         }
 
 

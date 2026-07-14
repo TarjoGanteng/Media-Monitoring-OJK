@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # ─── Utilitas ─────────────────────────────────────────────────────────────────
 
+
 def _normalize(teks: str) -> str:
     """Normalisasi teks: lowercase, hapus tanda baca, whitespace tunggal."""
     teks = teks.lower().strip()
@@ -34,12 +35,18 @@ def _similarity(a: str, b: str) -> float:
 def _skor_kelengkapan(b) -> int:
     """Beri skor kelengkapan data sebuah berita. Makin tinggi = makin baik."""
     s = 0
-    if b.gambar_url:                      s += 4
-    if b.isi and len(b.isi) > 100:        s += 4
-    if b.ringkasan and len(b.ringkasan) > 30: s += 3
-    if b.narasumber:                      s += 2
-    if b.wilayah:                         s += 1
-    if b.sentimen in ("Positif", "Negatif"): s += 1
+    if b.gambar_url:
+        s += 4
+    if b.isi and len(b.isi) > 100:
+        s += 4
+    if b.ringkasan and len(b.ringkasan) > 30:
+        s += 3
+    if b.narasumber:
+        s += 2
+    if b.wilayah:
+        s += 1
+    if b.sentimen in ("Positif", "Negatif"):
+        s += 1
     return s
 
 
@@ -49,6 +56,7 @@ def _pilih_terbaik(berita_list: list):
 
 
 # ─── Service Utama ────────────────────────────────────────────────────────────
+
 
 class DeduplicateService:
     """Layanan deduplikasi berita OJK di database."""
@@ -67,25 +75,36 @@ class DeduplicateService:
 
         total_aktif = Berita.query.filter_by(status="aktif").count()
 
-        dup_link = db.session.query(
-            func.count(Berita.id).label("jml")
-        ).filter(
-            Berita.status == "aktif",
-            Berita.link.isnot(None), Berita.link != "",
-        ).group_by(Berita.link).having(func.count(Berita.id) > 1).count()
+        dup_link = (
+            db.session.query(func.count(Berita.id).label("jml"))
+            .filter(
+                Berita.status == "aktif",
+                Berita.link.isnot(None),
+                Berita.link != "",
+            )
+            .group_by(Berita.link)
+            .having(func.count(Berita.id) > 1)
+            .count()
+        )
 
-        dup_judul = db.session.query(
-            func.count(Berita.id).label("jml")
-        ).filter(
-            Berita.status == "aktif",
-            Berita.judul.isnot(None), Berita.judul != "",
-        ).group_by(Berita.judul).having(func.count(Berita.id) > 1).count()
+        dup_judul = (
+            db.session.query(func.count(Berita.id).label("jml"))
+            .filter(
+                Berita.status == "aktif",
+                Berita.judul.isnot(None),
+                Berita.judul != "",
+            )
+            .group_by(Berita.judul)
+            .having(func.count(Berita.id) > 1)
+            .count()
+        )
 
         # Estimasi near-duplicate: batasi 200 terbaru untuk preview cepat
         sample = (
             Berita.query.filter_by(status="aktif")
             .order_by(Berita.tanggal.desc())
-            .limit(200).all()
+            .limit(200)
+            .all()
         )
         near_dup_count = DeduplicateService._hitung_near_dup(sample, threshold=0.88)
 
@@ -104,7 +123,7 @@ class DeduplicateService:
         for i, b1 in enumerate(berita_list):
             if b1.id in sudah:
                 continue
-            for b2 in berita_list[i + 1:]:
+            for b2 in berita_list[i + 1 :]:
                 if b2.id in sudah:
                     continue
                 if _similarity(b1.judul or "", b2.judul or "") >= threshold:
@@ -121,12 +140,17 @@ class DeduplicateService:
         from database.models import Berita
         from sqlalchemy import func
 
-        grup_list = db.session.query(
-            Berita.link, func.count(Berita.id).label("jml")
-        ).filter(
-            Berita.status == "aktif",
-            Berita.link.isnot(None), Berita.link != "",
-        ).group_by(Berita.link).having(func.count(Berita.id) > 1).all()
+        grup_list = (
+            db.session.query(Berita.link, func.count(Berita.id).label("jml"))
+            .filter(
+                Berita.status == "aktif",
+                Berita.link.isnot(None),
+                Berita.link != "",
+            )
+            .group_by(Berita.link)
+            .having(func.count(Berita.id) > 1)
+            .all()
+        )
 
         dihapus = 0
         for row in grup_list:
@@ -140,7 +164,9 @@ class DeduplicateService:
                     dihapus += 1
 
         db.session.commit()
-        logger.info(f"[Dedup] Lapis 1 selesai: {dihapus} berita dihapus dari {len(grup_list)} grup URL duplikat.")
+        logger.info(
+            f"[Dedup] Lapis 1 selesai: {dihapus} berita dihapus dari {len(grup_list)} grup URL duplikat."
+        )
         return {"grup": len(grup_list), "dihapus": dihapus}
 
     # ── Lapis 2: Duplikat Judul Persis ───────────────────────────────────────
@@ -152,12 +178,17 @@ class DeduplicateService:
         from database.models import Berita
         from sqlalchemy import func
 
-        grup_list = db.session.query(
-            Berita.judul, func.count(Berita.id).label("jml")
-        ).filter(
-            Berita.status == "aktif",
-            Berita.judul.isnot(None), Berita.judul != "",
-        ).group_by(Berita.judul).having(func.count(Berita.id) > 1).all()
+        grup_list = (
+            db.session.query(Berita.judul, func.count(Berita.id).label("jml"))
+            .filter(
+                Berita.status == "aktif",
+                Berita.judul.isnot(None),
+                Berita.judul != "",
+            )
+            .group_by(Berita.judul)
+            .having(func.count(Berita.id) > 1)
+            .all()
+        )
 
         dihapus = 0
         for row in grup_list:
@@ -171,7 +202,9 @@ class DeduplicateService:
                     dihapus += 1
 
         db.session.commit()
-        logger.info(f"[Dedup] Lapis 2 selesai: {dihapus} berita dihapus dari {len(grup_list)} grup judul duplikat.")
+        logger.info(
+            f"[Dedup] Lapis 2 selesai: {dihapus} berita dihapus dari {len(grup_list)} grup judul duplikat."
+        )
         return {"grup": len(grup_list), "dihapus": dihapus}
 
     # ── Lapis 3: Near-Duplicate (judul sangat mirip) ──────────────────────────
@@ -194,7 +227,8 @@ class DeduplicateService:
         semua = (
             Berita.query.filter_by(status="aktif")
             .order_by(Berita.tanggal.desc())
-            .limit(max_berita).all()
+            .limit(max_berita)
+            .all()
         )
 
         # Kelompokkan per hari untuk efisiensi
@@ -218,7 +252,6 @@ class DeduplicateService:
                 + by_date.get(tgl - timedelta(days=1), [])
                 + by_date.get(tgl + timedelta(days=1), [])
             )
-            kandidat_ids = set(b.id for b in kandidat)
 
             for b1 in berita_hari:
                 if b1.id in sudah_hapus:
@@ -245,7 +278,9 @@ class DeduplicateService:
             Berita.query.filter(Berita.id.in_(batch)).delete(synchronize_session=False)
             db.session.commit()
 
-        logger.info(f"[Dedup] Lapis 3 selesai: {total_dihapus} berita dihapus dari {total_grup} grup near-duplicate.")
+        logger.info(
+            f"[Dedup] Lapis 3 selesai: {total_dihapus} berita dihapus dari {total_grup} grup near-duplicate."
+        )
         return {"threshold": threshold, "grup": total_grup, "dihapus": total_dihapus}
 
     # ── Jalankan Semua ────────────────────────────────────────────────────────
@@ -257,7 +292,7 @@ class DeduplicateService:
         Urutan penting: URL → judul exact → near-duplicate.
         """
         logger.info("[Dedup] Memulai deduplikasi lengkap 3 lapis...")
-        hasil_link  = DeduplicateService.hapus_duplikat_link()
+        hasil_link = DeduplicateService.hapus_duplikat_link()
         hasil_judul = DeduplicateService.hapus_duplikat_judul_exact()
         hasil_mirip = DeduplicateService.hapus_duplikat_mirip(threshold=threshold_mirip)
 
@@ -266,7 +301,7 @@ class DeduplicateService:
 
         return {
             "total_dihapus": total,
-            "lapis_1_url":   hasil_link,
+            "lapis_1_url": hasil_link,
             "lapis_2_judul": hasil_judul,
             "lapis_3_mirip": hasil_mirip,
         }

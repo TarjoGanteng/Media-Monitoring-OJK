@@ -4,15 +4,81 @@
 
 {% block content %}
 <div class="card-panel">
-    <div class="card-panel-header">
+    <div class="card-panel-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h5 class="card-panel-title">Pusat Notifikasi</h5>
+        {% if unread_notif_count and unread_notif_count > 0 %}
+        <form action="{{ url_for('halaman.notifikasi_read_all') }}" method="POST" style="margin: 0;">
+            <button type="submit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border: none; border-radius: 6px; background-color: var(--primary-color); color: white; cursor: pointer;">
+                <i class="bi bi-check2-all"></i> Tandai Semua Dibaca
+            </button>
+        </form>
+        {% endif %}
     </div>
-    <div class="card-panel-body">
-        <div class="empty-state-table" style="padding: 4rem 2rem; text-align: center;">
-            <i class="bi bi-bell" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: inline-block;"></i>
-            <h4 class="empty-title">Modul Notifikasi Sedang Dibangun</h4>
-            <p class="empty-desc">Halaman ini nantinya akan terintegrasi dengan modul AI untuk memberikan peringatan dini *(Early Warning System)* terkait sentimen pemberitaan OJK Jawa Barat.</p>
-        </div>
+    
+    <div class="card-panel-body" style="padding: 0;">
+        {% if notifikasi_list %}
+            <div class="list-group" style="border-radius: 0;">
+            {% for notif in notifikasi_list %}
+                <div class="list-group-item" style="padding: 1.2rem; border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; align-items: flex-start; background-color: {% if not notif.is_read %}rgba(37, 99, 235, 0.04){% else %}transparent{% endif %}; transition: background 0.2s;">
+                    
+                    <!-- Icon based on type -->
+                    <div style="flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+                        {% if notif.tipe == 'danger' %}background-color: rgba(239, 68, 68, 0.1); color: #ef4444;
+                        {% elif notif.tipe == 'warning' %}background-color: rgba(245, 158, 11, 0.1); color: #f59e0b;
+                        {% elif notif.tipe == 'success' %}background-color: rgba(16, 185, 129, 0.1); color: #10b981;
+                        {% else %}background-color: rgba(59, 130, 246, 0.1); color: #3b82f6;{% endif %}">
+                        
+                        <i class="bi 
+                            {% if notif.tipe == 'danger' %}bi-exclamation-octagon-fill
+                            {% elif notif.tipe == 'warning' %}bi-exclamation-triangle-fill
+                            {% elif notif.tipe == 'success' %}bi-check-circle-fill
+                            {% else %}bi-info-circle-fill{% endif %}" style="font-size: 1.2rem;"></i>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div style="flex-grow: 1;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <h6 style="margin: 0; font-size: 0.95rem; font-weight: {% if not notif.is_read %}700{% else %}600{% endif %}; color: var(--text-primary);">
+                                {{ notif.judul }}
+                            </h6>
+                            <span style="font-size: 0.75rem; color: var(--text-tertiary);">{{ notif.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+                        </div>
+                        <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
+                            {{ notif.pesan }}
+                        </p>
+                        
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            {% if notif.link %}
+                            <a href="{{ notif.link }}" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                                <i class="bi bi-box-arrow-up-right"></i> Lihat Detail
+                            </a>
+                            {% endif %}
+                            
+                            {% if not notif.is_read %}
+                            <form action="{{ url_for('halaman.notifikasi_read', notif_id=notif.id) }}" method="POST" style="margin: 0;">
+                                <button type="submit" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: var(--text-tertiary); cursor: pointer; text-decoration: underline;">
+                                    Tandai dibaca
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if not notif.is_read %}
+                    <div style="flex-shrink: 0; align-self: center;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: var(--primary-color); border-radius: 50%;"></span>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state-table" style="padding: 4rem 2rem; text-align: center;">
+                <i class="bi bi-bell" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: inline-block;"></i>
+                <h4 class="empty-title">Belum Ada Notifikasi</h4>
+                <p class="empty-desc">Sistem belum mendeteksi peringatan dini atau informasi terbaru untuk Anda.</p>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

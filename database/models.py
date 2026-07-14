@@ -42,6 +42,9 @@ class Berita(db.Model):
         db.String(20), default="aktif", nullable=False
     )  # aktif, arsip, hapus
     keyword = db.Column(db.String(200), nullable=True)  # keyword sumber crawl
+    ai_checked = db.Column(
+        db.Boolean, default=False, nullable=False
+    )  # sudah dianalisis AI?
 
     def __repr__(self):
         return f"<Berita id={self.id} judul='{self.judul[:50]}...'>"
@@ -168,7 +171,9 @@ class CrawlLog(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def __repr__(self):
-        return f"<CrawlLog id={self.id} keyword='{self.keyword}' status='{self.status}'>"
+        return (
+            f"<CrawlLog id={self.id} keyword='{self.keyword}' status='{self.status}'>"
+        )
 
 
 class Keyword(db.Model):
@@ -184,6 +189,7 @@ class Keyword(db.Model):
     def __repr__(self):
         return f"<Keyword id={self.id} kata='{self.kata}'>"
 
+
 class User(db.Model):
     """Model untuk menyimpan data pengguna dan role (RBAC)."""
 
@@ -193,8 +199,12 @@ class User(db.Model):
     username = db.Column(db.String(100), unique=True, nullable=False, index=True)
     nama_lengkap = db.Column(db.String(150), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="staff") # super_admin, pemimpin, staff (karyawan)
-    status = db.Column(db.String(20), nullable=False, default="aktif") # aktif, nonaktif
+    role = db.Column(
+        db.String(20), nullable=False, default="staff"
+    )  # super_admin, pemimpin, staff (karyawan)
+    status = db.Column(
+        db.String(20), nullable=False, default="aktif"
+    )  # aktif, nonaktif
     last_login = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -216,3 +226,22 @@ class User(db.Model):
 
     def __repr__(self):
         return f"<User id={self.id} username='{self.username}' role='{self.role}'>"
+
+
+class Notifikasi(db.Model):
+    """Model untuk menyimpan notifikasi/peringatan sistem."""
+
+    __tablename__ = "notifikasi"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tipe = db.Column(
+        db.String(20), nullable=False, default="info"
+    )  # info, warning, danger, success
+    judul = db.Column(db.String(255), nullable=False)
+    pesan = db.Column(db.Text, nullable=False)
+    link = db.Column(db.String(1000), nullable=True)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<Notifikasi id={self.id} tipe='{self.tipe}' is_read={self.is_read}>"

@@ -1,0 +1,13 @@
+{
+  "reportCallIssue": "none",
+  "reportArgumentType": "none",
+  "reportReturnType": "none",
+  "reportPrivateImportUsage": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalSubscript": "none",
+  "reportAssignmentType": "none",
+  "reportOptionalIterable": "none",
+  "reportOperatorIssue": "none"
+}

@@ -80,7 +80,9 @@ def tambah_keyword():
     kata = data.get("kata", "").strip()
 
     if not kata:
-        return jsonify({"success": False, "message": "Keyword tidak boleh kosong."}), 400
+        return jsonify(
+            {"success": False, "message": "Keyword tidak boleh kosong."}
+        ), 400
 
     berhasil, pesan = DatabaseService.tambah_keyword(kata)
     status_code = 200 if berhasil else 409
@@ -154,16 +156,20 @@ def fetch_images():
     limit = data.get("limit", 10)  # Default 10 agar tidak terlalu lama
 
     berita_tanpa_gambar = (
-        Berita.query.filter(
-            (Berita.gambar_url == None) | (Berita.gambar_url == "")
-        )
+        Berita.query.filter((Berita.gambar_url.is_(None)) | (Berita.gambar_url == ""))
         .order_by(Berita.tanggal.desc())
         .limit(limit)
         .all()
     )
 
     if not berita_tanpa_gambar:
-        return jsonify({"success": True, "message": "Semua berita sudah punya gambar.", "diupdate": 0})
+        return jsonify(
+            {
+                "success": True,
+                "message": "Semua berita sudah punya gambar.",
+                "diupdate": 0,
+            }
+        )
 
     diupdate = 0
     gagal = 0
@@ -183,12 +189,15 @@ def fetch_images():
         else:
             # URL sudah asli, langsung fetch og:image
             from crawler.image_resolver import fetch_og_image
+
             gambar = fetch_og_image(link)
 
         if gambar:
             berita.gambar_url = gambar
             diupdate += 1
-            detail.append({"id": berita.id, "judul": berita.judul[:50], "gambar": gambar[:60]})
+            detail.append(
+                {"id": berita.id, "judul": berita.judul[:50], "gambar": gambar[:60]}
+            )
         else:
             gagal += 1
 
@@ -198,19 +207,22 @@ def fetch_images():
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
-    return jsonify({
-        "success": True,
-        "message": f"Berhasil update {diupdate} gambar berita.",
-        "diupdate": diupdate,
-        "gagal": gagal,
-        "total_diproses": len(berita_tanpa_gambar),
-        "detail": detail,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Berhasil update {diupdate} gambar berita.",
+            "diupdate": diupdate,
+            "gagal": gagal,
+            "total_diproses": len(berita_tanpa_gambar),
+            "detail": detail,
+        }
+    )
 
 
 # =============================================================================
 # ENDPOINT AI — Google Gemini Integration
 # =============================================================================
+
 
 @bp.route("/ai/status", methods=["GET"])
 @login_required
@@ -220,13 +232,16 @@ def ai_status():
     Mengembalikan info apakah API Key valid dan model siap.
     """
     from services.ai_service import gemini
+
     hasil = gemini.cek_koneksi()
-    return jsonify({
-        "success": hasil["ok"],
-        "pesan": hasil["pesan"],
-        "model": hasil["model"],
-        "tersedia": hasil["ok"],
-    })
+    return jsonify(
+        {
+            "success": hasil["ok"],
+            "pesan": hasil["pesan"],
+            "model": hasil["model"],
+            "tersedia": hasil["ok"],
+        }
+    )
 
 
 @bp.route("/ai/analisis-batch", methods=["POST"])
@@ -249,10 +264,12 @@ def ai_analisis_batch():
     from services.ai_service import gemini
 
     if not gemini.is_available():
-        return jsonify({
-            "success": False,
-            "message": "Gemini AI tidak tersedia. Pastikan GEMINI_API_KEY sudah diisi di file .env",
-        }), 503
+        return jsonify(
+            {
+                "success": False,
+                "message": "Gemini AI tidak tersedia. Pastikan GEMINI_API_KEY sudah diisi di file .env",
+            }
+        ), 503
 
     data = request.get_json(silent=True) or {}
     limit = min(int(data.get("limit", 20)), 50)  # Batasi maks 50 per batch
@@ -261,25 +278,26 @@ def ai_analisis_batch():
     # Query berita yang perlu dianalisis ulang
     query = Berita.query.filter_by(status="aktif")
     if hanya_tanpa_ringkasan:
-        query = query.filter(
-            (Berita.ringkasan == None) | (Berita.ringkasan == "")
-        )
-        
+        query = query.filter((Berita.ringkasan.is_(None)) | (Berita.ringkasan == ""))
+
     from sqlalchemy import case
+
     order_case = case(
-        (Berita.sentimen == 'Negatif', 1),
-        (Berita.sentimen == 'Positif', 2),
-        (Berita.sentimen == 'Netral', 3),
-        else_=4
+        (Berita.sentimen == "Negatif", 1),
+        (Berita.sentimen == "Positif", 2),
+        (Berita.sentimen == "Netral", 3),
+        else_=4,
     )
     berita_list = query.order_by(order_case, Berita.tanggal.desc()).limit(limit).all()
 
     if not berita_list:
-        return jsonify({
-            "success": True,
-            "message": "Tidak ada berita yang perlu dianalisis.",
-            "statistik": {"diproses": 0, "berhasil": 0, "gagal": 0},
-        })
+        return jsonify(
+            {
+                "success": True,
+                "message": "Tidak ada berita yang perlu dianalisis.",
+                "statistik": {"diproses": 0, "berhasil": 0, "gagal": 0},
+            }
+        )
 
     # Jalankan analisis batch
     stats = gemini.analisis_batch(berita_list, delay_per_request=1.5)
@@ -289,16 +307,20 @@ def ai_analisis_batch():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "message": f"Gagal menyimpan hasil: {str(e)}"}), 500
+        return jsonify(
+            {"success": False, "message": f"Gagal menyimpan hasil: {str(e)}"}
+        ), 500
 
-    return jsonify({
-        "success": True,
-        "message": (
-            f"Analisis AI selesai: {stats['berhasil']} berhasil, "
-            f"{stats['gagal']} gagal dari {stats['diproses']} berita."
-        ),
-        "statistik": stats,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": (
+                f"Analisis AI selesai: {stats['berhasil']} berhasil, "
+                f"{stats['gagal']} gagal dari {stats['diproses']} berita."
+            ),
+            "statistik": stats,
+        }
+    )
 
 
 @bp.route("/ai/analisis-satu/<int:berita_id>", methods=["POST"])
@@ -313,10 +335,12 @@ def ai_analisis_satu(berita_id):
     from services.ai_service import gemini
 
     if not gemini.is_available():
-        return jsonify({
-            "success": False,
-            "message": "Gemini AI tidak tersedia. Cek GEMINI_API_KEY di file .env.",
-        }), 503
+        return jsonify(
+            {
+                "success": False,
+                "message": "Gemini AI tidak tersedia. Cek GEMINI_API_KEY di file .env.",
+            }
+        ), 503
 
     berita = db.session.get(Berita, berita_id)
     if not berita:
@@ -324,14 +348,16 @@ def ai_analisis_satu(berita_id):
 
     result = gemini.analisis_berita(berita.judul, berita.isi, berita.ringkasan)
     if not result:
-        return jsonify({
-            "success": False,
-            "message": "Analisis AI gagal. Coba lagi beberapa saat.",
-        }), 500
+        return jsonify(
+            {
+                "success": False,
+                "message": "Analisis AI gagal. Coba lagi beberapa saat.",
+            }
+        ), 500
 
     # Update berita
-    berita.sentimen  = result["sentimen"]
-    berita.topik     = result["topik"]
+    berita.sentimen = result["sentimen"]
+    berita.topik = result["topik"]
     if result.get("wilayah"):
         berita.wilayah = result["wilayah"]
     if result.get("ringkasan"):
@@ -345,16 +371,19 @@ def ai_analisis_satu(berita_id):
         db.session.rollback()
         return jsonify({"success": False, "message": f"Gagal menyimpan: {str(e)}"}), 500
 
-    return jsonify({
-        "success": True,
-        "message": f"Analisis AI berhasil untuk berita ID {berita_id}.",
-        "hasil": result,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Analisis AI berhasil untuk berita ID {berita_id}.",
+            "hasil": result,
+        }
+    )
 
 
 # =============================================================================
 # ENDPOINT DEDUPLIKASI BERITA
 # =============================================================================
+
 
 @bp.route("/dedup/preview", methods=["GET"])
 @login_required
@@ -364,6 +393,7 @@ def dedup_preview():
     Gunakan ini dulu sebelum menjalankan penghapusan.
     """
     from services.dedup_service import DeduplicateService
+
     try:
         hasil = DeduplicateService.preview()
         return jsonify({"success": True, "data": hasil})
@@ -387,6 +417,7 @@ def dedup_hapus():
         }
     """
     from services.dedup_service import DeduplicateService
+
     data = request.get_json(silent=True) or {}
     mode = data.get("mode", "semua")
     threshold = float(data.get("threshold", 0.88))

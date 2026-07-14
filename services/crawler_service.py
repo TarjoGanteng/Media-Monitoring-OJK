@@ -58,9 +58,9 @@ class CrawlerService:
         Returns:
             Tuple (berhasil_disimpan, alasan)
         """
-        link  = article_data.get("link", "").strip()
+        link = article_data.get("link", "").strip()
         judul = article_data.get("judul", "Tanpa Judul")
-        isi   = article_data.get("isi")
+        isi = article_data.get("isi")
         ringkasan = article_data.get("ringkasan")
 
         if not link:
@@ -70,37 +70,92 @@ class CrawlerService:
         if self.cek_duplikat(link, judul):
             return False, f"Duplikat: {link or judul}"
 
-        # ── Analisis AI (Gemini) — prioritas utama ────────────────────────────
-        sentimen_final  = None
-        topik_final     = None
-        wilayah_final   = None
+        # ── Filter Tanggal: Tolak berita lebih dari 5 tahun ───────────────────
+        from datetime import datetime, timedelta
+
+        tanggal_berita = article_data.get("tanggal")
+        if tanggal_berita:
+            batas_lama = datetime.utcnow() - timedelta(days=5 * 365)
+            if tanggal_berita < batas_lama:
+                return (
+                    False,
+                    f"Ditolak: Berita terlalu lama ({tanggal_berita.strftime('%Y-%m-%d')})",
+                )
+
+        # ── Lapis 1: Pre-filter Cepat Regional Jabar ──────────────────────────
+        # Mencegah pembuangan kuota AI untuk berita murni nasional/luar daerah
+        jabar_keywords = [
+            "jawa barat",
+            "jabar",
+            "bandung",
+            "bogor",
+            "depok",
+            "bekasi",
+            "cimahi",
+            "cirebon",
+            "sukabumi",
+            "tasikmalaya",
+            "banjar",
+            "garut",
+            "cianjur",
+            "ciamis",
+            "kuningan",
+            "majalengka",
+            "pangandaran",
+            "purwakarta",
+            "subang",
+            "sumedang",
+            "indramayu",
+            "karawang",
+        ]
+        teks_gabungan = f"{judul} {isi or ringkasan or ''}".lower()
+        if not any(k in teks_gabungan for k in jabar_keywords):
+            return (
+                False,
+                "Ditolak (Lapis 1): Tidak mengandung kata kunci kota/wilayah Jabar",
+            )
+
+        # ── Lapis 2: Analisis AI Cerdas (Cohere) ────────────────────────────
+        sentimen_final = None
+        topik_final = None
+        wilayah_final = None
         ringkasan_final = ringkasan
         narasumber_final = article_data.get("narasumber")
 
         try:
             from services.ai_service import gemini
+
             if gemini.is_available():
                 ai_result = gemini.analisis_berita(judul, isi, ringkasan)
                 if ai_result:
-                    sentimen_final   = ai_result["sentimen"]
-                    topik_final      = ai_result["topik"]
-                    wilayah_final    = ai_result.get("wilayah")
+                    sentimen_final = ai_result["sentimen"]
+                    # Jika AI mendeteksi secara konteks bahwa ini bukan Jabar
+                    if sentimen_final == "Tidak Relevan":
+                        return (
+                            False,
+                            "Ditolak (Lapis 2): AI menilai berita tidak relevan/bukan Jabar",
+                        )
+
+                    topik_final = ai_result["topik"]
+                    wilayah_final = ai_result.get("wilayah")
                     if ai_result.get("ringkasan"):
                         ringkasan_final = ai_result["ringkasan"]
                     if ai_result.get("narasumber"):
                         narasumber_final = ai_result["narasumber"]
-                    logger.debug(f"[AI] Analisis OK: '{judul[:50]}' → {sentimen_final}, {topik_final}")
+                    logger.debug(
+                        f"[AI] Analisis OK: '{judul[:50]}' → {sentimen_final}, {topik_final}"
+                    )
         except Exception as e:
             logger.warning(f"[AI] Gagal analisis, fallback ke rule-based: {e}")
 
         # ── Fallback rule-based jika AI tidak menghasilkan data ───────────────
         if not sentimen_final:
-            hasil_sentimen  = SentimentAnalyzer.analisis(judul, isi)
-            sentimen_final  = hasil_sentimen["sentimen"]
+            hasil_sentimen = SentimentAnalyzer.analisis(judul, isi)
+            sentimen_final = hasil_sentimen["sentimen"]
         if not topik_final:
-            topik_final     = SentimentAnalyzer.analisis_topik(judul, isi)
+            topik_final = SentimentAnalyzer.analisis_topik(judul, isi)
         if not wilayah_final:
-            wilayah_final   = SentimentAnalyzer.analisis_wilayah(judul, isi)
+            wilayah_final = SentimentAnalyzer.analisis_wilayah(judul, isi)
 
         berita = Berita(
             judul=judul,
@@ -124,12 +179,27 @@ class CrawlerService:
         db.session.add(berita)
         try:
             db.session.commit()
+
+            # Notifikasi peringatan dini jika berita sentimen negatif
+            if sentimen_final == "Negatif":
+                try:
+                    from services.notifikasi_service import NotifikasiService
+                    import urllib.parse
+
+                    NotifikasiService.tambah_notifikasi(
+                        tipe="danger",
+                        judul="⚠️ Berita Sentimen Negatif",
+                        pesan=f"Terdeteksi berita negatif: '{judul[:80]}...'",
+                        link=f"/pemberitaan?sentimen=Negatif&keyword={urllib.parse.quote(judul[:20])}",
+                    )
+                except Exception as e:
+                    logger.error(f"Gagal kirim notif negatif: {e}")
+
             return True, f"Berhasil simpan: {berita.judul[:60]}"
         except Exception as e:
             db.session.rollback()
             logger.error(f"Gagal simpan berita: {e}")
             return False, f"Error database: {str(e)}"
-
 
     def crawl_satu_keyword(self, keyword: str) -> dict:
         """
@@ -212,7 +282,9 @@ class CrawlerService:
 
         semua_hasil = []
         max_workers = min(len(keywords), 4)  # Maks 4 thread paralel
-        logger.info(f"Crawling {len(keywords)} keyword dengan {max_workers} thread paralel...")
+        logger.info(
+            f"Crawling {len(keywords)} keyword dengan {max_workers} thread paralel..."
+        )
 
         from concurrent.futures import ThreadPoolExecutor, as_completed
         from flask import current_app
@@ -232,11 +304,17 @@ class CrawlerService:
                 except Exception as e:
                     kw = futures[future]
                     logger.error(f"Thread error crawl '{kw}': {e}")
-                    semua_hasil.append({
-                        "keyword": kw, "jumlah_ditemukan": 0,
-                        "jumlah_disimpan": 0, "jumlah_duplikat": 0,
-                        "jumlah_error": 1, "status": "gagal", "pesan": str(e),
-                    })
+                    semua_hasil.append(
+                        {
+                            "keyword": kw,
+                            "jumlah_ditemukan": 0,
+                            "jumlah_disimpan": 0,
+                            "jumlah_duplikat": 0,
+                            "jumlah_error": 1,
+                            "status": "gagal",
+                            "pesan": str(e),
+                        }
+                    )
 
         # Jalankan pembersihan otomatis berita lama (lebih dari 5 tahun)
         self.cleanup_berita_lama(tahun=5)
@@ -244,6 +322,7 @@ class CrawlerService:
         # Jalankan deduplikasi otomatis setelah crawl selesai
         try:
             from services.dedup_service import DeduplicateService
+
             hasil_dedup = DeduplicateService.jalankan_semua(threshold_mirip=0.88)
             if hasil_dedup["total_dihapus"] > 0:
                 logger.info(
@@ -252,15 +331,45 @@ class CrawlerService:
                     f"Judul={hasil_dedup['lapis_2_judul']['dihapus']}, "
                     f"Mirip={hasil_dedup['lapis_3_mirip']['dihapus']}"
                 )
+                from services.notifikasi_service import NotifikasiService
+
+                NotifikasiService.tambah_notifikasi(
+                    tipe="info",
+                    judul="🧹 Pembersihan Otomatis",
+                    pesan=f"Sistem berhasil menghapus {hasil_dedup['total_dihapus']} berita duplikat demi menjaga efisiensi penyimpanan.",
+                )
         except Exception as e:
             logger.warning(f"[Dedup Auto] Gagal: {e}")
 
+        # Cek lonjakan isu
+        try:
+            from services.notifikasi_service import NotifikasiService
+
+            NotifikasiService.cek_lonjakan_isu()
+        except Exception as e:
+            logger.warning(f"[Cek Lonjakan] Gagal: {e}")
+
+        # Kirim Notifikasi Rekap Crawl
+        try:
+            total_ditemukan = sum(h["jumlah_ditemukan"] for h in semua_hasil)
+            total_disimpan = sum(h["jumlah_disimpan"] for h in semua_hasil)
+            if total_ditemukan > 0:
+                from services.notifikasi_service import NotifikasiService
+
+                NotifikasiService.tambah_notifikasi(
+                    tipe="success",
+                    judul="✅ Crawling Massal Selesai",
+                    pesan=f"Dari {len(keywords)} keyword, ditemukan {total_ditemukan} berita dan {total_disimpan} artikel baru berhasil disimpan.",
+                    link="/pemberitaan",
+                )
+        except Exception as e:
+            logger.warning(f"Gagal kirim notif rekap crawl: {e}")
+
         # Jalankan pengambilan gambar di background (tidak memblokir response)
         import threading
+
         t = threading.Thread(
-            target=self._fetch_gambar_background,
-            args=(app,),
-            daemon=True
+            target=self._fetch_gambar_background, args=(app,), daemon=True
         )
         t.start()
         logger.info("Thread pengambilan gambar dimulai di background.")
@@ -274,6 +383,7 @@ class CrawlerService:
         Menggunakan requests biasa (bukan Playwright) agar ringan.
         """
         import time
+
         time.sleep(2)  # Beri jeda singkat agar crawl utama commit dulu
 
         with app.app_context():
@@ -282,7 +392,7 @@ class CrawlerService:
 
             berita_list = (
                 Berita.query.filter(
-                    (Berita.gambar_url == None) | (Berita.gambar_url == "")
+                    (Berita.gambar_url.is_(None)) | (Berita.gambar_url == "")
                 )
                 .order_by(Berita.tanggal.desc())
                 .limit(30)
@@ -304,7 +414,9 @@ class CrawlerService:
                         berita.gambar_url = gambar
                         diupdate += 1
                 except Exception as e:
-                    logger.debug(f"[BG] Gagal ambil gambar untuk '{berita.judul[:40]}': {e}")
+                    logger.debug(
+                        f"[BG] Gagal ambil gambar untuk '{berita.judul[:40]}': {e}"
+                    )
                     continue
 
             try:
@@ -326,22 +438,24 @@ class CrawlerService:
             Jumlah berita yang dihapus
         """
         from datetime import timedelta
-        
+
         batas_waktu = datetime.now() - timedelta(days=tahun * 365)
-        
+
         try:
             # Cari dan hapus berita yang lebih tua dari batas_waktu
             berita_lama = Berita.query.filter(Berita.tanggal < batas_waktu).all()
             jumlah_dihapus = len(berita_lama)
-            
+
             if jumlah_dihapus > 0:
                 for berita in berita_lama:
                     db.session.delete(berita)
                 db.session.commit()
-                logger.info(f"Berhasil menghapus otomatis {jumlah_dihapus} berita yang lebih dari {tahun} tahun.")
+                logger.info(
+                    f"Berhasil menghapus otomatis {jumlah_dihapus} berita yang lebih dari {tahun} tahun."
+                )
             else:
                 logger.info(f"Tidak ada berita yang usianya lebih dari {tahun} tahun.")
-                
+
             return jumlah_dihapus
         except Exception as e:
             db.session.rollback()

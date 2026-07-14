@@ -18,16 +18,23 @@ from routes.auth import role_required
 
 bp = Blueprint("halaman", __name__)
 
+
 @bp.route("/fix-db")
 @login_required
 @role_required("super_admin")
 def fix_db():
     try:
         oldest_berita = db.session.query(func.min(Berita.tanggal)).scalar()
-        duplikat_count = db.session.query(Berita.judul, func.count(Berita.id)).group_by(Berita.judul).having(func.count(Berita.id) > 1).count()
+        duplikat_count = (
+            db.session.query(Berita.judul, func.count(Berita.id))
+            .group_by(Berita.judul)
+            .having(func.count(Berita.id) > 1)
+            .count()
+        )
         return f"Berita paling lama: {oldest_berita.strftime('%d/%m/%Y %H:%M:%S') if oldest_berita else 'Tidak ada'}<br>Jumlah judul berita yang terindikasi duplikat: {duplikat_count}"
     except Exception as e:
         return f"Gagal: {str(e)}"
+
 
 @bp.route("/analisis")
 @login_required
@@ -39,15 +46,15 @@ def analisis():
     media_teraktif = DashboardService.get_media_teraktif(limit=5)
     trend_data = DashboardService.get_trend_harian(hari=7)
     trend_json = json.dumps(trend_data)
-    
+
     trend_mingguan = DashboardService.get_trend_mingguan(minggu=4)
     trend_mingguan_json = json.dumps(trend_mingguan)
-    
+
     trend_bulanan = DashboardService.get_trend_bulanan(bulan=6)
     trend_bulanan_json = json.dumps(trend_bulanan)
-    
+
     sebaran_media = DashboardService.get_sebaran_media()
-    
+
     return render_template(
         "analisis/index.html",
         statistik=statistik,
@@ -69,15 +76,15 @@ def ai_insight():
     Diambil secara async oleh JavaScript agar tidak memperlambat load halaman.
     """
     from flask import jsonify
+
     try:
         # Kumpulkan data aktual dari database
-        statistik      = DashboardService.get_statistik_utama()
-        topik_list     = DashboardService.get_topik_terbanyak(limit=5)
-        media_list     = DashboardService.get_media_teraktif(limit=3)
-        trend_7hr      = DashboardService.get_trend_harian(hari=7)
+        statistik = DashboardService.get_statistik_utama()
+        topik_list = DashboardService.get_topik_terbanyak(limit=5)
+        media_list = DashboardService.get_media_teraktif(limit=3)
+        trend_7hr = DashboardService.get_trend_harian(hari=7)
 
         # Hitung perubahan tren sentimen (hari ini vs kemarin)
-        labels  = trend_7hr.get("labels", [])
         total_d = trend_7hr.get("total", [])
         positif_d = trend_7hr.get("positif", [])
         negatif_d = trend_7hr.get("negatif", [])
@@ -87,22 +94,27 @@ def ai_insight():
                 return round((series[-1] - series[-2]) / series[-2] * 100, 1)
             return 0
 
-        perubahan_total   = pct_change(total_d)
+        perubahan_total = pct_change(total_d)
         perubahan_positif = pct_change(positif_d)
         perubahan_negatif = pct_change(negatif_d)
 
-        topik_utama  = topik_list[0]["topik"]  if topik_list  else "Regulasi"
-        topik_ke2    = topik_list[1]["topik"]  if len(topik_list) > 1 else "-"
-        media_utama  = media_list[0]["media"]  if media_list  else "-"
+        topik_utama = topik_list[0]["topik"] if topik_list else "Regulasi"
+        topik_ke2 = topik_list[1]["topik"] if len(topik_list) > 1 else "-"
+        media_utama = media_list[0]["media"] if media_list else "-"
         topik_negatif = "-"  # default
 
         # Cari topik dengan persentase negatif tertinggi (dari data mentah)
         try:
             from sqlalchemy import func as sqlfunc
             from database.models import Berita
+
             neg_topik = (
                 db.session.query(Berita.topik, sqlfunc.count(Berita.id).label("jml"))
-                .filter(Berita.status == "aktif", Berita.sentimen == "Negatif", Berita.topik.isnot(None))
+                .filter(
+                    Berita.status == "aktif",
+                    Berita.sentimen == "Negatif",
+                    Berita.topik.isnot(None),
+                )
                 .group_by(Berita.topik)
                 .order_by(sqlfunc.count(Berita.id).desc())
                 .first()
@@ -117,10 +129,10 @@ def ai_insight():
 Berdasarkan data pemberitaan berikut, hasilkan tepat 4 insight & rekomendasi yang berbeda, spesifik, dan berbasis data.
 
 === DATA AKTUAL ===
-Total berita keseluruhan : {statistik['total']}
-Sentimen Positif         : {statistik['positif']} ({statistik['pct_positif']}%)
-Sentimen Netral          : {statistik['netral']} ({statistik['pct_netral']}%)
-Sentimen Negatif         : {statistik['negatif']} ({statistik['pct_negatif']}%)
+Total berita keseluruhan : {statistik["total"]}
+Sentimen Positif         : {statistik["positif"]} ({statistik["pct_positif"]}%)
+Sentimen Netral          : {statistik["netral"]} ({statistik["pct_netral"]}%)
+Sentimen Negatif         : {statistik["negatif"]} ({statistik["pct_negatif"]}%)
 Perubahan total berita (vs kemarin): {perubahan_total:+.1f}%
 Perubahan sentimen positif (vs kemarin): {perubahan_positif:+.1f}%
 Perubahan sentimen negatif (vs kemarin): {perubahan_negatif:+.1f}%
@@ -161,6 +173,7 @@ Gunakan bahasa Indonesia formal, singkat (maks 20 kata per insight), dan langsun
             import google.generativeai as genai
             import json as _json
             from config import Config
+
             genai.configure(api_key=Config.GEMINI_API_KEY)
             model = genai.GenerativeModel(
                 "gemini-3.5-flash",
@@ -172,14 +185,14 @@ Gunakan bahasa Indonesia formal, singkat (maks 20 kata per insight), dan langsun
             resp = model.generate_content(prompt)
             data = _json.loads(resp.text)
             return jsonify({"success": True, "insights": data.get("insights", [])})
-        except Exception as ai_err:
+        except Exception:
             # Fallback: hasilkan insight berbasis data tanpa AI
             insights = [
                 {
                     "tipe": "positif",
                     "ikon": "bi-graph-up-arrow",
                     "teks": f"Sentimen positif {statistik['pct_positif']}% ({statistik['positif']} berita), "
-                            f"{'meningkat' if perubahan_positif > 0 else 'menurun'} {abs(perubahan_positif):.1f}% dibanding kemarin.",
+                    f"{'meningkat' if perubahan_positif > 0 else 'menurun'} {abs(perubahan_positif):.1f}% dibanding kemarin.",
                 },
                 {
                     "tipe": "negatif",
@@ -270,42 +283,33 @@ def laporan():
 @login_required
 def notifikasi():
     """Halaman Notifikasi - notifikasi penting untuk pimpinan."""
-    # Data notifikasi dummy
-    notifikasi_list = [
-        {
-            "tipe": "warning",
-            "judul": "Berita Negatif Meningkat",
-            "pesan": "Jumlah berita negatif hari ini meningkat 15% dibandingkan kemarin.",
-            "waktu": "09:30 WIB",
-            "icon": "bi-exclamation-triangle",
-        },
-        {
-            "tipe": "info",
-            "judul": "Crawling Selesai",
-            "pesan": "Sistem berhasil mengumpulkan 23 berita baru dari Google News RSS.",
-            "waktu": "09:15 WIB",
-            "icon": "bi-info-circle",
-        },
-        {
-            "tipe": "success",
-            "judul": "Topik Pinjaman Online Trending",
-            "pesan": "Topik Pinjaman Online menjadi topik utama hari ini di 8 media.",
-            "waktu": "08:30 WIB",
-            "icon": "bi-graph-up",
-        },
-        {
-            "tipe": "danger",
-            "judul": "Media Baru Terdeteksi",
-            "pesan": "3 media baru memberitakan OJK Jabar hari ini.",
-            "waktu": "08:00 WIB",
-            "icon": "bi-newspaper",
-        },
-    ]
+    from services.notifikasi_service import NotifikasiService
+
+    notifikasi_list = NotifikasiService.get_semua_notifikasi(limit=50)
     return render_template(
         "notifikasi/index.html",
         notifikasi_list=notifikasi_list,
         active_page="notifikasi",
     )
+
+
+@bp.route("/notifikasi/read/<int:notif_id>", methods=["POST"])
+@login_required
+def notifikasi_read(notif_id):
+    from services.notifikasi_service import NotifikasiService
+
+    NotifikasiService.tandai_dibaca(notif_id)
+    return redirect(url_for("halaman.notifikasi"))
+
+
+@bp.route("/notifikasi/read-all", methods=["POST"])
+@login_required
+def notifikasi_read_all():
+    from services.notifikasi_service import NotifikasiService
+
+    NotifikasiService.tandai_semua_dibaca()
+    flash("Semua notifikasi telah ditandai sudah dibaca.", "success")
+    return redirect(url_for("halaman.notifikasi"))
 
 
 @bp.route("/pencarian")
@@ -364,12 +368,12 @@ def pengaturan():
     """Halaman Pengaturan."""
     from database.models import User
     from sqlalchemy import case
-    
+
     order_case = case(
-        (User.role == 'super_admin', 1),
-        (User.role == 'pemimpin', 2),
-        (User.role == 'staff', 3),
-        else_=4
+        (User.role == "super_admin", 1),
+        (User.role == "pemimpin", 2),
+        (User.role == "staff", 3),
+        else_=4,
     )
     daftar_user = User.query.order_by(order_case, User.created_at.asc()).all()
     return render_template(
@@ -378,54 +382,68 @@ def pengaturan():
         daftar_user=daftar_user,
     )
 
+
 @bp.route("/pengaturan/simpan_sistem", methods=["POST"])
 @login_required
 @role_required("super_admin")
 def simpan_sistem():
     from services.config_service import ConfigService
-    
+
     jam_update = request.form.get("jam_update", "09:00")
     rentang_data = request.form.get("rentang_data", "5")
     crawler_aktif = request.form.get("crawler_aktif") == "true"
     auto_hapus = request.form.get("auto_hapus") == "true"
     ai_aktif = request.form.get("ai_aktif") == "true"
-    
-    ConfigService.save_config({
-        "jam_update": jam_update,
-        "rentang_data": rentang_data,
-        "crawler_aktif": crawler_aktif,
-        "auto_hapus": auto_hapus,
-        "ai_aktif": ai_aktif
-    })
-    
+
+    ConfigService.save_config(
+        {
+            "jam_update": jam_update,
+            "rentang_data": rentang_data,
+            "crawler_aktif": crawler_aktif,
+            "auto_hapus": auto_hapus,
+            "ai_aktif": ai_aktif,
+        }
+    )
+
     # Trigger cleanup jika auto_hapus aktif
     if auto_hapus:
         from services.database_service import DatabaseService
+
         deleted_count = DatabaseService.cleanup_old_data()
         if deleted_count > 0:
-            flash(f"Berhasil menghapus {deleted_count} data usang sesuai rentang data.", "info")
-    
-    flash("Konfigurasi sistem berhasil disimpan dan sinkron dengan jadwal auto-crawler.", "success")
+            flash(
+                f"Berhasil menghapus {deleted_count} data usang sesuai rentang data.",
+                "info",
+            )
+
+    flash(
+        "Konfigurasi sistem berhasil disimpan dan sinkron dengan jadwal auto-crawler.",
+        "success",
+    )
     return redirect(url_for("halaman.pengaturan", tab="sistem"))
+
 
 @bp.route("/pengaturan/tambah_user", methods=["POST"])
 @login_required
 @role_required("super_admin")
 def tambah_user():
     nama_lengkap = request.form.get("nama_lengkap", "").strip()
-    username     = request.form.get("username", "").strip()
-    password     = request.form.get("password", "")
-    role         = request.form.get("role", "staff")
-    status       = request.form.get("status", "aktif")
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    role = request.form.get("role", "staff")
+    status = request.form.get("status", "aktif")
 
     if User.query.filter_by(username=username).first():
         flash(f"Username '{username}' sudah digunakan.", "danger")
         return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
 
     errors = []
-    if len(password) < 8: errors.append("minimal 8 karakter")
-    if not re.search(r'[A-Z]', password): errors.append("mengandung huruf besar")
-    if not re.search(r'\d', password): errors.append("mengandung angka")
+    if len(password) < 8:
+        errors.append("minimal 8 karakter")
+    if not re.search(r"[A-Z]", password):
+        errors.append("mengandung huruf besar")
+    if not re.search(r"\d", password):
+        errors.append("mengandung angka")
     if errors:
         flash(f"Password harus: {', '.join(errors)}.", "danger")
         return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
@@ -442,6 +460,7 @@ def tambah_user():
     flash(f"✅ User '{username}' berhasil ditambahkan.", "success")
     return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
 
+
 @bp.route("/pengaturan/edit_user/<int:user_id>", methods=["POST"])
 @login_required
 @role_required("super_admin")
@@ -450,10 +469,10 @@ def edit_user(user_id):
     if not user:
         abort(404)
     nama_lengkap = request.form.get("nama_lengkap", "").strip()
-    username     = request.form.get("username", "").strip()
-    password     = request.form.get("password", "")
-    role         = request.form.get("role", user.role)
-    status       = request.form.get("status", user.status)
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    role = request.form.get("role", user.role)
+    status = request.form.get("status", user.status)
 
     existing = User.query.filter_by(username=username).first()
     if existing and existing.id != user_id:
@@ -461,15 +480,18 @@ def edit_user(user_id):
         return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
 
     user.nama_lengkap = nama_lengkap
-    user.username     = username
-    user.role         = role
-    user.status       = status
+    user.username = username
+    user.role = role
+    user.status = status
 
     if password:
         errors = []
-        if len(password) < 8: errors.append("minimal 8 karakter")
-        if not re.search(r'[A-Z]', password): errors.append("mengandung huruf besar")
-        if not re.search(r'\d', password): errors.append("mengandung angka")
+        if len(password) < 8:
+            errors.append("minimal 8 karakter")
+        if not re.search(r"[A-Z]", password):
+            errors.append("mengandung huruf besar")
+        if not re.search(r"\d", password):
+            errors.append("mengandung angka")
         if errors:
             flash(f"Password baru harus: {', '.join(errors)}.", "danger")
             return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
@@ -478,6 +500,7 @@ def edit_user(user_id):
     db.session.commit()
     flash(f"✅ User '{username}' berhasil diperbarui.", "success")
     return redirect(url_for("halaman.pengaturan", tab="manajemen-user"))
+
 
 @bp.route("/pengaturan/hapus_user/<int:user_id>", methods=["POST"])
 @login_required
@@ -508,41 +531,42 @@ def update_profil():
     else:
         flash("Nama lengkap tidak boleh kosong.", "danger")
     return redirect(url_for("halaman.pengaturan"))
-        
+
+
 @bp.route("/pengaturan/update_password", methods=["POST"])
 @login_required
 @role_required("super_admin")
 def update_password():
-    old_password     = request.form.get("old_password", "")
-    new_password     = request.form.get("new_password", "")
+    old_password = request.form.get("old_password", "")
+    new_password = request.form.get("new_password", "")
     confirm_password = request.form.get("confirm_password", "")
-    
+
     # Validasi password saat ini
     if not check_password_hash(current_user.password_hash, old_password):
         flash("❌ Password saat ini salah. Silakan coba lagi.", "danger")
         return redirect(url_for("halaman.pengaturan"))
-    
+
     # Validasi aturan password baru
     if new_password != confirm_password:
         flash("Konfirmasi password baru tidak cocok.", "danger")
         return redirect(url_for("halaman.pengaturan"))
-    
+
     if len(new_password) < 8:
         flash("Password baru harus minimal 8 karakter.", "danger")
         return redirect(url_for("halaman.pengaturan"))
-    
-    if not re.search(r'[A-Z]', new_password):
+
+    if not re.search(r"[A-Z]", new_password):
         flash("Password baru harus mengandung setidaknya satu huruf besar.", "danger")
         return redirect(url_for("halaman.pengaturan"))
-    
-    if not re.search(r'\d', new_password):
+
+    if not re.search(r"\d", new_password):
         flash("Password baru harus mengandung setidaknya satu angka.", "danger")
         return redirect(url_for("halaman.pengaturan"))
-    
+
     if new_password == old_password:
         flash("Password baru tidak boleh sama dengan password lama.", "danger")
         return redirect(url_for("halaman.pengaturan"))
-    
+
     current_user.password_hash = generate_password_hash(new_password)
     db.session.commit()
     flash("✅ Password berhasil diubah.", "success")

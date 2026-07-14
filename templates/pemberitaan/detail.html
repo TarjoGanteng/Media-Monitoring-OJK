@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <a href="{{ url_for('pemberitaan.index') }}" class="back-link">
+        <a href="{{ url_for('pemberitaan.index') }}" onclick="if(document.referrer.includes('/pemberitaan')) { history.back(); return false; }" class="back-link">
             <i class="bi bi-arrow-left"></i> Kembali ke Pemberitaan
         </a>
     </div>

@@ -3,8 +3,8 @@ services/berita_service.py - Service untuk operasi CRUD dan query berita
 """
 
 import logging
-from datetime import datetime, timedelta
-from sqlalchemy import func, desc
+from datetime import datetime
+from sqlalchemy import desc
 from database.extensions import db
 from database.models import Berita
 from config import Config

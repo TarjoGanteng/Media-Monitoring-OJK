@@ -70,7 +70,9 @@
                     <a href="{{ url_for('halaman.notifikasi') }}" class="nav-link {% if active_page == 'notifikasi' %}active{% endif %}">
                         <i class="bi bi-bell nav-icon"></i>
                         <span>Notifikasi</span>
-                        <span class="nav-notif-badge">4</span>
+                        {% if unread_notif_count and unread_notif_count > 0 %}
+                        <span class="nav-notif-badge">{{ unread_notif_count }}</span>
+                        {% endif %}
                     </a>
                 </li>
 
@@ -127,7 +129,9 @@
             <div class="topbar-right">
                 <a href="{{ url_for('halaman.notifikasi') }}" class="topbar-bell" style="text-decoration: none; cursor: pointer;">
                     <i class="bi bi-bell"></i>
-                    <span class="bell-badge">4</span>
+                    {% if unread_notif_count and unread_notif_count > 0 %}
+                    <span class="bell-badge">{{ unread_notif_count }}</span>
+                    {% endif %}
                 </a>
                 
                 <!-- Tombol Crawler -->
@@ -138,9 +142,11 @@
 
 
                 <div class="topbar-info" style="border: 1px solid var(--border-color); padding: 0.4rem 0.8rem; border-radius: 6px; display: flex; align-items: center; gap: 0.75rem; background: #fff;">
-                    <i class="bi bi-calendar3" style="font-size: 1.2rem; color: var(--text-secondary);"></i>
+                    <i class="bi bi-clock-history" style="font-size: 1.2rem; color: var(--text-secondary);"></i>
                     <div style="line-height: 1.2;">
-                        <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">{{ now.strftime('%d %B %Y') }}</div>
+                        <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">
+                            {{ now.strftime('%d %B %Y') }} <span id="realtime-clock-time"></span>
+                        </div>
                         <div style="font-size:0.7rem;color:var(--text-secondary);">Data Pemberitaan: {{ now.strftime('%d %B %Y') }}</div>
                     </div>
                 </div>
@@ -552,5 +558,23 @@
     })();
     </script>
     {% endif %}
+
+    <!-- Script Jam Realtime -->
+    <script>
+    (function() {
+        function updateRealtimeClock() {
+            const el = document.getElementById('realtime-clock-time');
+            if (el) {
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                el.textContent = `${h}:${m}:${s} WIB`;
+            }
+        }
+        setInterval(updateRealtimeClock, 1000);
+        updateRealtimeClock(); // panggil sekali saat load
+    })();
+    </script>
 </body>
 </html>

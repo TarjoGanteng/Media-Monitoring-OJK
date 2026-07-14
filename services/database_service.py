@@ -26,7 +26,9 @@ class DatabaseService:
                 db.session.add(kw)
             try:
                 db.session.commit()
-                logger.info(f"Berhasil menambahkan {len(keywords_default)} keyword default.")
+                logger.info(
+                    f"Berhasil menambahkan {len(keywords_default)} keyword default."
+                )
             except Exception as e:
                 db.session.rollback()
                 logger.error(f"Gagal inisialisasi keyword: {e}")
@@ -79,25 +81,27 @@ class DatabaseService:
         """
         from services.config_service import ConfigService
         from datetime import datetime, timedelta
-        
+
         config = ConfigService.get_config()
-        
+
         if not config.get("auto_hapus"):
             return 0
-            
+
         rentang = str(config.get("rentang_data", "5"))
         if rentang == "all":
             return 0
-            
+
         try:
             years = int(rentang)
             cutoff_date = datetime.now() - timedelta(days=years * 365)
-            
+
             # Delete old records
             deleted_count = Berita.query.filter(Berita.tanggal < cutoff_date).delete()
             db.session.commit()
             if deleted_count > 0:
-                logger.info(f"Berhasil menghapus {deleted_count} berita yang lebih lama dari {years} tahun.")
+                logger.info(
+                    f"Berhasil menghapus {deleted_count} berita yang lebih lama dari {years} tahun."
+                )
             return deleted_count
         except Exception as e:
             db.session.rollback()

@@ -23,6 +23,22 @@
         color: #1f2937 !important;
         line-height: normal !important;
     }
+    /* Memperbesar tombol clear (x) pada filter Select2 */
+    .select2-container--default .select2-selection--single .select2-selection__clear {
+        font-size: 1.4rem !important;
+        font-weight: bold !important;
+        color: #ef4444 !important; /* Warna merah muda */
+        margin-right: 20px !important; /* Geser sedikit ke kiri agar tidak menempel dengan panah bawah */
+        padding: 0 4px !important;
+        line-height: 1.2 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        z-index: 10 !important; /* Pastikan bisa diklik */
+    }
+    .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+        color: #b91c1c !important; /* Warna merah tua saat hover */
+        transform: scale(1.15);
+    }
     .select2-results__option {
         font-size: 0.85rem;
     }
@@ -123,35 +139,13 @@
                     </div>
                 </div>
 
-                <!-- Sentimen -->
-                <div class="col-lg-2 col-md-4">
-                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Sentimen</label>
-                    <select name="sentimen" class="form-select select2-no-search" style="width: 100%;">
-                        <option value="">Semua</option>
-                        <option value="Positif" {% if filter_sentimen == 'Positif' %}selected{% endif %}>Positif</option>
-                        <option value="Netral" {% if filter_sentimen == 'Netral' %}selected{% endif %}>Netral</option>
-                        <option value="Negatif" {% if filter_sentimen == 'Negatif' %}selected{% endif %}>Negatif</option>
-                    </select>
-                </div>
-
                 <!-- Topik -->
-                <div class="col-lg-2 col-md-4">
+                <div class="col-lg-2 col-md-3">
                     <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Topik</label>
                     <select name="topik" class="form-select select2-search" style="width: 100%;">
-                        <option value="">Semua</option>
+                        <option value=""></option>
                         {% for t in daftar_topik %}
                         <option value="{{ t }}" {% if filter_topik == t %}selected{% endif %}>{{ t }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Media -->
-                <div class="col-lg-2 col-md-4">
-                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Media</label>
-                    <select name="media" id="mediaSelect" class="form-select select2-search" style="width: 100%;">
-                        <option value="">Semua</option>
-                        {% for m in daftar_media %}
-                        <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -160,10 +154,32 @@
                 <div class="col-lg-2 col-md-3">
                     <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Wilayah/Kota</label>
                     <select name="wilayah" class="form-select select2-search" style="width: 100%;">
-                        <option value="">Semua</option>
+                        <option value=""></option>
                         {% for w in daftar_wilayah %}
                         <option value="{{ w }}" {% if filter_wilayah == w %}selected{% endif %}>{{ w }}</option>
                         {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Media -->
+                <div class="col-lg-2 col-md-3">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Media</label>
+                    <select name="media" id="mediaSelect" class="form-select select2-search" style="width: 100%;">
+                        <option value=""></option>
+                        {% for m in daftar_media %}
+                        <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Sentimen -->
+                <div class="col-lg-2 col-md-3">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Sentimen</label>
+                    <select name="sentimen" class="form-select select2-no-search" style="width: 100%;">
+                        <option value=""></option>
+                        <option value="Positif" {% if filter_sentimen == 'Positif' %}selected{% endif %}>Positif</option>
+                        <option value="Netral" {% if filter_sentimen == 'Netral' %}selected{% endif %}>Netral</option>
+                        <option value="Negatif" {% if filter_sentimen == 'Negatif' %}selected{% endif %}>Negatif</option>
                     </select>
                 </div>
 
@@ -175,8 +191,9 @@
                 </div>
             </div>
             
-            <div class="mb-3 text-end" id="resetFilterContainer" style="display: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah %}block{% else %}none{% endif %};">
-                <a href="{{ url_for('pemberitaan.index') }}" class="btn-reset-filter" style="font-size: 0.8rem; text-decoration: none;">
+            <!-- Menggunakan min-height dan visibility agar space sudah disediakan sejak awal (Mencegah tabel lompat) -->
+            <div class="mb-2 text-end" id="resetFilterContainer" style="min-height: 24px; visibility: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah %}visible{% else %}hidden{% endif %}; opacity: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah %}1{% else %}0{% endif %}; transition: opacity 0.2s ease;">
+                <a href="{{ url_for('pemberitaan.index') }}" class="btn-reset-filter text-danger" style="font-size: 0.85rem; text-decoration: none; font-weight: 500;">
                     <i class="bi bi-x-circle"></i> Reset Filter
                 </a>
             </div>
@@ -193,11 +210,11 @@
                     <tr>
                         <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 100px;">Waktu</th>
                         <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase;">Judul</th>
-                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 130px;">Media</th>
-                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 110px;">Kota</th>
-                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 90px;">Sentimen</th>
                         <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 120px;">Topik</th>
-                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 60px; text-align: center;">Aksi</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 110px;">Kota</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 130px;">Media</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 90px;">Sentimen</th>
+                        <th style="padding: 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: #4b5563; text-transform: uppercase; width: 70px; text-align: center;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -217,23 +234,28 @@
                             </a>
                         </td>
                         <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
-                            {{ berita.media or '-' }}
+                            {{ berita.topik or '-' }}
                         </td>
                         <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
                             {{ berita.wilayah or '-' }}
+                        </td>
+                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
+                            {{ berita.media or '-' }}
                         </td>
                         <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6;">
                             <span class="badge-sentimen {{ berita.get_sentimen_badge() }}" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 0.25rem;">
                                 {{ berita.sentimen or 'Netral' }}
                             </span>
                         </td>
-                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
-                            {{ berita.topik or '-' }}
-                        </td>
-                        <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6; text-align: center;">
-                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" style="color: #9ca3af; font-size: 1.1rem; text-decoration: none;">
+                        <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6; text-align: center; white-space: nowrap;">
+                            <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" style="color: #9ca3af; font-size: 1.1rem; text-decoration: none;" title="Lihat Detail">
                                 <i class="bi bi-eye"></i>
                             </a>
+                            {% if current_user.role == 'super_admin' %}
+                            <a href="#" class="edit-sentimen-btn" data-id="{{ berita.id }}" data-sentimen="{{ berita.sentimen }}" style="color: #9ca3af; font-size: 1.1rem; text-decoration: none; margin-left: 0.5rem;" title="Ubah Sentimen">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -294,6 +316,35 @@
             </p>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Modal Ubah Sentimen -->
+    <div class="modal fade" id="modalUbahSentimen" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="font-size: 1rem;">Ubah Sentimen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formUbahSentimen">
+                    <div class="modal-body">
+                        <input type="hidden" id="editBeritaId" name="berita_id">
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 0.85rem;">Pilih Sentimen</label>
+                            <select class="form-select" id="editSentimenSelect" name="sentimen" required>
+                                <option value="Positif">Positif</option>
+                                <option value="Netral">Netral</option>
+                                <option value="Negatif">Negatif</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding: 0.5rem 1rem;">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary btn-sm" style="background-color: #c8002d; border: none;">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -383,15 +434,27 @@
 
         // Dropdown yang butuh fitur pencarian (Media, Topik)
         $('.select2-search').select2({
-            placeholder: "Pilih...",
+            placeholder: "Semua",
+            allowClear: true,
             width: '100%'
         });
 
         // Khusus untuk dropdown select2
         $('.select2-no-search').select2({
             minimumResultsForSearch: Infinity,
-            placeholder: "Pilih...",
+            placeholder: "Semua",
+            allowClear: true,
             width: '100%'
+        });
+
+        // Mencegah dropdown terbuka secara otomatis setelah menekan tombol silang (x)
+        $('#filterForm select').on('select2:unselecting', function (e) {
+            $(this).data('unselecting', true);
+        }).on('select2:opening', function (e) {
+            if ($(this).data('unselecting')) {
+                $(this).removeData('unselecting');
+                e.preventDefault();
+            }
         });
 
         // ==========================================
@@ -414,11 +477,11 @@
                 }
             });
             
-            // Tampilkan atau sembunyikan tombol
+            // Tampilkan atau sembunyikan tombol menggunakan opacity/visibility agar tidak ada layout shift
             if (hasValue) {
-                $('#resetFilterContainer').stop(true, true).fadeIn(200);
+                $('#resetFilterContainer').css({ 'visibility': 'visible', 'opacity': '1' });
             } else {
-                $('#resetFilterContainer').stop(true, true).fadeOut(200);
+                $('#resetFilterContainer').css({ 'visibility': 'hidden', 'opacity': '0' });
             }
         }
 
@@ -430,6 +493,50 @@
         // Pantau khusus untuk perubahan dari plugin Select2
         $('#filterForm select').on('change.select2', function() {
             checkFilterState();
+        });
+
+        // Handler untuk tombol ubah sentimen
+        $('.edit-sentimen-btn').on('click', function(e) {
+            e.preventDefault();
+            let id = $(this).data('id');
+            let sentimen = $(this).data('sentimen');
+            if(!sentimen) sentimen = 'Netral';
+
+            $('#editBeritaId').val(id);
+            $('#editSentimenSelect').val(sentimen);
+            
+            var modal = new bootstrap.Modal(document.getElementById('modalUbahSentimen'));
+            modal.show();
+        });
+
+        // Handler untuk submit form ubah sentimen
+        $('#formUbahSentimen').on('submit', function(e) {
+            e.preventDefault();
+            let id = $('#editBeritaId').val();
+            let sentimen = $('#editSentimenSelect').val();
+            
+            $.ajax({
+                url: '/pemberitaan/' + id + '/update_sentimen',
+                type: 'POST',
+                data: {
+                    sentimen: sentimen
+                },
+                success: function(response) {
+                    if(response.status === 'success') {
+                        // Reload halaman untuk melihat perubahan
+                        location.reload();
+                    } else {
+                        alert('Gagal: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    let msg = "Terjadi kesalahan";
+                    if(xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert('Error: ' + msg);
+                }
+            });
         });
     });
 </script>

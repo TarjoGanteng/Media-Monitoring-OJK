@@ -126,25 +126,31 @@
 // Data sebaran dari server (Jinja2)
 const sebaranData = {};
 {% for item in sebaran %}
-sebaranData["{{ item.wilayah | lower }}"] = {{ item.jumlah }};
+sebaranData["{{ item.wilayah | lower }}"] = {
+    jumlah: {{ item.jumlah }},
+    positif: {{ item.positif }},
+    netral: {{ item.netral }},
+    negatif: {{ item.negatif }}
+};
 {% endfor %}
 
-const maxJumlah = Math.max(...Object.values(sebaranData), 1);
+// Ambil nilai maksimum jumlah untuk perhitungan warna
+const maxJumlah = Math.max(...Object.values(sebaranData).map(d => d.jumlah), 1);
 
 // Fungsi kecocokan nama wilayah (fleksibel)
-function getJumlahByName(name) {
-    if (!name) return 0;
+function getDataByName(name) {
+    if (!name) return { jumlah: 0, positif: 0, netral: 0, negatif: 0 };
     const normalized = name.toLowerCase()
         .replace(/^(kab\.|kabupaten|kota)\s+/i, '')
         .trim();
-    // Cek langsung
+    
     for (const [k, v] of Object.entries(sebaranData)) {
         const kNorm = k.replace(/^(kab\.|kabupaten|kota)\s+/i, '').trim();
         if (kNorm === normalized || kNorm.includes(normalized) || normalized.includes(kNorm)) {
             return v;
         }
     }
-    return 0;
+    return { jumlah: 0, positif: 0, netral: 0, negatif: 0 };
 }
 
 // Warna choropleth: putih ke merah OJK
@@ -177,26 +183,37 @@ let geojsonLayer;
 
 function style(feature) {
     const name = feature.properties.KABKOT || feature.properties.name || feature.properties.NAME_2 || '';
-    const jumlah = getJumlahByName(name);
+    const data = getDataByName(name);
     return {
-        fillColor: getColor(jumlah),
+        fillColor: getColor(data.jumlah),
         weight: 1.5,
         opacity: 1,
         color: '#adb5bd',
-        fillOpacity: jumlah > 0 ? 0.55 : 0.2,
+        fillOpacity: data.jumlah > 0 ? 0.55 : 0.2,
     };
 }
 
 function onEachFeature(feature, layer) {
     const name = feature.properties.KABKOT || feature.properties.name || feature.properties.NAME_2 || 'Unknown';
-    const jumlah = getJumlahByName(name);
+    const data = getDataByName(name);
     const nameDisplay = name.replace(/\b\w/g, c => c.toUpperCase());
 
     layer.bindTooltip(
-        `<div style="font-family:Inter,sans-serif;padding:8px 12px;min-width:140px;">
-            <strong style="color:#0f172a;font-size:0.9rem;">${nameDisplay}</strong><br>
-            <span style="color:#c0392b;font-weight:700;font-size:1rem;">📰 ${jumlah}</span>
-            <span style="color:#64748b;font-size:0.8rem;"> berita</span>
+        `<div style="font-family:Inter,sans-serif;padding:8px 12px;min-width:160px;">
+            <strong style="color:#0f172a;font-size:0.9rem;border-bottom:1px solid #e2e8f0;display:block;margin-bottom:6px;padding-bottom:4px;">${nameDisplay}</strong>
+            <div style="margin-bottom:6px;">
+                <span style="color:#c0392b;font-weight:700;font-size:1rem;">📰 ${data.jumlah}</span>
+                <span style="color:#64748b;font-size:0.8rem;"> berita total</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#475569;">
+                <span style="color:#16a34a;font-weight:600;">↑ ${data.positif} Positif</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#475569;">
+                <span style="color:#64748b;font-weight:600;">→ ${data.netral} Netral</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#475569;">
+                <span style="color:#dc2626;font-weight:600;">↓ ${data.negatif} Negatif</span>
+            </div>
         </div>`,
         { sticky: true, className: 'leaflet-tooltip-custom' }
     );

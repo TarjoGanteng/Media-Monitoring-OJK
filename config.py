@@ -20,9 +20,8 @@ class Config:
     # OpenRouter AI (gratis, tanpa batas wilayah)
     OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 
-    # Hugging Face AI (UTAMA - gratis selamanya)
-    # Daftar gratis di: https://huggingface.co/settings/tokens
-    HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY", "")
+    # Cohere AI (UTAMA - Gratis, Anti Cloudflare)
+    COHERE_API_KEY = os.environ.get("COHERE_API_KEY", "")
 
     # Konfigurasi Database SQLite
     SQLALCHEMY_DATABASE_URI = os.environ.get(
@@ -33,7 +32,9 @@ class Config:
     SQLALCHEMY_ECHO = False  # Set True untuk debug query SQL
 
     # Konfigurasi Crawler
-    CRAWLER_BASE_URL = "https://news.google.com/rss/search?q={keyword}&hl=id&gl=ID&ceid=ID:id"
+    CRAWLER_BASE_URL = (
+        "https://news.google.com/rss/search?q={keyword}&hl=id&gl=ID&ceid=ID:id"
+    )
     CRAWLER_KEYWORDS = [
         "OJK",
         "OJK Jawa Barat",

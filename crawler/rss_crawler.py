@@ -159,8 +159,10 @@ class RSSCrawler:
                 web_url = web_url.split("?")[0]
 
             resp = self.session.get(
-                web_url, timeout=10, allow_redirects=True,
-                headers={"Accept-Language": "id-ID,id;q=0.9,en;q=0.8"}
+                web_url,
+                timeout=10,
+                allow_redirects=True,
+                headers={"Accept-Language": "id-ID,id;q=0.9,en;q=0.8"},
             )
             # Cek apakah kita sudah keluar dari google
             if "google.com" not in resp.url:
@@ -260,9 +262,7 @@ class RSSCrawler:
             feed = feedparser.parse(url)
 
             if feed.bozo and feed.bozo_exception:
-                logger.warning(
-                    f"Peringatan parsing feed: {feed.bozo_exception}"
-                )
+                logger.warning(f"Peringatan parsing feed: {feed.bozo_exception}")
 
             entries = feed.get("entries", [])
             logger.info(f"Ditemukan {len(entries)} artikel untuk keyword '{keyword}'")

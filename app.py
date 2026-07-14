@@ -55,6 +55,7 @@ def create_app(env: str = None) -> Flask:
 
     # Konfigurasi user_loader untuk Flask-Login
     from database.models import User
+
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
@@ -81,21 +82,24 @@ def initialize_database(app=None):
     Membuat semua tabel database dan mengisi data awal.
     Dipanggil sekali saat aplikasi pertama kali dijalankan.
     """
-    from database.models import Berita, CrawlLog, Keyword, User
+    from database.models import User
     from services.database_service import DatabaseService
     from werkzeug.security import generate_password_hash
 
     # Buat semua tabel jika belum ada
     db.create_all()
-    
+
     # Migrasi manual - cek kolom dulu sebelum ALTER agar tidak ada silent exception setiap startup
     try:
         from sqlalchemy import text, inspect as sa_inspect
+
         inspector = sa_inspect(db.engine)
         existing_columns = [col["name"] for col in inspector.get_columns("users")]
 
         if "nama_lengkap" not in existing_columns:
-            db.session.execute(text("ALTER TABLE users ADD COLUMN nama_lengkap VARCHAR(150)"))
+            db.session.execute(
+                text("ALTER TABLE users ADD COLUMN nama_lengkap VARCHAR(150)")
+            )
             db.session.commit()
             logger.info("Kolom 'nama_lengkap' berhasil ditambahkan ke tabel users.")
 
@@ -103,36 +107,51 @@ def initialize_database(app=None):
             db.session.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
             db.session.commit()
             logger.info("Kolom 'last_login' berhasil ditambahkan ke tabel users.")
+
+        # Migrasi kolom ai_checked pada tabel berita
+        berita_columns = [col["name"] for col in inspector.get_columns("berita")]
+        if "ai_checked" not in berita_columns:
+            db.session.execute(
+                text(
+                    "ALTER TABLE berita ADD COLUMN ai_checked BOOLEAN DEFAULT 0 NOT NULL"
+                )
+            )
+            db.session.commit()
+            logger.info("Kolom 'ai_checked' berhasil ditambahkan ke tabel berita.")
     except Exception as e:
         db.session.rollback()
         logger.warning(f"Migrasi kolom users gagal (mungkin tabel belum ada): {e}")
-        
+
     logger.info("Skema database berhasil diinisialisasi.")
 
     # Isi keyword default jika tabel kosong
     DatabaseService.inisialisasi_keyword_default()
-    
+
     # Buat user super_admin default jika belum ada user
     if User.query.count() == 0:
         default_admin = User(
             username="super_admin",
             password_hash=generate_password_hash("ojkjabar2026"),
             role="super_admin",
-            status="aktif"
+            status="aktif",
         )
         db.session.add(default_admin)
         db.session.commit()
-        logger.info("Default user 'super_admin' berhasil dibuat. Segera ganti password melalui halaman pengaturan!")
+        logger.info(
+            "Default user 'super_admin' berhasil dibuat. Segera ganti password melalui halaman pengaturan!"
+        )
 
     # Bersihkan duplikat yang sudah ada di database (jalankan di background)
     import threading
 
     def _startup_dedup(flask_app):
         import time
+
         time.sleep(3)  # Tunggu app fully ready
         with flask_app.app_context():
             try:
                 from services.dedup_service import DeduplicateService
+
                 hasil = DeduplicateService.jalankan_semua(threshold_mirip=0.88)
                 if hasil["total_dihapus"] > 0:
                     logger.info(
@@ -148,9 +167,23 @@ def initialize_database(app=None):
 
     # Hanya jalankan di proses utama (bukan reloader werkzeug)
     import os
+
     if app is not None and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
-        t = threading.Thread(target=_startup_dedup, args=(app,), daemon=True)
-        t.start()
+        # Thread 1: Deduplikasi startup
+        t_dedup = threading.Thread(target=_startup_dedup, args=(app,), daemon=True)
+        t_dedup.start()
+
+        # Thread 2: AI Review Service — selalu aktif, cek berita belum teranalisis
+        def _start_ai_review(flask_app):
+            import time
+
+            time.sleep(5)  # Tunggu app & dedup selesai init
+            from services.ai_review_service import AIReviewService
+
+            AIReviewService.start(flask_app)
+
+        t_ai = threading.Thread(target=_start_ai_review, args=(app,), daemon=True)
+        t_ai.start()
 
 
 def register_error_handlers(app: Flask):
@@ -180,6 +213,15 @@ def register_context_processors(app: Flask):
         from config import Config
         from datetime import datetime
         from services.config_service import ConfigService
+        from services.notifikasi_service import NotifikasiService
+        from flask_login import current_user
+
+        unread_count = 0
+        if current_user.is_authenticated:
+            try:
+                unread_count = NotifikasiService.hitung_belum_dibaca()
+            except Exception:
+                pass
 
         return {
             "app_name": Config.APP_NAME,
@@ -187,6 +229,7 @@ def register_context_processors(app: Flask):
             "app_version": Config.APP_VERSION,
             "now": datetime.now(),
             "system_config": ConfigService.get_config(),
+            "unread_notif_count": unread_count,
         }
 
 

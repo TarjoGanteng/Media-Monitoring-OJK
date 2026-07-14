@@ -164,24 +164,33 @@ class DashboardService:
         end_dt = datetime.combine(today, datetime.max.time())
 
         # Satu query dengan GROUP BY tanggal dan agregasi sentimen
-        rows = db.session.query(
-            func.strftime("%Y-%m-%d", Berita.tanggal).label("tgl"),
-            func.count(Berita.id).label("total"),
-            func.sum(case((Berita.sentimen == "Positif", 1), else_=0)).label("positif"),
-            func.sum(case((Berita.sentimen == "Negatif", 1), else_=0)).label("negatif"),
-            func.sum(case((Berita.sentimen == "Netral", 1), else_=0)).label("netral"),
-        ).filter(
-            Berita.status == "aktif",
-            Berita.tanggal >= start_dt,
-            Berita.tanggal <= end_dt,
-        ).group_by(func.strftime("%Y-%m-%d", Berita.tanggal)).all()
+        rows = (
+            db.session.query(
+                func.strftime("%Y-%m-%d", Berita.tanggal).label("tgl"),
+                func.count(Berita.id).label("total"),
+                func.sum(case((Berita.sentimen == "Positif", 1), else_=0)).label(
+                    "positif"
+                ),
+                func.sum(case((Berita.sentimen == "Negatif", 1), else_=0)).label(
+                    "negatif"
+                ),
+                func.sum(case((Berita.sentimen == "Netral", 1), else_=0)).label(
+                    "netral"
+                ),
+            )
+            .filter(
+                Berita.status == "aktif",
+                Berita.tanggal >= start_dt,
+                Berita.tanggal <= end_dt,
+            )
+            .group_by(func.strftime("%Y-%m-%d", Berita.tanggal))
+            .all()
+        )
 
         # Buat mapping tanggal -> data row
         data_map = {r.tgl: r for r in rows}
 
-        date_range = [
-            (today - timedelta(days=i)) for i in range(hari - 1, -1, -1)
-        ]
+        date_range = [(today - timedelta(days=i)) for i in range(hari - 1, -1, -1)]
         labels = [d.strftime("%d %b") for d in date_range]
         data_total, data_positif, data_negatif, data_netral = [], [], [], []
 
@@ -221,8 +230,21 @@ class DashboardService:
         data_negatif = []
         data_netral = []
 
-        nama_bulan = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-                       "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
+        nama_bulan = [
+            "",
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "Mei",
+            "Jun",
+            "Jul",
+            "Agt",
+            "Sep",
+            "Okt",
+            "Nov",
+            "Des",
+        ]
 
         for i in range(bulan - 1, -1, -1):
             target = today - relativedelta(months=i)
@@ -231,7 +253,7 @@ class DashboardService:
                 Berita.bulan == target.month,
                 Berita.tahun == target.year,
             )
-            
+
             total = base_query.count()
             positif = base_query.filter(Berita.sentimen == "Positif").count()
             negatif = base_query.filter(Berita.sentimen == "Negatif").count()
@@ -247,11 +269,16 @@ class DashboardService:
             data_total = DashboardService._generate_dummy_trend(bulan)
             data_positif = [max(0, v - 10) for v in data_total]
             data_negatif = [max(0, v // 3) for v in data_total]
-            data_netral = [data_total[i] - data_positif[i] - data_negatif[i] for i in range(bulan)]
+            data_netral = [
+                data_total[i] - data_positif[i] - data_negatif[i] for i in range(bulan)
+            ]
 
         return {
-            "labels": labels, "total": data_total,
-            "positif": data_positif, "negatif": data_negatif, "netral": data_netral
+            "labels": labels,
+            "total": data_total,
+            "positif": data_positif,
+            "negatif": data_negatif,
+            "netral": data_netral,
         }
 
     @staticmethod
@@ -261,28 +288,28 @@ class DashboardService:
         data_positif = []
         data_negatif = []
         data_netral = []
-        
+
         today = datetime.now().date()
-        
+
         for i in range(minggu - 1, -1, -1):
             start_date = today - timedelta(days=today.weekday() + (i * 7))
             end_date = start_date + timedelta(days=6)
-            
+
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
-            
+
             base_query = Berita.query.filter(
                 Berita.status == "aktif",
                 Berita.tanggal >= start_dt,
                 Berita.tanggal <= end_dt,
             )
-            
+
             total = base_query.count()
             positif = base_query.filter(Berita.sentimen == "Positif").count()
             negatif = base_query.filter(Berita.sentimen == "Negatif").count()
             netral = base_query.filter(Berita.sentimen == "Netral").count()
-            
-            labels.append(f"M{minggu-i} {start_date.strftime('%b')}")
+
+            labels.append(f"M{minggu - i} {start_date.strftime('%b')}")
             data_total.append(total)
             data_positif.append(positif)
             data_negatif.append(negatif)
@@ -292,11 +319,16 @@ class DashboardService:
             data_total = DashboardService._generate_dummy_trend(minggu)
             data_positif = [max(0, v - 5) for v in data_total]
             data_negatif = [max(0, v // 4) for v in data_total]
-            data_netral = [data_total[i] - data_positif[i] - data_negatif[i] for i in range(minggu)]
+            data_netral = [
+                data_total[i] - data_positif[i] - data_negatif[i] for i in range(minggu)
+            ]
 
         return {
-            "labels": labels, "total": data_total,
-            "positif": data_positif, "negatif": data_negatif, "netral": data_netral
+            "labels": labels,
+            "total": data_total,
+            "positif": data_positif,
+            "negatif": data_negatif,
+            "netral": data_netral,
         }
 
     @staticmethod
@@ -337,7 +369,19 @@ class DashboardService:
             List dictionary {wilayah, jumlah}
         """
         result = (
-            db.session.query(Berita.wilayah, func.count(Berita.id).label("jumlah"))
+            db.session.query(
+                Berita.wilayah,
+                func.count(Berita.id).label("jumlah"),
+                func.sum(case((Berita.sentimen == "Positif", 1), else_=0)).label(
+                    "positif"
+                ),
+                func.sum(case((Berita.sentimen == "Negatif", 1), else_=0)).label(
+                    "negatif"
+                ),
+                func.sum(case((Berita.sentimen == "Netral", 1), else_=0)).label(
+                    "netral"
+                ),
+            )
             .filter(Berita.wilayah.isnot(None), Berita.status == "aktif")
             .group_by(Berita.wilayah)
             .order_by(desc("jumlah"))
@@ -347,7 +391,16 @@ class DashboardService:
         if not result:
             return DashboardService._get_dummy_wilayah()
 
-        return [{"wilayah": r.wilayah, "jumlah": r.jumlah} for r in result]
+        return [
+            {
+                "wilayah": r.wilayah,
+                "jumlah": r.jumlah,
+                "positif": int(r.positif) if r.positif else 0,
+                "negatif": int(r.negatif) if r.negatif else 0,
+                "netral": int(r.netral) if r.netral else 0,
+            }
+            for r in result
+        ]
 
     # ======= DUMMY DATA HELPERS =======
 
@@ -355,6 +408,7 @@ class DashboardService:
     def _generate_dummy_trend(hari: int) -> list[int]:
         """Menghasilkan data trend dummy yang terlihat realistis."""
         import random
+
         random.seed(42)
         base = [random.randint(15, 45) for _ in range(hari)]
         return base
@@ -408,16 +462,64 @@ class DashboardService:
     def _get_dummy_wilayah() -> list[dict]:
         """Data dummy wilayah untuk peta."""
         return [
-            {"wilayah": "Bandung", "jumlah": 45},
-            {"wilayah": "Bogor", "jumlah": 28},
-            {"wilayah": "Bekasi", "jumlah": 24},
-            {"wilayah": "Depok", "jumlah": 18},
-            {"wilayah": "Cirebon", "jumlah": 12},
-            {"wilayah": "Karawang", "jumlah": 8},
-            {"wilayah": "Tasikmalaya", "jumlah": 6},
-            {"wilayah": "Garut", "jumlah": 5},
-            {"wilayah": "Sukabumi", "jumlah": 4},
-            {"wilayah": "Cianjur", "jumlah": 3},
+            {
+                "wilayah": "Bandung",
+                "jumlah": 45,
+                "positif": 20,
+                "netral": 15,
+                "negatif": 10,
+            },
+            {
+                "wilayah": "Bogor",
+                "jumlah": 28,
+                "positif": 10,
+                "netral": 10,
+                "negatif": 8,
+            },
+            {
+                "wilayah": "Bekasi",
+                "jumlah": 24,
+                "positif": 12,
+                "netral": 8,
+                "negatif": 4,
+            },
+            {"wilayah": "Depok", "jumlah": 18, "positif": 8, "netral": 6, "negatif": 4},
+            {
+                "wilayah": "Cirebon",
+                "jumlah": 12,
+                "positif": 6,
+                "netral": 4,
+                "negatif": 2,
+            },
+            {
+                "wilayah": "Karawang",
+                "jumlah": 8,
+                "positif": 4,
+                "netral": 3,
+                "negatif": 1,
+            },
+            {
+                "wilayah": "Tasikmalaya",
+                "jumlah": 6,
+                "positif": 3,
+                "netral": 2,
+                "negatif": 1,
+            },
+            {"wilayah": "Garut", "jumlah": 5, "positif": 2, "netral": 2, "negatif": 1},
+            {
+                "wilayah": "Sukabumi",
+                "jumlah": 4,
+                "positif": 2,
+                "netral": 1,
+                "negatif": 1,
+            },
+            {
+                "wilayah": "Cianjur",
+                "jumlah": 3,
+                "positif": 1,
+                "netral": 1,
+                "negatif": 1,
+            },
         ]
 
     # ======= AI DASHBOARD SUMMARY =======
@@ -463,21 +565,28 @@ class DashboardService:
         total = len(berita_hari_ini)
         positif = sum(1 for b in berita_hari_ini if b.sentimen == "Positif")
         negatif = sum(1 for b in berita_hari_ini if b.sentimen == "Negatif")
-        netral  = sum(1 for b in berita_hari_ini if b.sentimen == "Netral")
+        netral = sum(1 for b in berita_hari_ini if b.sentimen == "Netral")
 
         # Topik terbanyak
         from collections import Counter
-        topik_counter  = Counter(b.topik  for b in berita_hari_ini if b.topik)
-        wilayah_counter = Counter(b.wilayah for b in berita_hari_ini if b.wilayah)
-        media_counter  = Counter(b.media  for b in berita_hari_ini if b.media)
 
-        topik_utama    = topik_counter.most_common(1)[0][0]  if topik_counter  else "Regulasi"
-        kota_terbanyak = wilayah_counter.most_common(1)[0][0] if wilayah_counter else "-"
-        media_terbanyak = media_counter.most_common(1)[0][0] if media_counter  else "-"
+        topik_counter = Counter(b.topik for b in berita_hari_ini if b.topik)
+        wilayah_counter = Counter(b.wilayah for b in berita_hari_ini if b.wilayah)
+        media_counter = Counter(b.media for b in berita_hari_ini if b.media)
+
+        topik_utama = (
+            topik_counter.most_common(1)[0][0] if topik_counter else "Regulasi"
+        )
+        kota_terbanyak = (
+            wilayah_counter.most_common(1)[0][0] if wilayah_counter else "-"
+        )
+        media_terbanyak = media_counter.most_common(1)[0][0] if media_counter else "-"
 
         sentimen_dominan = (
-            "Positif" if positif >= negatif and positif >= netral
-            else "Negatif" if negatif >= positif and negatif >= netral
+            "Positif"
+            if positif >= negatif and positif >= netral
+            else "Negatif"
+            if negatif >= positif and negatif >= netral
             else "Netral"
         )
 
@@ -498,14 +607,14 @@ class DashboardService:
         judul_list = "\n".join(
             f"- [{b.sentimen or 'Netral'}] {b.judul}" for b in berita_hari_ini[:15]
         )
-        topik_str  = ", ".join(f"{t}({c})" for t, c in topik_counter.most_common(5))
-        kota_str   = ", ".join(f"{k}({c})" for k, c in wilayah_counter.most_common(5))
+        topik_str = ", ".join(f"{t}({c})" for t, c in topik_counter.most_common(5))
+        kota_str = ", ".join(f"{k}({c})" for k, c in wilayah_counter.most_common(5))
 
         prompt = f"""Anda adalah analis media senior OJK (Otoritas Jasa Keuangan) Indonesia.
 Berdasarkan data pemberitaan 24 jam terakhir, buat ringkasan analisis singkat dalam Bahasa Indonesia.
 
 === DATA PEMBERITAAN HARI INI ===
-Tanggal: {now.strftime('%d %B %Y')}
+Tanggal: {now.strftime("%d %B %Y")}
 Total berita: {total} artikel
 Positif: {positif} | Negatif: {negatif} | Netral: {netral}
 Topik terbanyak: {topik_str}
@@ -525,12 +634,14 @@ Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
 
         try:
             from services.ai_service import gemini
+
             if not gemini.is_available():
                 raise ValueError("Gemini tidak tersedia")
 
             # Gunakan model tanpa JSON mode (output narasi bebas)
             import google.generativeai as genai
             from config import Config
+
             genai.configure(api_key=Config.GEMINI_API_KEY)
             model_narasi = genai.GenerativeModel(
                 model_name="gemini-1.5-flash",
@@ -557,4 +668,3 @@ Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
             "media_terbanyak": media_terbanyak,
             "waktu_generate": now.strftime("%H:%M WIB"),
         }
-

@@ -2,13 +2,15 @@
 routes/pemberitaan.py - Blueprint untuk halaman daftar berita dan detail berita
 """
 
-from flask import Blueprint, render_template, request, abort
+from flask import Blueprint, render_template, request, abort, jsonify
+from flask_login import login_required
 from services.berita_service import BeritaService
 
 bp = Blueprint("pemberitaan", __name__, url_prefix="/pemberitaan")
 
 
-from flask_login import login_required
+
+
 
 @bp.route("/")
 @login_required
@@ -83,10 +85,10 @@ def detail(berita_id: int):
         try:
             from crawler.image_resolver import resolve_and_fetch_image
             from database.extensions import db
-            
+
             result = resolve_and_fetch_image(berita.link)
             diupdate = False
-            
+
             if result.get("actual_url"):
                 berita.link = result["actual_url"]
                 diupdate = True
@@ -96,10 +98,10 @@ def detail(berita_id: int):
             if result.get("isi") and not berita.isi:
                 berita.isi = result["isi"]
                 diupdate = True
-                
+
             if diupdate:
                 db.session.commit()
-        except Exception as e:
+        except Exception:
             # Jika gagal, abaikan saja agar halaman tetap bisa dimuat
             pass
 
@@ -121,3 +123,32 @@ def detail(berita_id: int):
         dummy_ai=dummy_ai,
         active_page="pemberitaan",
     )
+
+
+@bp.route("/<int:berita_id>/update_sentimen", methods=["POST"])
+@login_required
+def update_sentimen(berita_id: int):
+    """Update sentimen secara manual oleh super_admin"""
+    from flask_login import current_user
+    from flask import jsonify
+
+    if current_user.role != "super_admin":
+        return jsonify({"status": "error", "message": "Akses ditolak"}), 403
+
+    sentimen = request.form.get("sentimen")
+    if sentimen not in ["Positif", "Negatif", "Netral"]:
+        return jsonify({"status": "error", "message": "Sentimen tidak valid"}), 400
+
+    berita = BeritaService.get_berita_by_id(berita_id)
+    if not berita:
+        return jsonify({"status": "error", "message": "Berita tidak ditemukan"}), 404
+
+    from database.extensions import db
+    try:
+
+        berita.sentimen = sentimen
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Sentimen berhasil diperbarui"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500

@@ -18,13 +18,13 @@ def index():
     Menampilkan statistik ringkasan, berita terbaru, topik terbanyak,
     media teraktif, trend harian, dan ringkasan AI Gemini.
     """
-    statistik      = DashboardService.get_statistik_utama()
+    statistik = DashboardService.get_statistik_utama()
     berita_terbaru = DashboardService.get_berita_terbaru(limit=5)
     topik_terbanyak = DashboardService.get_topik_terbanyak(limit=5)
     media_teraktif = DashboardService.get_media_teraktif(limit=5)
     kota_terbanyak = DashboardService.get_kota_terbanyak(limit=5)
-    trend_data     = DashboardService.get_trend_harian(hari=7)
-    trend_json     = json.dumps(trend_data)
+    trend_data = DashboardService.get_trend_harian(hari=7)
+    trend_json = json.dumps(trend_data)
 
     return render_template(
         "dashboard/index.html",
@@ -50,4 +50,3 @@ def ai_brief():
         return jsonify({"success": True, "data": data})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-

@@ -158,10 +158,10 @@
                             <tr>
                                 <th style="padding:0.5rem 0.5rem; width:100px;">WAKTU</th>
                                 <th style="padding:0.5rem 0;">JUDUL</th>
-                                <th style="padding:0.5rem 0.5rem; width:110px;">MEDIA</th>
-                                <th style="padding:0.5rem 0.5rem; width:100px;">KOTA</th>
-                                <th style="padding:0.5rem 0.5rem; text-align:center; width:90px;">SENTIMEN</th>
                                 <th style="padding:0.5rem 0.5rem; width:100px;">TOPIK</th>
+                                <th style="padding:0.5rem 0.5rem; width:100px;">KOTA</th>
+                                <th style="padding:0.5rem 0.5rem; width:110px;">MEDIA</th>
+                                <th style="padding:0.5rem 0.5rem; text-align:center; width:90px;">SENTIMEN</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -190,12 +190,12 @@
                                             <a href="{{ url_for('pemberitaan.detail', berita_id=berita.id) }}" style="color:var(--text-primary); font-weight:500; font-size:0.85rem; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" class="title-link">{{ berita.judul }}</a>
                                         </div>
                                     </td>
-                                    <td style="padding:0.65rem 0.5rem; color:var(--text-secondary); font-size:0.75rem;">{{ berita.media or 'Unknown' }}</td>
+                                    <td style="padding:0.65rem 0.5rem; color:var(--text-secondary); font-size:0.75rem;">{{ berita.topik or '-' }}</td>
                                     <td style="padding:0.65rem 0.5rem; color:var(--text-secondary); font-size:0.75rem;">{{ berita.wilayah or '-' }}</td>
+                                    <td style="padding:0.65rem 0.5rem; color:var(--text-secondary); font-size:0.75rem;">{{ berita.media or 'Unknown' }}</td>
                                     <td style="padding:0.65rem 0.5rem; text-align:center;">
                                         <span class="badge-sentimen {{ berita.get_sentimen_badge() }}" style="padding:0.3rem 0.75rem; font-size:0.65rem;">{{ berita.sentimen or 'Netral' }}</span>
                                     </td>
-                                    <td style="padding:0.65rem 0.5rem; color:var(--text-secondary); font-size:0.75rem;">{{ berita.topik or '-' }}</td>
                                 </tr>
                                 {% endfor %}
                             {% else %}

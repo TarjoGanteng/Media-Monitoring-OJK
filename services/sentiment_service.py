@@ -4,7 +4,6 @@ Tidak menggunakan AI - menggunakan kamus kata positif/negatif bahasa Indonesia.
 Akan digantikan AI pada tahap berikutnya.
 """
 
-import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,79 +18,216 @@ class SentimentAnalyzer:
     # Kata-kata bersentimen POSITIF (konteks keuangan/OJK)
     KATA_POSITIF = {
         # Kinerja & Pertumbuhan
-        "meningkat": 2, "tumbuh": 2, "bertumbuh": 2, "naik": 1, "menguat": 2,
-        "berkembang": 2, "maju": 1, "peningkatan": 2, "pertumbuhan": 2,
-        "rekor": 2, "tertinggi": 1, "surplus": 2, "positif": 1,
+        "meningkat": 2,
+        "tumbuh": 2,
+        "bertumbuh": 2,
+        "naik": 1,
+        "menguat": 2,
+        "berkembang": 2,
+        "maju": 1,
+        "peningkatan": 2,
+        "pertumbuhan": 2,
+        "rekor": 2,
+        "tertinggi": 1,
+        "surplus": 2,
+        "positif": 1,
         # Keberhasilan & Pencapaian
-        "berhasil": 3, "sukses": 3, "prestasi": 2, "capaian": 2,
-        "pencapaian": 2, "capai": 2, "raih": 2, "meraih": 2, "memenangkan": 2,
-        "juara": 2, "terbaik": 2, "unggul": 2, "unggulan": 2,
+        "berhasil": 3,
+        "sukses": 3,
+        "prestasi": 2,
+        "capaian": 2,
+        "pencapaian": 2,
+        "capai": 2,
+        "raih": 2,
+        "meraih": 2,
+        "memenangkan": 2,
+        "juara": 2,
+        "terbaik": 2,
+        "unggul": 2,
+        "unggulan": 2,
         # Perlindungan & Keamanan
-        "perlindungan": 2, "lindungi": 2, "aman": 2, "keamanan": 2, "terlindungi": 2,
-        "selamat": 1, "terjamin": 2, "jaminan": 1, "penjaminan": 2,
+        "perlindungan": 2,
+        "lindungi": 2,
+        "aman": 2,
+        "keamanan": 2,
+        "terlindungi": 2,
+        "selamat": 1,
+        "terjamin": 2,
+        "jaminan": 1,
+        "penjaminan": 2,
         # Pendidikan & Literasi
-        "literasi": 2, "edukasi": 2, "sosialisasi": 1, "seminar": 1, "workshop": 1,
-        "pelatihan": 1, "bimbingan": 1, "pendampingan": 2, "pemahaman": 1,
-        "meningkatkan literasi": 3, "literasi keuangan": 2,
+        "literasi": 2,
+        "edukasi": 2,
+        "sosialisasi": 1,
+        "seminar": 1,
+        "workshop": 1,
+        "pelatihan": 1,
+        "bimbingan": 1,
+        "pendampingan": 2,
+        "pemahaman": 1,
+        "meningkatkan literasi": 3,
+        "literasi keuangan": 2,
         # Inovasi & Digital
-        "inovasi": 2, "inovatif": 2, "digital": 1, "transformasi": 1,
-        "modernisasi": 2, "teknologi": 1, "fintech": 1, "kolaborasi": 2,
-        "sinergi": 2, "kerjasama": 1, "kemitraan": 2,
+        "inovasi": 2,
+        "inovatif": 2,
+        "digital": 1,
+        "transformasi": 1,
+        "modernisasi": 2,
+        "teknologi": 1,
+        "fintech": 1,
+        "kolaborasi": 2,
+        "sinergi": 2,
+        "kerjasama": 1,
+        "kemitraan": 2,
         # Stabilitas & Kepercayaan
-        "stabil": 2, "stabilitas": 2, "kepercayaan": 2, "terpercaya": 2,
-        "transparan": 2, "transparansi": 2, "akuntabel": 2, "kredibel": 2,
+        "stabil": 2,
+        "stabilitas": 2,
+        "kepercayaan": 2,
+        "terpercaya": 2,
+        "transparan": 2,
+        "transparansi": 2,
+        "akuntabel": 2,
+        "kredibel": 2,
         # Ekonomi positif
-        "pemulihan": 2, "pulih": 2, "bangkit": 2, "investasi": 1,
-        "inklusi": 2, "inklusi keuangan": 3, "akses": 1, "kemudahan": 2,
+        "pemulihan": 2,
+        "pulih": 2,
+        "bangkit": 2,
+        "investasi": 1,
+        "inklusi": 2,
+        "inklusi keuangan": 3,
+        "akses": 1,
+        "kemudahan": 2,
         # OJK konteks positif
-        "pengawasan ketat": 2, "tertib": 1, "patuh": 1, "kepatuhan": 2,
-        "regulasi": 1, "terdaftar": 2, "berizin": 3, "legal": 2,
-        "resmi": 2, "sah": 1, "mendukung": 1, "dukungan": 1,
+        "pengawasan ketat": 2,
+        "tertib": 1,
+        "patuh": 1,
+        "kepatuhan": 2,
+        "regulasi": 1,
+        "terdaftar": 2,
+        "berizin": 3,
+        "legal": 2,
+        "resmi": 2,
+        "sah": 1,
+        "mendukung": 1,
+        "dukungan": 1,
         # Sosial
-        "kesejahteraan": 2, "sejahtera": 2, "manfaat": 1, "bermanfaat": 2,
-        "membantu": 1, "meringankan": 1, "pemberdayaan": 2,
+        "kesejahteraan": 2,
+        "sejahtera": 2,
+        "manfaat": 1,
+        "bermanfaat": 2,
+        "membantu": 1,
+        "meringankan": 1,
+        "pemberdayaan": 2,
     }
 
     # Kata-kata bersentimen NEGATIF (konteks keuangan/OJK)
     KATA_NEGATIF = {
         # Penipuan & Ilegalitas
-        "ilegal": 4, "penipuan": 4, "penipu": 4, "modus": 3, "curang": 3,
-        "manipulasi": 3, "penggelapan": 4, "korupsi": 4, "suap": 3,
-        "kejahatan": 3, "kriminal": 3, "pidana": 3, "melanggar": 2,
-        "pelanggaran": 2, "tidak berizin": 4, "bodong": 4, "palsu": 3,
-        "fiktif": 3, "rekayasa": 2,
+        "ilegal": 4,
+        "penipuan": 4,
+        "penipu": 4,
+        "modus": 3,
+        "curang": 3,
+        "manipulasi": 3,
+        "penggelapan": 4,
+        "korupsi": 4,
+        "suap": 3,
+        "kejahatan": 3,
+        "kriminal": 3,
+        "pidana": 3,
+        "melanggar": 2,
+        "pelanggaran": 2,
+        "tidak berizin": 4,
+        "bodong": 4,
+        "palsu": 3,
+        "fiktif": 3,
+        "rekayasa": 2,
         # Pinjol & Investasi Bodong
-        "pinjol": 2, "rentenir": 3, "lintah darat": 4, "bunga tinggi": 2,
-        "bunga mencekik": 3, "jeratan": 3, "terjerat": 3, "terlilit": 3,
-        "investasi bodong": 4, "investasi ilegal": 4, "skema ponzi": 4,
-        "money game": 3, "robot trading": 2, "binary option": 3,
+        "pinjol": 2,
+        "rentenir": 3,
+        "lintah darat": 4,
+        "bunga tinggi": 2,
+        "bunga mencekik": 3,
+        "jeratan": 3,
+        "terjerat": 3,
+        "terlilit": 3,
+        "investasi bodong": 4,
+        "investasi ilegal": 4,
+        "skema ponzi": 4,
+        "money game": 3,
+        "robot trading": 2,
+        "binary option": 3,
         # Kerugian
-        "rugi": 3, "kerugian": 3, "menderita kerugian": 4, "bangkrut": 3,
-        "pailit": 3, "gagal bayar": 3, "kredit macet": 3, "tunggakan": 2,
-        "hutang": 1, "lilitan hutang": 3, "terjerat hutang": 3,
+        "rugi": 3,
+        "kerugian": 3,
+        "menderita kerugian": 4,
+        "bangkrut": 3,
+        "pailit": 3,
+        "gagal bayar": 3,
+        "kredit macet": 3,
+        "tunggakan": 2,
+        "hutang": 1,
+        "lilitan hutang": 3,
+        "terjerat hutang": 3,
         # Penurunan
-        "turun": 1, "menurun": 1, "melemah": 1, "anjlok": 3, "ambruk": 3,
-        "terpuruk": 3, "runtuh": 3, "kolaps": 3, "jatuh": 1,
+        "turun": 1,
+        "menurun": 1,
+        "melemah": 1,
+        "anjlok": 3,
+        "ambruk": 3,
+        "terpuruk": 3,
+        "runtuh": 3,
+        "kolaps": 3,
+        "jatuh": 1,
         # Korban
-        "korban": 3, "dirugikan": 3, "tertipu": 3, "ditipu": 3,
-        "masyarakat dirugikan": 4, "nasabah dirugikan": 4,
+        "korban": 3,
+        "dirugikan": 3,
+        "tertipu": 3,
+        "ditipu": 3,
+        "masyarakat dirugikan": 4,
+        "nasabah dirugikan": 4,
         # Masalah & Konflik
-        "masalah": 1, "permasalahan": 1, "sengketa": 2, "gugatan": 2,
-        "tuntutan": 2, "somasi": 2, "sanksi": 2, "denda": 1,
-        "pembekuan": 3, "pencabutan izin": 4, "ditutup": 2, "diblokir": 2,
+        "masalah": 1,
+        "permasalahan": 1,
+        "sengketa": 2,
+        "gugatan": 2,
+        "tuntutan": 2,
+        "somasi": 2,
+        "sanksi": 2,
+        "denda": 1,
+        "pembekuan": 3,
+        "pencabutan izin": 4,
+        "ditutup": 2,
+        "diblokir": 2,
         # Risiko
-        "risiko": 1, "berbahaya": 2, "mengancam": 2, "ancaman": 2,
-        "waspada": 1, "hati-hati": 1, "bahaya": 2, "marak": 1,
+        "risiko": 1,
+        "berbahaya": 2,
+        "mengancam": 2,
+        "ancaman": 2,
+        "waspada": 1,
+        "hati-hati": 1,
+        "bahaya": 2,
+        "marak": 1,
         # Pengaduan
-        "pengaduan": 1, "laporan": 1, "aduan": 1, "keluhan": 2,
+        "pengaduan": 1,
+        "laporan": 1,
+        "aduan": 1,
+        "keluhan": 2,
         "komplain": 1,
     }
 
     # Kata penguat (amplifier)
     AMPLIFIER = {
-        "sangat": 1.5, "amat": 1.5, "sekali": 1.3, "paling": 1.5,
-        "semakin": 1.2, "makin": 1.2, "terus": 1.1, "kian": 1.2,
-        "jauh lebih": 1.5, "jauh": 1.2,
+        "sangat": 1.5,
+        "amat": 1.5,
+        "sekali": 1.3,
+        "paling": 1.5,
+        "semakin": 1.2,
+        "makin": 1.2,
+        "terus": 1.1,
+        "kian": 1.2,
+        "jauh lebih": 1.5,
+        "jauh": 1.2,
     }
 
     # Kata pembalik (negasi)
@@ -158,21 +294,21 @@ class SentimentAnalyzer:
             if kata in kamus:
                 bobot = kamus[kata]
                 # Cek negasi (2 kata sebelumnya) - gunakan elif agar tidak tumpang tindih
-                if i > 0 and kata_list[i-1] in cls.NEGASI:
+                if i > 0 and kata_list[i - 1] in cls.NEGASI:
                     bobot *= -0.5  # Balik makna sebagian
-                elif i > 0 and kata_list[i-1] in cls.AMPLIFIER:
-                    bobot *= cls.AMPLIFIER[kata_list[i-1]]
+                elif i > 0 and kata_list[i - 1] in cls.AMPLIFIER:
+                    bobot *= cls.AMPLIFIER[kata_list[i - 1]]
                 skor += bobot
 
             # Cek frasa 2 kata
             if i < len(kata_list) - 1:
-                frasa = f"{kata} {kata_list[i+1]}"
+                frasa = f"{kata} {kata_list[i + 1]}"
                 if frasa in kamus:
                     skor += kamus[frasa]
 
             # Cek frasa 3 kata
             if i < len(kata_list) - 2:
-                frasa3 = f"{kata} {kata_list[i+1]} {kata_list[i+2]}"
+                frasa3 = f"{kata} {kata_list[i + 1]} {kata_list[i + 2]}"
                 if frasa3 in kamus:
                     skor += kamus[frasa3]
 
@@ -193,25 +329,103 @@ class SentimentAnalyzer:
         teks = ((judul or "") + " " + (isi or "")).lower()
 
         topik_keywords = {
-            "Pinjaman Online": ["pinjaman online", "pinjol", "p2p lending", "fintech lending",
-                                "kredit online", "pinjam online", "bunga pinjaman"],
-            "Literasi Keuangan": ["literasi keuangan", "edukasi keuangan", "melek keuangan",
-                                  "pengelolaan keuangan", "literasi", "inklusi keuangan"],
-            "Investasi": ["investasi", "saham", "obligasi", "reksa dana", "portofolio",
-                          "return", "dividen", "emiten", "bursa", "ihsg"],
-            "Perbankan": ["bank", "perbankan", "tabungan", "deposito", "kredit", "kpr",
-                          "atm", "mobile banking", "internet banking", "nasabah bank"],
-            "Asuransi": ["asuransi", "premi", "klaim asuransi", "polis", "jiwa", "kesehatan"],
-            "Pasar Modal": ["pasar modal", "bursa efek", "saham", "idx", "bei",
-                            "penawaran umum", "ipo", "obligasi"],
-            "Fintech": ["fintech", "teknologi keuangan", "digital payment", "dompet digital",
-                        "qris", "e-wallet", "gopay", "ovo", "dana", "uang elektronik"],
-            "Perlindungan Konsumen": ["perlindungan konsumen", "pengaduan", "sengketa",
-                                      "korban", "dirugikan", "aduan nasabah"],
-            "Pengawasan": ["pengawasan", "pemeriksaan", "audit", "inspeksi", "sanksi",
-                           "denda", "pencabutan izin", "pembekuan"],
-            "Investasi Ilegal": ["investasi ilegal", "investasi bodong", "penipuan investasi",
-                                 "skema ponzi", "money game", "robot trading ilegal"],
+            "Pinjaman Online": [
+                "pinjaman online",
+                "pinjol",
+                "p2p lending",
+                "fintech lending",
+                "kredit online",
+                "pinjam online",
+                "bunga pinjaman",
+            ],
+            "Literasi Keuangan": [
+                "literasi keuangan",
+                "edukasi keuangan",
+                "melek keuangan",
+                "pengelolaan keuangan",
+                "literasi",
+                "inklusi keuangan",
+            ],
+            "Investasi": [
+                "investasi",
+                "saham",
+                "obligasi",
+                "reksa dana",
+                "portofolio",
+                "return",
+                "dividen",
+                "emiten",
+                "bursa",
+                "ihsg",
+            ],
+            "Perbankan": [
+                "bank",
+                "perbankan",
+                "tabungan",
+                "deposito",
+                "kredit",
+                "kpr",
+                "atm",
+                "mobile banking",
+                "internet banking",
+                "nasabah bank",
+            ],
+            "Asuransi": [
+                "asuransi",
+                "premi",
+                "klaim asuransi",
+                "polis",
+                "jiwa",
+                "kesehatan",
+            ],
+            "Pasar Modal": [
+                "pasar modal",
+                "bursa efek",
+                "saham",
+                "idx",
+                "bei",
+                "penawaran umum",
+                "ipo",
+                "obligasi",
+            ],
+            "Fintech": [
+                "fintech",
+                "teknologi keuangan",
+                "digital payment",
+                "dompet digital",
+                "qris",
+                "e-wallet",
+                "gopay",
+                "ovo",
+                "dana",
+                "uang elektronik",
+            ],
+            "Perlindungan Konsumen": [
+                "perlindungan konsumen",
+                "pengaduan",
+                "sengketa",
+                "korban",
+                "dirugikan",
+                "aduan nasabah",
+            ],
+            "Pengawasan": [
+                "pengawasan",
+                "pemeriksaan",
+                "audit",
+                "inspeksi",
+                "sanksi",
+                "denda",
+                "pencabutan izin",
+                "pembekuan",
+            ],
+            "Investasi Ilegal": [
+                "investasi ilegal",
+                "investasi bodong",
+                "penipuan investasi",
+                "skema ponzi",
+                "money game",
+                "robot trading ilegal",
+            ],
         }
 
         skor_topik = {}
@@ -240,10 +454,25 @@ class SentimentAnalyzer:
         teks = ((judul or "") + " " + (isi or "")).lower()
 
         wilayah_list = [
-            "bandung", "bekasi", "bogor", "cirebon", "depok",
-            "sukabumi", "karawang", "tasikmalaya", "garut", "cianjur",
-            "subang", "purwakarta", "indramayu", "majalengka", "sumedang",
-            "kuningan", "ciamis", "banjar", "pangandaran"
+            "bandung",
+            "bekasi",
+            "bogor",
+            "cirebon",
+            "depok",
+            "sukabumi",
+            "karawang",
+            "tasikmalaya",
+            "garut",
+            "cianjur",
+            "subang",
+            "purwakarta",
+            "indramayu",
+            "majalengka",
+            "sumedang",
+            "kuningan",
+            "ciamis",
+            "banjar",
+            "pangandaran",
         ]
 
         for wilayah in wilayah_list:
