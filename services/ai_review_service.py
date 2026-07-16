@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # ─── Konstanta ────────────────────────────────────────────────────────────────
 INTERVAL_DETIK = 60  # Cek ulang berita baru setiap 60 detik
 BATCH_SIZE = 20  # Jumlah berita yang diproses per siklus
-DELAY_PER_REQ = 1.5  # Jeda antar request ke AI (detik) → aman dari rate limit
+DELAY_PER_REQ = 12.0  # Jeda antar request ke AI (detik) → dinaikkan menjadi 12 detik agar terhindar dari Error 429 (Too Many Requests) batas gratis Cohere
 
 JABAR_KEYWORDS = [
     "jawa barat",
@@ -220,7 +220,7 @@ class AIReviewService:
 
             # ── Lapis 2: Analisis AI ──────────────────────────────────────────
             try:
-                ai_result = gemini.analisis_berita(judul, berita.isi, berita.ringkasan)
+                ai_result = gemini.analisis_berita(judul, berita.isi, berita.ringkasan, berita.media)
                 time.sleep(DELAY_PER_REQ)
 
                 if ai_result is None:

@@ -121,12 +121,13 @@ class CrawlerService:
         wilayah_final = None
         ringkasan_final = ringkasan
         narasumber_final = article_data.get("narasumber")
+        jenis_media_final = "Non-Lokal"
 
         try:
             from services.ai_service import gemini
 
             if gemini.is_available():
-                ai_result = gemini.analisis_berita(judul, isi, ringkasan)
+                ai_result = gemini.analisis_berita(judul, isi, ringkasan, article_data.get("media"))
                 if ai_result:
                     sentimen_final = ai_result["sentimen"]
                     # Jika AI mendeteksi secara konteks bahwa ini bukan Jabar
@@ -142,6 +143,8 @@ class CrawlerService:
                         ringkasan_final = ai_result["ringkasan"]
                     if ai_result.get("narasumber"):
                         narasumber_final = ai_result["narasumber"]
+                    if ai_result.get("jenis_media"):
+                        jenis_media_final = ai_result["jenis_media"]
                     logger.debug(
                         f"[AI] Analisis OK: '{judul[:50]}' → {sentimen_final}, {topik_final}"
                     )
@@ -161,6 +164,7 @@ class CrawlerService:
             judul=judul,
             link=link,
             media=article_data.get("media"),
+            jenis_media=jenis_media_final,
             tanggal=article_data.get("tanggal"),
             isi=isi,
             ringkasan=ringkasan_final,

@@ -346,7 +346,7 @@ def ai_analisis_satu(berita_id):
     if not berita:
         return jsonify({"success": False, "message": "Berita tidak ditemukan."}), 404
 
-    result = gemini.analisis_berita(berita.judul, berita.isi, berita.ringkasan)
+    result = gemini.analisis_berita(berita.judul, berita.isi, berita.ringkasan, berita.media)
     if not result:
         return jsonify(
             {

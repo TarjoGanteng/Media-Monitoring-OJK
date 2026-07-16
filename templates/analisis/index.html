@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Analisis{% endblock %}
-{% block breadcrumb %}Analisis{% endblock %}
+{% block title %}Analisis {% if tipe_media == 'lokal' %}(Lokal){% elif tipe_media == 'non-lokal' %}(Non-Lokal){% endif %}{% endblock %}
+{% block breadcrumb %}Analisis {% if tipe_media == 'lokal' %}(Lokal){% elif tipe_media == 'non-lokal' %}(Non-Lokal){% endif %}{% endblock %}
 
 {% block content %}
 <!-- ROW 1: STATS -->
@@ -64,10 +64,27 @@
 <!-- ROW 2: TREN & DISTRIBUSI SENTIMEN -->
 <div class="row g-3 mb-4">
     <!-- Tren Sentimen -->
-    <div class="col-lg-7">
+    <div class="col-lg-12">
         <div class="card-panel h-100" style="margin:0;">
             <div class="card-panel-header d-flex justify-content-between align-items-center" style="border:none; padding-bottom:0;">
-                <h5 class="card-panel-title mb-0" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">TREN SENTIMEN <i class="bi bi-info-circle text-muted" style="font-size:0.8rem; font-weight:normal; text-transform:none;"></i></h5>
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="card-panel-title mb-0" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">TREN SENTIMEN <i class="bi bi-info-circle text-muted" style="font-size:0.8rem; font-weight:normal; text-transform:none;"></i></h5>
+                    <select id="trenFilter" class="form-select form-select-sm" style="width:auto; font-size:0.7rem; padding-top:0.2rem; padding-bottom:0.2rem; border-color:var(--border-color); color:var(--text-secondary);" onchange="updateTrenChart()">
+                        <optgroup label="Harian">
+                            <option value="7" selected>7 Hari Terakhir</option>
+                            <option value="30">30 Hari Terakhir</option>
+                                                    </optgroup>
+                        <optgroup label="Bulanan">
+                            <option value="3m">Triwulan (3 Bulan)</option>
+                            <option value="6m">Semester (6 Bulan)</option>
+                            <option value="1y">1 Tahun Terakhir</option>
+                            <option value="2y">2 Tahun Terakhir</option>
+                            <option value="3y">3 Tahun Terakhir</option>
+                            <option value="4y">4 Tahun Terakhir</option>
+                            <option value="5y">5 Tahun Terakhir</option>
+                        </optgroup>
+                    </select>
+                </div>
                 <div style="font-size:0.65rem; font-weight:700; color:var(--text-secondary); display:flex; gap:1rem;">
                     <span><span style="color:#10b981; font-size:0.8rem; margin-right:2px;">&#9632;</span> Positif</span>
                     <span><span style="color:#f59e0b; font-size:0.8rem; margin-right:2px;">&#9632;</span> Netral</span>
@@ -80,45 +97,17 @@
         </div>
     </div>
     
-    <!-- Distribusi Sentimen -->
-    <div class="col-lg-5">
-        <div class="card-panel h-100" style="margin:0;">
-            <div class="card-panel-header" style="border:none; padding-bottom:0;">
-                <h5 class="card-panel-title" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">DISTRIBUSI SENTIMEN</h5>
-            </div>
-            <div class="card-panel-body d-flex align-items-center justify-content-center gap-4" style="height:220px; padding:1rem 2rem;">
-                <div style="width:140px;height:140px;flex-shrink:0; position:relative;">
-                    <canvas id="analisisDistDonut"></canvas>
-                </div>
-                <div class="topik-legend" style="flex:1;">
-                    <div style="font-size:0.8rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:var(--text-primary); font-weight:600;"><span style="color:#10b981; margin-right:8px; font-size:1rem;">&#9632;</span> Positif</span> 
-                        <span style="color:var(--text-secondary);"><b>{{ statistik.pct_positif }}%</b> ({{ statistik.positif }})</span>
-                    </div>
-                    <div style="font-size:0.8rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:var(--text-primary); font-weight:600;"><span style="color:#f59e0b; margin-right:8px; font-size:1rem;">&#9632;</span> Netral</span> 
-                        <span style="color:var(--text-secondary);"><b>{{ statistik.pct_netral }}%</b> ({{ statistik.netral }})</span>
-                    </div>
-                    <div style="font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:var(--text-primary); font-weight:600;"><span style="color:#ef4444; margin-right:8px; font-size:1rem;">&#9632;</span> Negatif</span> 
-                        <span style="color:var(--text-secondary);"><b>{{ statistik.pct_negatif }}%</b> ({{ statistik.negatif }})</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
 </div>
 
 <!-- ROW 3: TOPIK, MEDIA, DISTRIBUSI, SHARE -->
 <div class="row g-3 mb-4">
     <!-- Topik Terbanyak -->
-    <div class="col-lg-3">
+    <div class="col-lg-4">
         <div class="card-panel h-100" style="margin:0;">
             <div class="card-panel-header d-flex justify-content-between align-items-center" style="border:none;">
                 <h5 class="card-panel-title mb-0" style="font-size:0.85rem; font-weight:700;">Topik Terbanyak <i class="bi bi-info-circle text-muted" style="font-size:0.8rem; font-weight:normal;"></i></h5>
-                <select class="form-select form-select-sm" style="width:auto; border-radius:6px; font-size:0.7rem; padding:0.2rem 1.5rem 0.2rem 0.5rem; border-color:var(--border-color);">
-                    <option>Top 5</option>
-                </select>
+                <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary);">Top 5</span>
             </div>
             <div class="card-panel-body" style="padding:0 1.25rem 1rem;">
                 {% set colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'] %}
@@ -136,13 +125,11 @@
     </div>
     
     <!-- Media Paling Aktif -->
-    <div class="col-lg-3">
+    <div class="col-lg-4">
         <div class="card-panel h-100" style="margin:0;">
             <div class="card-panel-header d-flex justify-content-between align-items-center" style="border:none;">
                 <h5 class="card-panel-title mb-0" style="font-size:0.85rem; font-weight:700;">Media Paling Aktif <i class="bi bi-info-circle text-muted" style="font-size:0.8rem; font-weight:normal;"></i></h5>
-                <select class="form-select form-select-sm" style="width:auto; border-radius:6px; font-size:0.7rem; padding:0.2rem 1.5rem 0.2rem 0.5rem; border-color:var(--border-color);">
-                    <option>Top 5</option>
-                </select>
+                <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary);">Top 5</span>
             </div>
             <div class="card-panel-body" style="padding:0 1.25rem 1rem;">
                 {% set colors = ['#ef4444', '#f43f5e', '#06b6d4', '#3b82f6', '#8b5cf6'] %}
@@ -160,7 +147,7 @@
     </div>
     
     <!-- Distribusi Sentimen Per Media -->
-    <div class="col-lg-3">
+    <div class="col-lg-4">
         <div class="card-panel h-100" style="margin:0;">
             <div class="card-panel-header" style="border:none;">
                 <h5 class="card-panel-title" style="font-size:0.85rem; font-weight:700;">Distribusi Sentimen Per Media <i class="bi bi-info-circle text-muted" style="font-size:0.8rem; font-weight:normal;"></i></h5>
@@ -190,17 +177,6 @@
         </div>
     </div>
 
-    <!-- Share of Voice -->
-    <div class="col-lg-3">
-        <div class="card-panel h-100" style="margin:0;">
-            <div class="card-panel-header" style="border:none;">
-                <h5 class="card-panel-title" style="font-size:0.85rem; font-weight:700;">Share of Voice <i class="bi bi-info-circle text-muted" style="font-size:0.8rem; font-weight:normal;"></i></h5>
-            </div>
-            <div class="card-panel-body d-flex align-items-center justify-content-center" style="height:170px; padding:0 1rem 1rem;">
-                <canvas id="analisisShareDonut"></canvas>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- ROW 4: INSIGHT AI & REKOMENDASI -->
@@ -241,7 +217,9 @@ const INSIGHT_STYLE = {
 };
 
 (function loadInsightAI() {
-    fetch('/analisis/ai-insight')
+    const urlParams = new URLSearchParams(window.location.search);
+    const tipe = urlParams.get('tipe') || 'semua';
+    fetch('/analisis/ai-insight?tipe=' + tipe)
         .then(r => r.ok ? r.json() : Promise.reject(r.status))
         .then(resp => {
             const loading = document.getElementById('insight-loading');
@@ -290,17 +268,28 @@ const INSIGHT_STYLE = {
 </style>
 
 <script>
-const trendHarian = {{ trend_json | safe }};
+const trendData = {
+    "7": {{ trend_7_json | safe }},
+    "30": {{ trend_30_json | safe }},
+    "3m": {{ trend_3m_json | safe }},
+    "6m": {{ trend_6m_json | safe }},
+    "1y": {{ trend_1y_json | safe }},
+    "2y": {{ trend_2y_json | safe }},
+    "3y": {{ trend_3y_json | safe }},
+    "4y": {{ trend_4y_json | safe }},
+    "5y": {{ trend_5y_json | safe }}
+};
 
+let currentTrendData = trendData["7"];
 const trendCtx = document.getElementById('analisisTrendChart').getContext('2d');
-new Chart(trendCtx, {
+let trendChart = new Chart(trendCtx, {
     type: 'line',
     data: {
-        labels: trendHarian.labels,
+        labels: currentTrendData.labels,
         datasets: [
-            { label: 'Positif', data: trendHarian.positif, borderColor: '#10b981', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#10b981', fill: false, borderWidth: 2 },
-            { label: 'Netral', data: trendHarian.netral, borderColor: '#f59e0b', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#f59e0b', fill: false, borderWidth: 2 },
-            { label: 'Negatif', data: trendHarian.negatif, borderColor: '#ef4444', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#ef4444', fill: false, borderWidth: 2 }
+            { label: 'Positif', data: currentTrendData.positif, borderColor: '#10b981', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#10b981', fill: false, borderWidth: 2 },
+            { label: 'Netral', data: currentTrendData.netral, borderColor: '#f59e0b', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#f59e0b', fill: false, borderWidth: 2 },
+            { label: 'Negatif', data: currentTrendData.negatif, borderColor: '#ef4444', tension: 0.3, pointRadius: 4, pointBackgroundColor: '#ef4444', fill: false, borderWidth: 2 }
         ]
     },
     options: { 
@@ -314,35 +303,19 @@ new Chart(trendCtx, {
     }
 });
 
-const distCtx = document.getElementById('analisisDistDonut').getContext('2d');
-new Chart(distCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['Positif', 'Netral', 'Negatif'],
-        datasets: [{ data: [{{ statistik.positif }}, {{ statistik.netral }}, {{ statistik.negatif }}], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'], borderWidth: 3, borderColor: '#fff' }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } }, cutout: '65%' }
-});
+function updateTrenChart() {
+    const selected = document.getElementById('trenFilter').value;
+    currentTrendData = trendData[selected];
+    trendChart.data.labels = currentTrendData.labels;
+    trendChart.data.datasets[0].data = currentTrendData.positif;
+    trendChart.data.datasets[1].data = currentTrendData.netral;
+    trendChart.data.datasets[2].data = currentTrendData.negatif;
+    trendChart.update();
+}
 
-const shareCtx = document.getElementById('analisisShareDonut').getContext('2d');
-new Chart(shareCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['Kompas.com', 'Detik.com', 'CNBC Indonesia', 'Tribun Jabar', 'Bisnis Indonesia', 'Lainnya'],
-        datasets: [{ data: [18.9, 15.0, 12.2, 9.5, 7.5, 36.9], backgroundColor: ['#ef4444', '#f43f5e', '#06b6d4', '#3b82f6', '#8b5cf6', '#d1d5db'], borderWidth: 2, borderColor: '#fff' }]
-    },
-    options: { 
-        responsive: true, 
-        maintainAspectRatio: false, 
-        plugins: { 
-            legend: { 
-                position: 'right', 
-                labels: { boxWidth: 8, font: {size: 9, weight: 'bold'}, padding: 8, usePointStyle: true, pointStyle: 'rectRounded' } 
-             } 
-        }, 
-        cutout: '60%' 
-    }
-});
+
+
+
 </script>
 {% endblock %}
 

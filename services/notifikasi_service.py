@@ -86,11 +86,56 @@ class NotifikasiService:
             return False
 
     @staticmethod
-    def hapus_notifikasi_lama(hari: int = 30) -> int:
-        """Hapus notifikasi yang lebih lama dari {hari} hari"""
-        batas_waktu = datetime.utcnow() - timedelta(days=hari)
+    def hapus_notifikasi(notif_id: int) -> bool:
+        """Hapus satu notifikasi berdasarkan ID"""
+        notif = db.session.get(Notifikasi, notif_id)
+        if notif:
+            try:
+                db.session.delete(notif)
+                db.session.commit()
+                return True
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Gagal menghapus notifikasi {notif_id}: {e}")
+        return False
+
+    @staticmethod
+    def hapus_semua_notifikasi() -> int:
+        """Hapus semua notifikasi"""
         try:
-            lama = Notifikasi.query.filter(Notifikasi.created_at < batas_waktu).all()
+            jml = Notifikasi.query.count()
+            Notifikasi.query.delete()
+            db.session.commit()
+            return jml
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Gagal hapus semua notifikasi: {e}")
+            return 0
+
+    @staticmethod
+    def hapus_notifikasi_lama() -> int:
+        """
+        Hapus notifikasi otomatis:
+        - Belum dibaca (is_read=False) -> hapus jika > 30 hari
+        - Sudah dibaca (is_read=True) -> hapus jika > 7 hari
+        """
+        now = datetime.utcnow()
+        batas_belum_dibaca = now - timedelta(days=30)
+        batas_sudah_dibaca = now - timedelta(days=7)
+        try:
+            # 1. Ambil yang belum dibaca > 30 hari
+            belum_dibaca = Notifikasi.query.filter(
+                Notifikasi.is_read == False,
+                Notifikasi.created_at < batas_belum_dibaca
+            ).all()
+            
+            # 2. Ambil yang sudah dibaca > 7 hari
+            sudah_dibaca = Notifikasi.query.filter(
+                Notifikasi.is_read == True,
+                Notifikasi.created_at < batas_sudah_dibaca
+            ).all()
+            
+            lama = belum_dibaca + sudah_dibaca
             jml = len(lama)
             for n in lama:
                 db.session.delete(n)

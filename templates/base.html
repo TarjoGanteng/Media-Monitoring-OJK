@@ -47,10 +47,29 @@
                 </li>
                 {% if current_user.is_authenticated and current_user.role in ['super_admin', 'pemimpin'] %}
                 <li class="nav-item">
-                    <a href="{{ url_for('halaman.analisis') }}" class="nav-link {% if active_page == 'analisis' %}active{% endif %}">
-                        <i class="bi bi-bar-chart-line nav-icon"></i>
-                        <span>Analisis</span>
+                    <a href="#analisisSubmenu" data-bs-toggle="collapse" class="nav-link dropdown-toggle {% if active_page == 'analisis' %}active{% endif %}" aria-expanded="{% if active_page == 'analisis' %}true{% else %}false{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="bi bi-bar-chart-line nav-icon"></i>
+                            <span>Analisis</span>
+                        </div>
                     </a>
+                    <ul class="collapse list-unstyled {% if active_page == 'analisis' %}show{% endif %}" id="analisisSubmenu" style="padding-left: 2.5rem; margin-top: 0.2rem; font-size: 0.85rem;">
+                        <li style="margin-bottom: 0.2rem;">
+                            <a href="{{ url_for('halaman.analisis') }}" style="text-decoration: none; padding: 0.4rem 0; display: block; color: {% if active_page == 'analisis' and (not tipe_media or tipe_media == 'semua') %}var(--accent-color); font-weight: 600;{% else %}var(--text-secondary);{% endif %}" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='{% if active_page == 'analisis' and (not tipe_media or tipe_media == 'semua') %}var(--accent-color){% else %}var(--text-secondary){% endif %}'">
+                                <i class="bi bi-circle{% if active_page == 'analisis' and (not tipe_media or tipe_media == 'semua') %}-fill{% endif %} me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Keseluruhan
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 0.2rem;">
+                            <a href="{{ url_for('halaman.analisis', tipe='lokal') }}" style="text-decoration: none; padding: 0.4rem 0; display: block; color: {% if tipe_media == 'lokal' %}var(--accent-color); font-weight: 600;{% else %}var(--text-secondary);{% endif %}" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='{% if tipe_media == 'lokal' %}var(--accent-color){% else %}var(--text-secondary){% endif %}'">
+                                <i class="bi bi-circle{% if tipe_media == 'lokal' %}-fill{% endif %} me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Berita Lokal
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 0.2rem;">
+                            <a href="{{ url_for('halaman.analisis', tipe='non-lokal') }}" style="text-decoration: none; padding: 0.4rem 0; display: block; color: {% if tipe_media == 'non-lokal' %}var(--accent-color); font-weight: 600;{% else %}var(--text-secondary);{% endif %}" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='{% if tipe_media == 'non-lokal' %}var(--accent-color){% else %}var(--text-secondary){% endif %}'">
+                                <i class="bi bi-circle{% if tipe_media == 'non-lokal' %}-fill{% endif %} me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Berita Non-Lokal
+                            </a>
+                        </li>
+                    </ul>
                 </li>
                 <li class="nav-item">
                     <a href="{{ url_for('halaman.wilayah') }}" class="nav-link {% if active_page == 'wilayah' %}active{% endif %}">

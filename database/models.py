@@ -18,6 +18,7 @@ class Berita(db.Model):
     judul = db.Column(db.String(500), nullable=False)
     link = db.Column(db.String(1000), nullable=False, unique=True, index=True)
     media = db.Column(db.String(200), nullable=True)
+    jenis_media = db.Column(db.String(20), nullable=True, default="Non-Lokal")
     tanggal = db.Column(db.DateTime, nullable=True)
     isi = db.Column(db.Text, nullable=True)
     ringkasan = db.Column(db.Text, nullable=True)
@@ -56,6 +57,7 @@ class Berita(db.Model):
             "judul": self.judul,
             "link": self.link,
             "media": self.media,
+            "jenis_media": self.jenis_media,
             "tanggal": self.tanggal.isoformat() if self.tanggal else None,
             "isi": self.isi,
             "ringkasan": self.ringkasan,

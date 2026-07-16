@@ -34,7 +34,7 @@ def jalankan():
         gagal = 0
         for i, b in enumerate(berita_all):
             try:
-                res = gemini.analisis_berita(b.judul, b.isi, b.ringkasan)
+                res = gemini.analisis_berita(b.judul, b.isi, b.ringkasan, b.media)
                 if res:
                     b.sentimen = res["sentimen"]
                     b.topik = res["topik"]

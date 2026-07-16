@@ -14,15 +14,24 @@ logger = logging.getLogger(__name__)
 class DashboardService:
     """Service untuk mengumpulkan data statistik yang ditampilkan di dashboard."""
 
+
     @staticmethod
-    def get_statistik_utama() -> dict:
+    def _apply_media_filter(query, tipe_media: str = "semua"):
+        if tipe_media == "lokal":
+            return query.filter(Berita.jenis_media == "Lokal")
+        elif tipe_media == "non-lokal":
+            return query.filter(Berita.jenis_media == "Non-Lokal")
+        return query
+
+    @staticmethod
+    def get_statistik_utama(tipe_media: str = "semua") -> dict:
         """
         Mengambil statistik utama: total berita, positif, negatif, netral.
 
         Returns:
             Dictionary statistik utama
         """
-        base_query = Berita.query.filter_by(status="aktif")
+        base_query = DashboardService._apply_media_filter(Berita.query.filter_by(status="aktif"), tipe_media)
 
         total = base_query.count()
         positif = base_query.filter_by(sentimen="Positif").count()
@@ -63,7 +72,7 @@ class DashboardService:
         )
 
     @staticmethod
-    def get_topik_terbanyak(limit: int = 5) -> list[dict]:
+    def get_topik_terbanyak(limit: int = 5, tipe_media: str = "semua") -> list[dict]:
         """
         Mengambil topik yang paling banyak muncul dalam berita.
 
@@ -73,14 +82,12 @@ class DashboardService:
         Returns:
             List dictionary {topik, jumlah}
         """
-        result = (
+        query = (
             db.session.query(Berita.topik, func.count(Berita.id).label("jumlah"))
             .filter(Berita.topik.isnot(None), Berita.status == "aktif")
-            .group_by(Berita.topik)
-            .order_by(desc("jumlah"))
-            .limit(limit)
-            .all()
         )
+        query = DashboardService._apply_media_filter(query, tipe_media)
+        result = query.group_by(Berita.topik).order_by(desc("jumlah")).limit(limit).all()
 
         # Jika tidak ada data, kembalikan data dummy
         if not result:
@@ -97,7 +104,7 @@ class DashboardService:
         ]
 
     @staticmethod
-    def get_media_teraktif(limit: int = 5) -> list[dict]:
+    def get_media_teraktif(limit: int = 5, tipe_media: str = "semua") -> list[dict]:
         """
         Mengambil media yang paling banyak memberitakan OJK.
 
@@ -107,14 +114,12 @@ class DashboardService:
         Returns:
             List dictionary {media, jumlah}
         """
-        result = (
+        query = (
             db.session.query(Berita.media, func.count(Berita.id).label("jumlah"))
             .filter(Berita.media.isnot(None), Berita.status == "aktif")
-            .group_by(Berita.media)
-            .order_by(desc("jumlah"))
-            .limit(limit)
-            .all()
         )
+        query = DashboardService._apply_media_filter(query, tipe_media)
+        result = query.group_by(Berita.media).order_by(desc("jumlah")).limit(limit).all()
 
         if not result:
             return DashboardService._get_dummy_media()
@@ -147,7 +152,7 @@ class DashboardService:
         return [{"kota": r.wilayah, "jumlah": r.jumlah} for r in result]
 
     @staticmethod
-    def get_trend_harian(hari: int = 7) -> dict:
+    def get_trend_harian(hari: int = 7, tipe_media: str = "semua") -> dict:
         """
         Mengambil data trend berita harian untuk chart.
         Dioptimasi: menggunakan 1 query GROUP BY, bukan N×4 query.
@@ -164,7 +169,7 @@ class DashboardService:
         end_dt = datetime.combine(today, datetime.max.time())
 
         # Satu query dengan GROUP BY tanggal dan agregasi sentimen
-        rows = (
+        query = (
             db.session.query(
                 func.strftime("%Y-%m-%d", Berita.tanggal).label("tgl"),
                 func.count(Berita.id).label("total"),
@@ -183,9 +188,9 @@ class DashboardService:
                 Berita.tanggal >= start_dt,
                 Berita.tanggal <= end_dt,
             )
-            .group_by(func.strftime("%Y-%m-%d", Berita.tanggal))
-            .all()
-        )
+            )
+        query = DashboardService._apply_media_filter(query, tipe_media)
+        rows = query.group_by(func.strftime("%Y-%m-%d", Berita.tanggal)).all()
 
         # Buat mapping tanggal -> data row
         data_map = {r.tgl: r for r in rows}
@@ -220,7 +225,7 @@ class DashboardService:
         }
 
     @staticmethod
-    def get_trend_bulanan(bulan: int = 6) -> dict:
+    def get_trend_bulanan(bulan: int = 6, tipe_media: str = "semua") -> dict:
         from dateutil.relativedelta import relativedelta
 
         today = datetime.now()
@@ -253,6 +258,7 @@ class DashboardService:
                 Berita.bulan == target.month,
                 Berita.tahun == target.year,
             )
+            base_query = DashboardService._apply_media_filter(base_query, tipe_media)
 
             total = base_query.count()
             positif = base_query.filter(Berita.sentimen == "Positif").count()
@@ -282,7 +288,7 @@ class DashboardService:
         }
 
     @staticmethod
-    def get_trend_mingguan(minggu: int = 4) -> dict:
+    def get_trend_mingguan(minggu: int = 4, tipe_media: str = "semua") -> dict:
         labels = []
         data_total = []
         data_positif = []
@@ -303,6 +309,7 @@ class DashboardService:
                 Berita.tanggal >= start_dt,
                 Berita.tanggal <= end_dt,
             )
+            base_query = DashboardService._apply_media_filter(base_query, tipe_media)
 
             total = base_query.count()
             positif = base_query.filter(Berita.sentimen == "Positif").count()
@@ -332,20 +339,19 @@ class DashboardService:
         }
 
     @staticmethod
-    def get_sebaran_media() -> list[dict]:
+    def get_sebaran_media(tipe_media: str = "semua") -> list[dict]:
         """
         Mengambil semua media beserta jumlah beritanya.
 
         Returns:
             List dictionary {media, jumlah, pct}
         """
-        result = (
+        query = (
             db.session.query(Berita.media, func.count(Berita.id).label("jumlah"))
             .filter(Berita.media.isnot(None), Berita.status == "aktif")
-            .group_by(Berita.media)
-            .order_by(desc("jumlah"))
-            .all()
         )
+        query = DashboardService._apply_media_filter(query, tipe_media)
+        result = query.group_by(Berita.media).order_by(desc("jumlah")).all()
 
         if not result:
             return DashboardService._get_dummy_media_full()

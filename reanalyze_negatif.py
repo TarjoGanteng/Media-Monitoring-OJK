@@ -25,7 +25,7 @@ def jalankan():
 
         for i, b in enumerate(berita_negatif):
             try:
-                res = gemini.analisis_berita(b.judul, b.isi, b.ringkasan)
+                res = gemini.analisis_berita(b.judul, b.isi, b.ringkasan, b.media)
                 if res:
                     sentimen_baru = res["sentimen"]
                     if sentimen_baru != "Negatif":

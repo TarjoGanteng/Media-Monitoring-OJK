@@ -137,16 +137,28 @@ sebaranData["{{ item.wilayah | lower }}"] = {
 // Ambil nilai maksimum jumlah untuk perhitungan warna
 const maxJumlah = Math.max(...Object.values(sebaranData).map(d => d.jumlah), 1);
 
-// Fungsi kecocokan nama wilayah (fleksibel)
+// Fungsi pencocokan nama wilayah (Tepat)
 function getDataByName(name) {
     if (!name) return { jumlah: 0, positif: 0, netral: 0, negatif: 0 };
-    const normalized = name.toLowerCase()
-        .replace(/^(kab\.|kabupaten|kota)\s+/i, '')
-        .trim();
+    const upperName = name.toUpperCase().trim();
     
+    let dbKey = "";
+    if (upperName === "BANDUNG BARAT") {
+        dbKey = "bandung barat";
+    } else if (upperName === "KOTA BANDUNG" || upperName === "BANDUNG") {
+        dbKey = "bandung";
+    } else {
+        // Hapus KOTA dan KABUPATEN
+        let searchName = upperName;
+        if (searchName.startsWith("KOTA ")) searchName = searchName.replace("KOTA ", "");
+        if (searchName.startsWith("KABUPATEN ")) searchName = searchName.replace("KABUPATEN ", "");
+        if (searchName.startsWith("KAB. ")) searchName = searchName.replace("KAB. ", "");
+        dbKey = searchName.toLowerCase();
+    }
+
     for (const [k, v] of Object.entries(sebaranData)) {
-        const kNorm = k.replace(/^(kab\.|kabupaten|kota)\s+/i, '').trim();
-        if (kNorm === normalized || kNorm.includes(normalized) || normalized.includes(kNorm)) {
+        const kNorm = k.toLowerCase().trim();
+        if (kNorm === dbKey) {
             return v;
         }
     }
@@ -170,6 +182,7 @@ const map = L.map('map-wilayah', {
     zoom: 8,
     zoomControl: true,
     scrollWheelZoom: true,
+    doubleClickZoom: false,
 });
 
 // Tile layer OpenStreetMap (latar peta)
@@ -196,7 +209,14 @@ function style(feature) {
 function onEachFeature(feature, layer) {
     const name = feature.properties.KABKOT || feature.properties.name || feature.properties.NAME_2 || 'Unknown';
     const data = getDataByName(name);
-    const nameDisplay = name.replace(/\b\w/g, c => c.toUpperCase());
+    let nameDisplay = name.replace(/\b\w/g, c => c.toUpperCase());
+    
+    const upperName = nameDisplay.toUpperCase();
+    if (upperName === "KOTA BANDUNG" || upperName === "BANDUNG") {
+        nameDisplay = "Bandung";
+    } else if (upperName === "BANDUNG BARAT") {
+        nameDisplay = "Bandung Barat";
+    }
 
     layer.bindTooltip(
         `<div style="font-family:Inter,sans-serif;padding:8px 12px;min-width:160px;">
@@ -224,6 +244,9 @@ function onEachFeature(feature, layer) {
             e.target.bringToFront();
         },
         mouseout(e) { geojsonLayer.resetStyle(e.target); },
+        dblclick(e) {
+            window.location.href = `/pemberitaan?wilayah=${encodeURIComponent(nameDisplay)}`;
+        }
     });
 }
 

@@ -41,30 +41,53 @@ def fix_db():
 @role_required("super_admin", "pemimpin")
 def analisis():
     """Halaman Analisis - Menampilkan visualisasi data mendalam."""
-    statistik = DashboardService.get_statistik_utama()
-    topik_terbanyak = DashboardService.get_topik_terbanyak(limit=5)
-    media_teraktif = DashboardService.get_media_teraktif(limit=5)
-    trend_data = DashboardService.get_trend_harian(hari=7)
-    trend_json = json.dumps(trend_data)
+    tipe_media = request.args.get("tipe", "semua")
+    
+    statistik = DashboardService.get_statistik_utama(tipe_media)
+    topik_terbanyak = DashboardService.get_topik_terbanyak(limit=5, tipe_media=tipe_media)
+    media_teraktif = DashboardService.get_media_teraktif(limit=5, tipe_media=tipe_media)
+    trend_data_7 = DashboardService.get_trend_harian(hari=7, tipe_media=tipe_media)
+    trend_7_json = json.dumps(trend_data_7)
+    
+    trend_data_30 = DashboardService.get_trend_harian(hari=30, tipe_media=tipe_media)
+    trend_30_json = json.dumps(trend_data_30)
+    
+    # Bulanan Trends
+    trend_3m_json = json.dumps(DashboardService.get_trend_bulanan(bulan=3, tipe_media=tipe_media))
+    trend_6m_json = json.dumps(DashboardService.get_trend_bulanan(bulan=6, tipe_media=tipe_media))
+    trend_1y_json = json.dumps(DashboardService.get_trend_bulanan(bulan=12, tipe_media=tipe_media))
+    trend_2y_json = json.dumps(DashboardService.get_trend_bulanan(bulan=24, tipe_media=tipe_media))
+    trend_3y_json = json.dumps(DashboardService.get_trend_bulanan(bulan=36, tipe_media=tipe_media))
+    trend_4y_json = json.dumps(DashboardService.get_trend_bulanan(bulan=48, tipe_media=tipe_media))
+    trend_5y_json = json.dumps(DashboardService.get_trend_bulanan(bulan=60, tipe_media=tipe_media))
 
-    trend_mingguan = DashboardService.get_trend_mingguan(minggu=4)
+    trend_mingguan = DashboardService.get_trend_mingguan(minggu=4, tipe_media=tipe_media)
     trend_mingguan_json = json.dumps(trend_mingguan)
 
-    trend_bulanan = DashboardService.get_trend_bulanan(bulan=6)
+    trend_bulanan = DashboardService.get_trend_bulanan(bulan=6, tipe_media=tipe_media)
     trend_bulanan_json = json.dumps(trend_bulanan)
 
-    sebaran_media = DashboardService.get_sebaran_media()
+    sebaran_media = DashboardService.get_sebaran_media(tipe_media)
 
     return render_template(
         "analisis/index.html",
         statistik=statistik,
         topik_terbanyak=topik_terbanyak,
         media_teraktif=media_teraktif,
-        trend_json=trend_json,
+        trend_7_json=trend_7_json,
+        trend_30_json=trend_30_json,
+        trend_3m_json=trend_3m_json,
+        trend_6m_json=trend_6m_json,
+        trend_1y_json=trend_1y_json,
+        trend_2y_json=trend_2y_json,
+        trend_3y_json=trend_3y_json,
+        trend_4y_json=trend_4y_json,
+        trend_5y_json=trend_5y_json,
         trend_mingguan_json=trend_mingguan_json,
         trend_bulanan_json=trend_bulanan_json,
         sebaran_media=sebaran_media,
         active_page="analisis",
+        tipe_media=tipe_media,
     )
 
 
@@ -78,11 +101,12 @@ def ai_insight():
     from flask import jsonify
 
     try:
+        tipe_media = request.args.get("tipe", "semua")
         # Kumpulkan data aktual dari database
-        statistik = DashboardService.get_statistik_utama()
-        topik_list = DashboardService.get_topik_terbanyak(limit=5)
-        media_list = DashboardService.get_media_teraktif(limit=3)
-        trend_7hr = DashboardService.get_trend_harian(hari=7)
+        statistik = DashboardService.get_statistik_utama(tipe_media)
+        topik_list = DashboardService.get_topik_terbanyak(limit=5, tipe_media=tipe_media)
+        media_list = DashboardService.get_media_teraktif(limit=3, tipe_media=tipe_media)
+        trend_7hr = DashboardService.get_trend_harian(hari=7, tipe_media=tipe_media)
 
         # Hitung perubahan tren sentimen (hari ini vs kemarin)
         total_d = trend_7hr.get("total", [])
@@ -285,10 +309,15 @@ def notifikasi():
     """Halaman Notifikasi - notifikasi penting untuk pimpinan."""
     from services.notifikasi_service import NotifikasiService
 
+    # Bersihkan notifikasi lama secara otomatis
+    NotifikasiService.hapus_notifikasi_lama()
+
     notifikasi_list = NotifikasiService.get_semua_notifikasi(limit=50)
+    unread_notif_count = NotifikasiService.hitung_belum_dibaca()
     return render_template(
         "notifikasi/index.html",
         notifikasi_list=notifikasi_list,
+        unread_notif_count=unread_notif_count,
         active_page="notifikasi",
     )
 
@@ -309,6 +338,25 @@ def notifikasi_read_all():
 
     NotifikasiService.tandai_semua_dibaca()
     flash("Semua notifikasi telah ditandai sudah dibaca.", "success")
+    return redirect(url_for("halaman.notifikasi"))
+
+@bp.route("/notifikasi/delete-all", methods=["POST"])
+@login_required
+def notifikasi_delete_all():
+    from services.notifikasi_service import NotifikasiService
+
+    NotifikasiService.hapus_semua_notifikasi()
+    flash("Semua notifikasi telah dihapus.", "success")
+    return redirect(url_for("halaman.notifikasi"))
+
+
+@bp.route("/notifikasi/delete/<int:notif_id>", methods=["POST"])
+@login_required
+def notifikasi_delete(notif_id):
+    from services.notifikasi_service import NotifikasiService
+
+    NotifikasiService.hapus_notifikasi(notif_id)
+    flash("Notifikasi telah dihapus.", "success")
     return redirect(url_for("halaman.notifikasi"))
 
 

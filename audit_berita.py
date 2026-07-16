@@ -99,7 +99,7 @@ def audit_berita():
                 # ── Lapis 2: AI Cohere ─────────────────────────────────────────
                 try:
                     ai_result = gemini.analisis_berita(
-                        judul, berita.isi, berita.ringkasan
+                        judul, berita.isi, berita.ringkasan, berita.media
                     )
 
                     if ai_result is None:

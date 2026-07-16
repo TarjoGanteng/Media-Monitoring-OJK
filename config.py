@@ -90,6 +90,20 @@ class Config:
         "Perlindungan Konsumen",
         "Regulasi",
         "Pengawasan",
+        "Penipuan",
+    ]
+
+    # Media Lokal Jawa Barat
+    MEDIA_LOKAL_JABAR = [
+        "Tribunjabar.id", "Pikiran Rakyat Koran", "Radar Bandung", "Radar Cirebon", 
+        "Sukabumi Update", "Cianjur Ekspres", "Bogor-Kita.com", "Jurnal Gaya", 
+        "Radar Karawang", "Cirebon Bribin", "Kuningan Mass", "Sumedang Bagus", 
+        "Wartatasik.com", "Herald Jabar", "Jabarprov", "Open Data Jabar",
+        "BAPPEDA JABAR", "Biro Perekonomian Sekretariat Daerah Provinsi Jawa Barat",
+        "Bandung Berita", "Fokus Jabar", "Suara Cirebon", "About Cirebon",
+        "Cirebonpos", "IDN Times Jabar", "JPNN.com Jabar", "ANTARA News Jawa Barat",
+        "TIMES Jabar", "pelita jabar", "Zona Bandung", "Inilah Tasik -", "Habar Digital",
+        "Ciayumajakuning.id", "rmoljabar.id"
     ]
 
 
@@ -126,3 +140,5 @@ config_map = {
 def get_config(env: str = "default") -> Config:
     """Mengembalikan konfigurasi berdasarkan environment."""
     return config_map.get(env, config_map["default"])
+
+"Bandung Barat",

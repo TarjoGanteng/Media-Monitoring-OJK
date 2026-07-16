@@ -263,41 +263,52 @@
             </table>
         </div>
 
-        <!-- Pagination -->
-        {% if pagination.pages > 1 %}
-        <div class="pagination-container" style="display: flex; justify-content: center; margin-top: 1.5rem;">
-            <ul style="display: flex; gap: 0.25rem; list-style: none; padding: 0; margin: 0; align-items: center;">
-                {% if pagination.has_prev %}
-                <li>
-                    <a href="{{ url_for('pemberitaan.index', page=pagination.prev_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
-                        <i class="bi bi-chevron-left" style="font-size: 0.8rem;"></i>
-                    </a>
-                </li>
+        <!-- Info Pagination & Total Data -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3" style="gap: 1rem; padding: 0 0.5rem;">
+            <!-- Info Total -->
+            <div style="font-size: 0.85rem; color: #6b7280;">
+                Menampilkan <b>{{ pagination.items|length }}</b> berita di halaman ini dari total <b>{{ pagination.total }}</b> berita
+                {% if filter_keyword or filter_tanggal_dari or filter_tanggal_sampai or filter_sentimen or filter_media or filter_topik or filter_wilayah %}
+                <span class="text-danger" style="font-weight: 500; margin-left: 0.2rem;">(Filter Aktif)</span>
                 {% endif %}
-                
-                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                    {% if page_num %}
+            </div>
+
+            <!-- Pagination Controls -->
+            {% if pagination.pages > 1 %}
+            <div class="pagination-container">
+                <ul style="display: flex; gap: 0.25rem; list-style: none; padding: 0; margin: 0; align-items: center;">
+                    {% if pagination.has_prev %}
                     <li>
-                        <a href="{{ url_for('pemberitaan.index', page=page_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}"
-                           style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 500; text-decoration: none; border-radius: 0.25rem; {% if page_num == pagination.page %}background-color: #c8002d; color: white;{% else %}color: #4b5563;{% endif %}">
-                            {{ page_num }}
+                        <a href="{{ url_for('pemberitaan.index', page=pagination.prev_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
+                            <i class="bi bi-chevron-left" style="font-size: 0.8rem;"></i>
                         </a>
                     </li>
-                    {% else %}
-                    <li><span style="padding: 0.4rem; color: #9ca3af; font-size: 0.85rem;">…</span></li>
                     {% endif %}
-                {% endfor %}
-                
-                {% if pagination.has_next %}
-                <li>
-                    <a href="{{ url_for('pemberitaan.index', page=pagination.next_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
-                        <i class="bi bi-chevron-right" style="font-size: 0.8rem;"></i>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
+                    
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                        <li>
+                            <a href="{{ url_for('pemberitaan.index', page=page_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}"
+                               style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 500; text-decoration: none; border-radius: 0.25rem; {% if page_num == pagination.page %}background-color: #c8002d; color: white;{% else %}color: #4b5563;{% endif %}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% else %}
+                        <li><span style="padding: 0.4rem; color: #9ca3af; font-size: 0.85rem;">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li>
+                        <a href="{{ url_for('pemberitaan.index', page=pagination.next_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
+                            <i class="bi bi-chevron-right" style="font-size: 0.8rem;"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
 
         {% else %}
         <!-- Empty State -->

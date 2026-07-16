@@ -55,12 +55,13 @@ WILAYAH_VALID = [
 
 
 # ─── Prompt Analisis (dipakai oleh semua provider) ────────────────────────────
-def _build_prompt(judul: str, konten: str) -> str:
+def _build_prompt(judul: str, konten: str, nama_media: str = None) -> str:
     return f"""Anda adalah analis media profesional untuk Otoritas Jasa Keuangan (OJK) Republik Indonesia.
 Tugas Anda: analisis berita berikut dan kembalikan HANYA JSON yang valid, tanpa teks lain.
 
 === DATA BERITA ===
 Judul: {judul}
+Media: {nama_media}
 Konten: {konten}
 
 === FORMAT JSON WAJIB ===
@@ -68,20 +69,49 @@ Konten: {konten}
   "analisis_konteks": "<1-2 kalimat analisis inti berita dan dampaknya terhadap reputasi OJK>",
   "sentimen": "<PILIH SATU: Positif | Negatif | Netral>",
   "topik": "<PILIH SATU: {" | ".join(TOPIK_VALID)}>",
-  "wilayah": "<nama kota/wilayah Jawa Barat jika ada, atau null>",
+  "wilayah": "<nama kota/kabupaten/provinsi lokasi utama berita jika ada (misal: Bandung, Jakarta, Bogor, dsb), atau null>",
   "ringkasan": "<ringkasan 1-2 kalimat bahasa Indonesia>",
-  "narasumber": "<nama dan jabatan narasumber yang dikutip, atau null>"
+  "narasumber": "<nama dan jabatan narasumber yang dikutip, atau null>",
+  "jenis_media": "<PILIH SATU: Lokal | Non-Lokal>"
 }}
 
 === PANDUAN SENTIMEN (SUDUT PANDANG INSTITUSI OJK) ===
 - POSITIF : Tindakan tegas OJK, prestasi OJK, apresiasi, literasi sukses, perlindungan konsumen dari OJK.
 - NETRAL  : Kasus pinjol/penipuan di masyarakat (OJK TIDAK disalahkan), regulasi, edukasi, peringatan.
 - NEGATIF : HANYA JIKA berita secara EKSPLISIT menyudutkan/mengkritik OJK, protes terhadap OJK.
-- TIDAK RELEVAN : Jika berita SAMA SEKALI BUKAN tentang wilayah Jawa Barat (misal murni nasional/daerah lain), ATAU sama sekali tidak membahas OJK.
-Jika ragu sentimennya → pilih NETRAL."""
+- TIDAK RELEVAN : Jika berita SAMA SEKALI tidak membahas OJK atau industri jasa keuangan secara umum.
+Jika ragu sentimennya → pilih NETRAL.
+
+- LOKAL     : Jika nama media merupakan media daerah Jawa Barat (misal: Tribun Jabar, Radar Bandung, Pikiran Rakyat, dsb).
+- NON-LOKAL : Jika media nasional (Kompas, Detik, CNBC) atau dari provinsi lain."""
 
 
-def _parse_result(result: dict) -> dict:
+def normalize_wilayah_name(w: str) -> str:
+    if not w:
+        return None
+    w = str(w).strip()
+    w_lower = w.lower()
+    
+    # Pencocokan khusus
+    if "bandung barat" in w_lower:
+        return "Bandung Barat"
+    if "bandung" in w_lower:
+        return "Bandung"
+    if "jakarta" in w_lower:
+        return "Jakarta"
+    if "jawa barat" in w_lower or "jabar" in w_lower:
+        return "Jawa Barat"
+        
+    # Bersihkan awalan Kota / Kabupaten / Kab.
+    import re
+    cleaned = re.sub(r'^(kab\.|kabupaten|kota)\s+', '', w, flags=re.IGNORECASE)
+    cleaned = cleaned.strip()
+    
+    # Format Title Case (Huruf Kapital di Awal Kata)
+    return cleaned.title()
+
+
+def _parse_result(result: dict, media: str = None) -> dict:
     """Validasi dan normalisasi output JSON dari AI."""
     sentimen = result.get("sentimen", "Netral")
     if sentimen not in ["Positif", "Negatif", "Netral", "Tidak Relevan"]:
@@ -91,11 +121,28 @@ def _parse_result(result: dict) -> dict:
     if topik not in TOPIK_VALID:
         topik = "Regulasi"
 
+    # Penentuan wilayah
     wilayah = result.get("wilayah")
-    if wilayah and wilayah not in WILAYAH_VALID:
-        wilayah = next(
-            (w for w in WILAYAH_VALID if w.lower() in str(wilayah).lower()), None
-        )
+    if wilayah and str(wilayah).lower() not in ["null", "none", ""]:
+        wilayah = normalize_wilayah_name(wilayah)
+    else:
+        wilayah = None
+
+    jenis_media = result.get("jenis_media", "Non-Lokal")
+    if jenis_media not in ["Lokal", "Non-Lokal"]:
+        jenis_media = "Non-Lokal"
+
+    # Logika fallback lokasi jika tidak terindikasi di isi berita
+    if not wilayah:
+        media_lower = str(media or "").lower()
+        # Jika nama media adalah media lokal Jabar
+        is_local_media = any(k in media_lower for k in ["jabar", "bandung", "ciamik", "bogor", "depok", "bekasi", "cirebon", "pikiran rakyat", "radar"])
+        
+        if is_local_media or jenis_media == "Lokal":
+            wilayah = "Jawa Barat"
+        else:
+            # Default media nasional ke Jakarta
+            wilayah = "Jakarta"
 
     return {
         "sentimen": sentimen,
@@ -103,6 +150,7 @@ def _parse_result(result: dict) -> dict:
         "wilayah": wilayah,
         "ringkasan": (result.get("ringkasan") or "").strip() or None,
         "narasumber": result.get("narasumber") or None,
+        "jenis_media": jenis_media,
     }
 
 
@@ -156,14 +204,14 @@ class CohereService:
         return self._init()
 
     def analisis_berita(
-        self, judul: str, isi: str = None, ringkasan: str = None
+        self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
     ) -> dict | None:
         if not self._init():
             return None
 
         konten = isi or ringkasan or ""
         konten_pendek = konten[:2500] if konten else "Konten tidak tersedia."
-        prompt = _build_prompt(judul, konten_pendek)
+        prompt = _build_prompt(judul, konten_pendek, media)
 
         try:
             import requests
@@ -197,7 +245,7 @@ class CohereService:
             alasan = result.get("analisis_konteks", "")
             if alasan:
                 logger.debug(f"[Cohere] Reasoning: {alasan[:80]}")
-            return _parse_result(result)
+            return _parse_result(result, media)
 
         except json.JSONDecodeError as e:
             logger.warning(f"[Cohere] Gagal parse JSON: {e}")
@@ -291,14 +339,14 @@ class OpenRouterService:
         return self._init()
 
     def analisis_berita(
-        self, judul: str, isi: str = None, ringkasan: str = None
+        self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
     ) -> dict | None:
         if not self._init():
             return None
 
         konten = isi or ringkasan or ""
         konten_pendek = konten[:2500] if konten else "Konten tidak tersedia."
-        prompt = _build_prompt(judul, konten_pendek)
+        prompt = _build_prompt(judul, konten_pendek, media)
 
         try:
             import requests
@@ -328,7 +376,7 @@ class OpenRouterService:
             if alasan:
                 logger.debug(f"[OpenRouter] Reasoning: {alasan[:80]}")
 
-            return _parse_result(result)
+            return _parse_result(result, media)
 
         except json.JSONDecodeError as e:
             logger.warning(f"[OpenRouter] Gagal parse JSON: {e}")
@@ -439,14 +487,14 @@ class GeminiService:
         return self._init_model()
 
     def analisis_berita(
-        self, judul: str, isi: str = None, ringkasan: str = None
+        self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
     ) -> dict | None:
         if not self._init_model():
             return None
 
         konten = isi or ringkasan or ""
         konten_pendek = konten[:2500] if konten else "Konten tidak tersedia."
-        prompt = _build_prompt(judul, konten_pendek)
+        prompt = _build_prompt(judul, konten_pendek, media)
 
         try:
             from google.genai import types
@@ -463,7 +511,7 @@ class GeminiService:
             alasan = result.get("analisis_konteks", "")
             if alasan:
                 logger.debug(f"[Gemini] Reasoning: {alasan[:80]}")
-            return _parse_result(result)
+            return _parse_result(result, media)
 
         except json.JSONDecodeError as e:
             logger.warning(f"[Gemini] Gagal parse JSON: {e}")
@@ -543,12 +591,12 @@ class AIService:
         return self._get_provider() is not None
 
     def analisis_berita(
-        self, judul: str, isi: str = None, ringkasan: str = None
+        self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
     ) -> dict | None:
         provider = self._get_provider()
         if not provider:
             return None
-        return provider.analisis_berita(judul, isi, ringkasan)
+        return provider.analisis_berita(judul, isi, ringkasan, media)
 
     def analisis_batch(self, berita_list: list, delay_per_request: float = 2.0) -> dict:
         if not self.is_available():
@@ -565,7 +613,7 @@ class AIService:
             stats["diproses"] += 1
             try:
                 result = self.analisis_berita(
-                    berita.judul, berita.isi, berita.ringkasan
+                    berita.judul, berita.isi, berita.ringkasan, berita.media
                 )
                 if result:
                     berita.sentimen = result["sentimen"]
@@ -613,3 +661,5 @@ class AIService:
 # ─── Singleton instance ───────────────────────────────────────────────────────
 # Backward-compatible: kode lama yang memanggil `gemini.xxx` tetap bisa dipakai
 gemini = AIService()
+
+"Bandung Barat",

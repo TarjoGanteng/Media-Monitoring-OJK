@@ -6,13 +6,22 @@
 <div class="card-panel">
     <div class="card-panel-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h5 class="card-panel-title">Pusat Notifikasi</h5>
-        {% if unread_notif_count and unread_notif_count > 0 %}
-        <form action="{{ url_for('halaman.notifikasi_read_all') }}" method="POST" style="margin: 0;">
-            <button type="submit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border: none; border-radius: 6px; background-color: var(--primary-color); color: white; cursor: pointer;">
-                <i class="bi bi-check2-all"></i> Tandai Semua Dibaca
-            </button>
-        </form>
-        {% endif %}
+        <div style="display: flex; gap: 10px;">
+            {% if notifikasi_list %}
+            <form action="{{ url_for('halaman.notifikasi_read_all') }}" method="POST" style="margin: 0;">
+                <button type="submit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border: none; border-radius: 6px; background-color: var(--accent-color); color: white; cursor: pointer;">
+                    <i class="bi bi-check2-all"></i> Tandai Semua Dibaca
+                </button>
+            </form>
+            {% endif %}
+            {% if notifikasi_list %}
+            <form action="{{ url_for('halaman.notifikasi_delete_all') }}" method="POST" style="margin: 0;" onsubmit="showCustomConfirm(event, 'Anda yakin ingin menghapus SEMUA notifikasi? Tindakan ini tidak dapat dibatalkan.');">
+                <button type="submit" class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border: 1px solid #ef4444; border-radius: 6px; background-color: transparent; color: #ef4444; cursor: pointer;">
+                    <i class="bi bi-trash"></i> Bersihkan Semua
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
     
     <div class="card-panel-body" style="padding: 0;">
@@ -49,7 +58,7 @@
                         
                         <div style="display: flex; gap: 0.75rem; align-items: center;">
                             {% if notif.link %}
-                            <a href="{{ notif.link }}" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                            <a href="{{ notif.link }}" style="font-size: 0.8rem; color: var(--accent-color); text-decoration: none; font-weight: 500;">
                                 <i class="bi bi-box-arrow-up-right"></i> Lihat Detail
                             </a>
                             {% endif %}
@@ -61,12 +70,18 @@
                                 </button>
                             </form>
                             {% endif %}
+
+                            <form action="{{ url_for('halaman.notifikasi_delete', notif_id=notif.id) }}" method="POST" style="margin: 0;" onsubmit="showCustomConfirm(event, 'Apakah Anda yakin ingin menghapus notifikasi ini?');">
+                                <button type="submit" style="background: none; border: none; padding: 0; font-size: 0.8rem; color: #ef4444; cursor: pointer; text-decoration: underline;">
+                                    Hapus
+                                </button>
+                            </form>
                         </div>
                     </div>
                     
                     {% if not notif.is_read %}
                     <div style="flex-shrink: 0; align-self: center;">
-                        <span style="display: inline-block; width: 8px; height: 8px; background-color: var(--primary-color); border-radius: 50%;"></span>
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: var(--accent-color); border-radius: 50%;"></span>
                     </div>
                     {% endif %}
                 </div>
@@ -81,4 +96,70 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Custom Modal for Confirmation -->
+<div id="customConfirmModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease-in-out;">
+    <div style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); width: 90%; max-width: 400px; padding: 1.75rem; text-align: center; transform: scale(0.9); transition: transform 0.2s ease-in-out; border: 1px solid var(--border-color);">
+        <div style="width: 56px; height: 56px; background-color: rgba(239, 68, 68, 0.08); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem auto;">
+            <i class="bi bi-exclamation-triangle" style="font-size: 1.8rem;"></i>
+        </div>
+        <h5 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">Konfirmasi Tindakan</h5>
+        <p id="modalConfirmMessage" style="margin: 0 0 1.75rem 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; padding: 0 0.5rem;">Apakah Anda yakin ingin melakukan tindakan ini?</p>
+        <div style="display: flex; gap: 0.75rem; justify-content: center;">
+            <button id="btnCancelConfirm" style="flex: 1; padding: 0.65rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background-color: #ffffff; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.15s; outline: none;">
+                Batal
+            </button>
+            <button id="btnAcceptConfirm" style="flex: 1; padding: 0.65rem 1rem; border: none; border-radius: 8px; background-color: #ef4444; color: #ffffff; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.15s; outline: none;">
+                Hapus
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("customConfirmModal");
+    const modalContent = modal.querySelector("div");
+    const messageEl = document.getElementById("modalConfirmMessage");
+    const btnCancel = document.getElementById("btnCancelConfirm");
+    const btnAccept = document.getElementById("btnAcceptConfirm");
+    let currentForm = null;
+
+    window.showCustomConfirm = function(event, message) {
+        event.preventDefault();
+        currentForm = event.target;
+        messageEl.textContent = message;
+        
+        // Show modal with animation
+        modal.style.display = "flex";
+        setTimeout(() => {
+            modal.style.opacity = "1";
+            modalContent.style.transform = "scale(1)";
+        }, 10);
+    };
+
+    function hideModal() {
+        modal.style.opacity = "0";
+        modalContent.style.transform = "scale(0.9)";
+        setTimeout(() => {
+            modal.style.display = "none";
+        }, 200);
+    }
+
+    btnCancel.addEventListener("click", hideModal);
+    
+    // Hide when clicking outside
+    modal.addEventListener("click", function(e) {
+        if (e.target === modal) {
+            hideModal();
+        }
+    });
+
+    btnAccept.addEventListener("click", function() {
+        if (currentForm) {
+            currentForm.submit();
+        }
+    });
+});
+</script>
 {% endblock %}

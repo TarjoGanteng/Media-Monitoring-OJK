@@ -142,7 +142,7 @@ class BeritaService:
     @staticmethod
     def get_daftar_topik() -> list[str]:
         """
-        Mengambil daftar topik unik yang ada di database.
+        Mengambil daftar topik unik yang ada di database digabungkan dengan topik dari konfigurasi.
 
         Returns:
             List topik yang sudah diurutkan
@@ -154,7 +154,11 @@ class BeritaService:
             .order_by(Berita.topik)
             .all()
         )
-        return [r[0] for r in result if r[0]]
+        db_topik = [r[0] for r in result if r[0]]
+        
+        # Gabungkan topik dari database dengan topik default di config
+        semua_topik = set(db_topik + Config.TOPIK_LIST)
+        return sorted(list(semua_topik))
 
     @staticmethod
     def get_daftar_wilayah() -> list[str]:
