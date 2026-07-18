@@ -160,7 +160,7 @@ class NotifikasiService:
             hasil = (
                 db.session.query(Berita.topik, func.count(Berita.id).label("jumlah"))
                 .filter(
-                    Berita.tanggal >= batas_waktu,
+                    Berita.created_at >= batas_waktu,
                     Berita.status == "aktif",
                     Berita.topik.isnot(None),
                 )

@@ -217,11 +217,12 @@ def register_context_processors(app: Flask):
         from flask_login import current_user
 
         unread_count = 0
-        if current_user.is_authenticated:
+        if current_user and hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
             try:
                 unread_count = NotifikasiService.hitung_belum_dibaca()
             except Exception:
                 pass
+
 
         return {
             "app_name": Config.APP_NAME,

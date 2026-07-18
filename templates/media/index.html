@@ -3,17 +3,32 @@
 {% block breadcrumb %}Media{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
     <div>
         <h1 class="page-title">Media</h1>
         <p class="page-subtitle">Media yang paling aktif memberitakan OJK Jawa Barat</p>
+    </div>
+    <div class="page-header-actions">
+        <div class="btn-group-tabs">
+            <a href="{{ url_for('halaman.media', tipe='semua') }}" class="tab-btn {% if filter_tipe == 'semua' %}active{% endif %}">Semua</a>
+            <a href="{{ url_for('halaman.media', tipe='lokal') }}" class="tab-btn {% if filter_tipe == 'lokal' %}active{% endif %}">Lokal Jabar</a>
+            <a href="{{ url_for('halaman.media', tipe='non-lokal') }}" class="tab-btn {% if filter_tipe == 'non-lokal' %}active{% endif %}">Non-Lokal (Nasional)</a>
+        </div>
     </div>
 </div>
 
 <div class="card-panel">
     <div class="card-panel-header">
         <div>
-            <h5 class="card-panel-title">Semua Media</h5>
+            <h5 class="card-panel-title">
+                {% if filter_tipe == 'lokal' %}
+                    Media Lokal (Jawa Barat)
+                {% elif filter_tipe == 'non-lokal' %}
+                    Media Non-Lokal (Luar Jawa Barat / Nasional)
+                {% else %}
+                    Semua Media
+                {% endif %}
+            </h5>
             <p class="card-panel-subtitle">{{ sebaran_media | length }} media terdeteksi</p>
         </div>
     </div>
@@ -22,7 +37,7 @@
         {% set max_jumlah = sebaran_media[0].jumlah if sebaran_media else 1 %}
         <div class="media-full-list">
             {% for item in sebaran_media %}
-            <div class="media-full-item">
+            <a href="{{ url_for('pemberitaan.index', media=item.media) }}" class="media-full-item" style="text-decoration: none; color: inherit;">
                 <div class="media-rank-num">{{ loop.index }}</div>
                 <div class="media-icon-wrap">
                     <i class="bi bi-globe"></i>
@@ -37,7 +52,7 @@
                     <span class="media-count-big">{{ item.jumlah }}</span>
                     <span class="media-pct">{{ item.pct }}%</span>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
         {% else %}
@@ -48,4 +63,25 @@
         {% endif %}
     </div>
 </div>
+
+<style>
+.media-full-item {
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.media-full-item:hover {
+    background-color: rgba(200, 0, 45, 0.03) !important;
+    cursor: pointer;
+}
+.media-full-item:active {
+    transform: scale(0.998);
+}
+.media-name-full {
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+}
+.media-full-item:hover .media-name-full {
+    color: var(--accent-color);
+}
+</style>
 {% endblock %}

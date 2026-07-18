@@ -178,6 +178,70 @@ class BeritaService:
         return [r[0] for r in result if r[0]]
 
     @staticmethod
+    def get_daftar_media_grouped() -> dict:
+        """
+        Mengambil daftar media unik terbagi menjadi Lokal dan Non-Lokal.
+        """
+        result = (
+            db.session.query(Berita.media, Berita.jenis_media)
+            .filter(Berita.media.isnot(None), Berita.status == "aktif")
+            .distinct()
+            .order_by(Berita.media)
+            .all()
+        )
+        
+        lokal = set()
+        non_lokal = set()
+        for r in result:
+            m_name = r[0]
+            j_media = r[1] or "Non-Lokal"
+            if j_media == "Lokal":
+                lokal.add(m_name)
+            else:
+                non_lokal.add(m_name)
+                
+        return {
+            "lokal": sorted(list(lokal)),
+            "non_lokal": sorted(list(non_lokal - lokal))
+        }
+
+    @staticmethod
+    def get_daftar_wilayah_grouped() -> dict:
+        """
+        Mengambil daftar wilayah unik terbagi menjadi Lokal (Jawa Barat) dan Non-Lokal.
+        """
+        jabar_regions = {
+            "bandung", "bandung barat", "bekasi", "bogor", "ciamis", "cianjur", 
+            "cimahi", "cirebon", "depok", "garut", "indramayu", "karawang", 
+            "kuningan", "majalengka", "pangandaran", "purwakarta", "subang", 
+            "sukabumi", "sumedang", "tasikmalaya", "banjar", "jawa barat"
+        }
+        
+        result = (
+            db.session.query(Berita.wilayah)
+            .filter(Berita.wilayah.isnot(None), Berita.status == "aktif")
+            .distinct()
+            .order_by(Berita.wilayah)
+            .all()
+        )
+        
+        lokal = []
+        non_lokal = []
+        for r in result:
+            w_name = r[0]
+            if w_name == "Jawa Barat":
+                continue  # Skip generic Jawa Barat from filters
+            if w_name.lower() in jabar_regions:
+                lokal.append(w_name)
+            else:
+                non_lokal.append(w_name)
+                
+        return {
+            "lokal": lokal,
+            "non_lokal": non_lokal
+        }
+
+    @staticmethod
     def cari_berita(
         query_text: str,
         sentimen: str = None,

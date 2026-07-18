@@ -28,6 +28,9 @@ def index():
     sentimen = request.args.get("sentimen", "")
     keyword = request.args.get("keyword", "")
     wilayah = request.args.get("wilayah", "")
+    if wilayah:
+        from services.ai_service import normalize_wilayah_name
+        wilayah = normalize_wilayah_name(wilayah) or ""
 
     # Ambil data dengan filter
     pagination = BeritaService.get_berita_paginated(
@@ -42,17 +45,17 @@ def index():
     )
 
     # Ambil daftar media, topik, dan wilayah untuk dropdown filter
-    daftar_media = BeritaService.get_daftar_media()
+    daftar_media_grouped = BeritaService.get_daftar_media_grouped()
     daftar_topik = BeritaService.get_daftar_topik()
-    daftar_wilayah = BeritaService.get_daftar_wilayah()
+    daftar_wilayah_grouped = BeritaService.get_daftar_wilayah_grouped()
 
     return render_template(
         "pemberitaan/index.html",
         pagination=pagination,
         berita_list=pagination.items,
-        daftar_media=daftar_media,
+        daftar_media_grouped=daftar_media_grouped,
         daftar_topik=daftar_topik,
-        daftar_wilayah=daftar_wilayah,
+        daftar_wilayah_grouped=daftar_wilayah_grouped,
         # Kirim kembali nilai filter untuk mempertahankan state
         filter_tanggal_dari=tanggal_dari,
         filter_tanggal_sampai=tanggal_sampai,

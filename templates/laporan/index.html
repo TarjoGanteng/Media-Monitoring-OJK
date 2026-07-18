@@ -2,17 +2,1808 @@
 {% block title %}Laporan{% endblock %}
 {% block breadcrumb %}Laporan{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ============================================================
+   LAPORAN PAGE — Redesigned Layout v2
+   Perubahan:
+   - Grid 4fr/6fr (kiri lebih sempit, preview lebih lebar)
+   - Semua section dalam 1 kolom kiri yang scroll
+   - Download buttons di bawah iframe, bukan di header
+   - Stat cards lebih compact: 2 per baris
+   - Spacing konsisten
+============================================================ */
+
+/* ---- GRID UTAMA ---- */
+.laporan-layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 1.1rem;
+  align-items: start;
+}
+
+/* ---- PANEL SECTION TITLE ---- */
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  background: var(--accent-color);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* ---- FORM ---- */
+.laporan-form .form-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.laporan-form .form-control,
+.laporan-form .form-select {
+  font-size: 0.83rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.38rem 0.6rem;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.laporan-form .form-control:focus,
+.laporan-form .form-select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(200,0,45,0.08);
+  outline: none;
+}
+
+/* ---- PERIODE RADIO ---- */
+.periode-pills {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.periode-pill {
+  position: relative;
+}
+
+.periode-pill input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+}
+
+.periode-pill label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border-color);
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.periode-pill input:checked + label {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+.periode-pill label:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.periode-pill input:checked + label:hover {
+  color: white;
+}
+
+/* ---- FILTER GRID ---- */
+.filter-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+/* ---- TOMBOL TAMPILKAN & RESET ---- */
+.btn-tampilkan {
+  flex: 1;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 7px;
+  padding: 0.55rem 1rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-tampilkan:hover { background: #a10024; transform: translateY(-1px); }
+.btn-tampilkan:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.btn-reset {
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  padding: 0.55rem 0.85rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-reset:hover { background: #f1f5f9; border-color: #94a3b8; }
+
+/* ---- STAT CARDS RINGKASAN ---- */
+.stat-cards-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.stat-card-mini {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--card-bg);
+  transition: all 0.15s;
+}
+
+.stat-card-mini .stat-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.stat-card-mini.total   .stat-icon { background: #fef2f2; color: #c8002d; }
+.stat-card-mini.positif .stat-icon { background: #dcfce7; color: #16a34a; }
+.stat-card-mini.netral  .stat-icon { background: #f8fafc; color: #64748b; }
+.stat-card-mini.negatif .stat-icon { background: #fee2e2; color: #dc2626; }
+
+.stat-card-mini .stat-num {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.stat-card-mini .stat-pct {
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.stat-card-mini.positif .stat-pct { color: #16a34a; }
+.stat-card-mini.netral  .stat-pct { color: #64748b; }
+.stat-card-mini.negatif .stat-pct { color: #dc2626; }
+.stat-card-mini.total   .stat-pct { color: #c8002d; }
+
+.stat-card-mini .stat-lbl {
+  font-size: 0.69rem;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+/* ---- INFO ROW (kota + topik) ---- */
+.info-mini-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.info-mini-pill {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.info-mini-pill i { color: var(--accent-color); font-size: 0.9rem; flex-shrink: 0; }
+
+.info-mini-pill .pill-label {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.info-mini-pill .pill-value {
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- DISCLAIMER ---- */
+.info-disclaimer {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 7px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: #0369a1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+/* ---- TOMBOL GENERATE ---- */
+.btn-generate {
+  width: 100%;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-generate:hover:not(:disabled) {
+  background: #a10024;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(200,0,45,0.28);
+}
+.btn-generate:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ---- PROGRESS GENERATE ---- */
+.generate-progress { display: none; margin-top: 0.65rem; }
+
+.generate-progress-bar {
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.generate-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color), #ff4d72, var(--accent-color));
+  background-size: 200% 100%;
+  border-radius: 3px;
+  animation: progress-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.generate-status-text {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* ---- PREVIEW PANEL (KANAN) ---- */
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preview-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-nomor-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  display: none;
+}
+
+/* Iframe area */
+.preview-iframe-wrap {
+  flex: 1;
+  background: #e8eaed;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
+}
+
+#previewIframe {
+  width: 100%;
+  height: 560px;
+  border: none;
+  display: none;
+}
+
+.preview-empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-secondary);
+}
+
+.preview-empty-state i {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+  opacity: 0.25;
+}
+
+/* ---- PREVIEW TAB TOGGLE ---- */
+.preview-tabs {
+  display: flex;
+  gap: 0.3rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+}
+.preview-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.preview-tab-btn.active {
+  background: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.preview-tab-btn.tab-pdf.active  { color: #c8002d; }
+.preview-tab-btn.tab-excel.active { color: #16a34a; }
+
+/* ---- DOWNLOAD BAR (di bawah iframe) ---- */
+.preview-download-bar {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--card-bg);
+  border-radius: 0 0 10px 10px;
+  flex-wrap: wrap;
+}
+
+.btn-dl-pdf {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  background: var(--accent-color); color: white;
+  border: none; border-radius: 7px;
+  font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: all 0.15s;
+}
+.btn-dl-pdf:hover { background: #a10024; color: white; transform: translateY(-1px); }
+
+.btn-dl-excel {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  background: #16a34a; color: white;
+  border: none; border-radius: 7px;
+  font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: all 0.15s;
+}
+.btn-dl-excel:hover { background: #15803d; color: white; transform: translateY(-1px); }
+
+.btn-print {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--card-bg); color: var(--text-secondary);
+  border: 1px solid var(--border-color); border-radius: 7px;
+  font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-print:hover { background: #f1f5f9; border-color: #94a3b8; }
+
+.dl-hint {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-align: center;
+  flex: 0 0 100%;
+  margin-top: 0.1rem;
+  opacity: 0.75;
+}
+
+/* ---- RIWAYAT TABEL ---- */
+.riwayat-section {
+  overflow-x: auto;
+}
+
+.riwayat-tabel {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+
+.riwayat-tabel thead tr th {
+  background: #f8fafc;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.65rem 1rem;
+  border-bottom: 2px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.riwayat-tabel thead tr th:first-child { border-radius: 0; }
+.riwayat-tabel thead tr th:last-child  { border-radius: 0; }
+
+.riwayat-tabel tbody tr {
+  transition: background 0.12s;
+}
+.riwayat-tabel tbody tr:hover td {
+  background: #fef9fa;
+}
+
+.riwayat-tabel td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  background: var(--card-bg);
+}
+
+.riwayat-tabel tbody tr:last-child td { border-bottom: none; }
+
+/* Nomor laporan chip */
+.nomor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+  margin-bottom: 0.25rem;
+}
+
+.periode-chip {
+  font-size: 0.71rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Judul laporan */
+.judul-laporan {
+  font-size: 0.81rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* Total berita pill */
+.total-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #1e293b;
+  min-width: 42px;
+}
+
+/* Tanggal */
+.tgl-main { font-weight: 600; font-size: 0.8rem; color: var(--text-primary); }
+.tgl-sub  { font-size: 0.7rem; color: var(--text-secondary); margin-top: 1px; }
+
+/* Badge selesai */
+.badge-status-selesai {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.22rem 0.6rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+/* Action buttons group */
+.action-group {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-riwayat-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 0.85rem;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.btn-riwayat-action:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: #fef2f2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(200,0,45,0.12);
+}
+.btn-riwayat-action.btn-pdf:hover {
+  border-color: #c8002d;
+  color: #c8002d;
+  background: #fef2f2;
+}
+.btn-riwayat-action.btn-excel:hover {
+  border-color: #16a34a;
+  color: #16a34a;
+  background: #dcfce7;
+  box-shadow: 0 2px 8px rgba(22,163,74,0.12);
+}
+.btn-riwayat-action.btn-preview:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.12);
+}
+.btn-riwayat-action.btn-delete:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: #fee2e2;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.12);
+}
+
+/* Tombol panel-preview (ungu) */
+.btn-riwayat-action.btn-panel:hover {
+  border-color: #7c3aed;
+  color: #7c3aed;
+  background: #f5f3ff;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.12);
+}
+
+/* Highlight row yang sedang di-preview di panel */
+.riwayat-tabel tbody tr.row-active-preview td {
+  background: #faf5ff !important;
+  border-left: 2.5px solid #7c3aed;
+}
+
+.action-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 0.1rem;
+  flex-shrink: 0;
+}
+
+/* Empty state riwayat */
+.riwayat-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+.riwayat-empty-icon {
+  font-size: 2.8rem;
+  color: var(--text-secondary);
+  opacity: 0.25;
+  margin-bottom: 0.8rem;
+  display: block;
+}
+.riwayat-empty h6 {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+.riwayat-empty p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ---- SKELETON ---- */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+  border-radius: 4px;
+  color: transparent !important;
+}
+@keyframes skeleton-loading {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---- FADE IN ANIMATION ---- */
+@keyframes fadeInRow {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- RESPONSIVE ---- */
+@media (max-width: 1100px) {
+  .laporan-layout { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+
 {% block content %}
-<div class="card-panel">
-    <div class="card-panel-header">
-        <h5 class="card-panel-title">Laporan Media Monitoring</h5>
-    </div>
-    <div class="card-panel-body">
-        <div class="empty-state-table" style="padding: 4rem 2rem; text-align: center;">
-            <i class="bi bi-file-earmark-text" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem; display: inline-block;"></i>
-            <h4 class="empty-title">Modul Laporan Sedang Dibangun</h4>
-            <p class="empty-desc">Halaman ini nantinya akan menyediakan fitur pembuatan laporan analisis secara otomatis (PDF/Excel) berdasarkan data pemberitaan OJK Jawa Barat yang dapat diunduh langsung.</p>
-        </div>
-    </div>
+
+<!-- Alur penggunaan: singkat dan jelas -->
+<div class="info-disclaimer mb-3">
+  <i class="bi bi-info-circle-fill" style="margin-top:1px;flex-shrink:0;"></i>
+  <span>
+    <strong>Cara kerja:</strong>
+    Pilih filter → <strong>Tampilkan</strong> untuk melihat ringkasan data →
+    <strong>Generate Laporan</strong> untuk membuat PDF →
+    <strong>Download</strong> untuk menyimpan ke riwayat.
+  </span>
 </div>
+
+<!-- ============================================================
+     LAYOUT UTAMA: 2 Kolom (Kiri: form, Kanan: preview)
+============================================================ -->
+<div class="laporan-layout">
+
+  <!-- ============================================
+       KOLOM KIRI: Filter + Ringkasan + Generate
+  ============================================= -->
+  <div class="d-flex flex-column gap-3">
+
+    <!-- ── PANEL 1: FILTER LAPORAN ── -->
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <h5 class="card-panel-title">
+          <span class="section-badge me-2">1</span>
+          Filter Laporan
+        </h5>
+      </div>
+      <div class="card-panel-body laporan-form" style="padding-top: 0.85rem;">
+
+        <!-- Periode: pill buttons -->
+        <div class="mb-3">
+          <label class="form-label">Periode</label>
+          <div class="periode-pills">
+            <div class="periode-pill">
+              <input type="radio" name="jenis_periode" id="p-harian" value="harian">
+              <label for="p-harian">Harian</label>
+            </div>
+            <div class="periode-pill">
+              <input type="radio" name="jenis_periode" id="p-mingguan" value="mingguan">
+              <label for="p-mingguan">Mingguan</label>
+            </div>
+            <div class="periode-pill">
+              <input type="radio" name="jenis_periode" id="p-bulanan" value="bulanan">
+              <label for="p-bulanan">Bulanan</label>
+            </div>
+            <div class="periode-pill">
+              <input type="radio" name="jenis_periode" id="p-triwulan" value="triwulan" checked>
+              <label for="p-triwulan">Triwulan</label>
+            </div>
+            <div class="periode-pill">
+              <input type="radio" name="jenis_periode" id="p-tahunan" value="tahunan">
+              <label for="p-tahunan">Tahunan</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Picker Triwulan -->
+        <div id="triwulan-picker" class="filter-grid-2 mb-3">
+          <div>
+            <label class="form-label">Triwulan</label>
+            <select class="form-select" id="sel-triwulan">
+              <option value="1">Triwulan I (Jan–Mar)</option>
+              <option value="2" selected>Triwulan II (Apr–Jun)</option>
+              <option value="3">Triwulan III (Jul–Sep)</option>
+              <option value="4">Triwulan IV (Okt–Des)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Tahun</label>
+            <select class="form-select" id="sel-tahun">
+              {% for y in range(2024, now.year + 2) %}
+              <option value="{{ y }}" {% if y == now.year %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Picker Rentang (untuk non-triwulan) -->
+        <div id="rentang-picker" class="filter-grid-2 mb-3" style="display: none;">
+          <div>
+            <label class="form-label">Dari Tanggal</label>
+            <input type="date" class="form-control" id="inp-dari" value="{{ default_dari }}">
+          </div>
+          <div>
+            <label class="form-label">Sampai Tanggal</label>
+            <input type="date" class="form-control" id="inp-sampai" value="{{ default_sampai }}">
+          </div>
+        </div>
+
+        <!-- Wilayah + Jenis Media -->
+        <div class="filter-grid-2 mb-2">
+          <div>
+            <label class="form-label">Wilayah</label>
+            <select class="form-select" id="sel-wilayah">
+              <option value="Jawa Barat">Jawa Barat</option>
+              <option value="Bandung">Bandung</option>
+              <option value="Bogor">Bogor</option>
+              <option value="Bekasi">Bekasi</option>
+              <option value="Depok">Depok</option>
+              <option value="Cirebon">Cirebon</option>
+              <option value="Garut">Garut</option>
+              <option value="Sukabumi">Sukabumi</option>
+              <option value="Tasikmalaya">Tasikmalaya</option>
+              <option value="Karawang">Karawang</option>
+              <option value="Cianjur">Cianjur</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Jenis Media</label>
+            <select class="form-select" id="sel-jenis-media">
+              <option value="semua">Semua Media</option>
+              <option value="lokal">Lokal</option>
+              <option value="non-lokal">Non-Lokal</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Topik + Media -->
+        <div class="filter-grid-2 mb-3">
+          <div>
+            <label class="form-label">Topik</label>
+            <select class="form-select" id="sel-topik">
+              <option value="">Semua Topik</option>
+              {% for topik in daftar_topik %}
+              <option value="{{ topik }}">{{ topik }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Media</label>
+            <select class="form-select" id="sel-media">
+              <option value="">Semua Media</option>
+              {% for m in daftar_media %}
+              <option value="{{ m }}">{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Tombol Tampilkan + Reset -->
+        <div class="d-flex gap-2">
+          <button class="btn-tampilkan" id="btnTampilkan" onclick="tampilkanRingkasan()">
+            <i class="bi bi-search"></i> Tampilkan Data
+          </button>
+          <button class="btn-reset" onclick="resetFilter()">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── PANEL 2: RINGKASAN + GENERATE ── -->
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <h5 class="card-panel-title">
+          <span class="section-badge me-2">2</span>
+          Ringkasan & Generate
+        </h5>
+      </div>
+      <div class="card-panel-body" style="padding-top: 0.85rem;">
+
+        <!-- 4 Stat Cards: 2 kolom -->
+        <div class="stat-cards-row">
+          <!-- Total -->
+          <div class="stat-card-mini total">
+            <div class="stat-icon"><i class="bi bi-newspaper"></i></div>
+            <div>
+              <div class="stat-num" id="st-total">—</div>
+              <div class="stat-lbl">Total Berita</div>
+            </div>
+          </div>
+          <!-- Positif -->
+          <div class="stat-card-mini positif">
+            <div class="stat-icon"><i class="bi bi-hand-thumbs-up"></i></div>
+            <div>
+              <div class="stat-num" id="st-positif">—</div>
+              <div class="stat-pct" id="st-pct-positif"></div>
+              <div class="stat-lbl">Positif</div>
+            </div>
+          </div>
+          <!-- Netral -->
+          <div class="stat-card-mini netral">
+            <div class="stat-icon"><i class="bi bi-dash-circle"></i></div>
+            <div>
+              <div class="stat-num" id="st-netral">—</div>
+              <div class="stat-pct" id="st-pct-netral"></div>
+              <div class="stat-lbl">Netral</div>
+            </div>
+          </div>
+          <!-- Negatif -->
+          <div class="stat-card-mini negatif">
+            <div class="stat-icon"><i class="bi bi-hand-thumbs-down"></i></div>
+            <div>
+              <div class="stat-num" id="st-negatif">—</div>
+              <div class="stat-pct" id="st-pct-negatif"></div>
+              <div class="stat-lbl">Negatif</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Kota + Topik -->
+        <div class="info-mini-row">
+          <div class="info-mini-pill">
+            <i class="bi bi-geo-alt-fill"></i>
+            <div style="min-width:0;">
+              <div class="pill-label">Kota Terbanyak</div>
+              <div class="pill-value" id="st-kota">—</div>
+            </div>
+          </div>
+          <div class="info-mini-pill">
+            <i class="bi bi-tag-fill"></i>
+            <div style="min-width:0;">
+              <div class="pill-label">Topik Terbanyak</div>
+              <div class="pill-value" id="st-topik">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info/disclaimer setelah tampilkan -->
+        <div class="info-disclaimer mb-3" id="ringkasan-disclaimer" style="display: none;">
+          <i class="bi bi-info-circle-fill" style="margin-top:1px;flex-shrink:0;"></i>
+          <span id="ringkasan-disclaimer-text">—</span>
+        </div>
+
+        <!-- Tombol Generate -->
+        <button class="btn-generate" id="btnGenerate" onclick="generateLaporan()" disabled>
+          <i class="bi bi-file-earmark-pdf-fill"></i>
+          Generate Laporan
+        </button>
+
+        <!-- Progress bar -->
+        <div class="generate-progress" id="generateProgress">
+          <div class="generate-progress-bar">
+            <div class="generate-progress-fill"></div>
+          </div>
+          <div class="generate-status-text" id="generateStatusText">
+            Menyiapkan data laporan...
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end kolom kiri -->
+
+  <!-- ============================================
+       KOLOM KANAN: Preview PDF
+  ============================================= -->
+  <div class="card-panel" style="display: flex; flex-direction: column; overflow: hidden;">
+    <!-- Header panel -->
+    <div class="card-panel-header" style="border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+      <h5 class="card-panel-title">
+        <span class="section-badge me-2">3</span>
+        Preview Laporan
+        <span class="preview-nomor-badge" id="previewNomorBadge"></span>
+      </h5>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <!-- Tab PDF / Excel -->
+        <div class="preview-tabs" id="previewTabs" style="display:none;">
+          <button class="preview-tab-btn tab-pdf active" id="tabBtnPdf"
+                  onclick="switchPreviewTab('pdf')">
+            <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+          </button>
+          <button class="preview-tab-btn tab-excel" id="tabBtnExcel"
+                  onclick="switchPreviewTab('excel')">
+            <i class="bi bi-file-earmark-excel-fill"></i> Excel
+          </button>
+        </div>
+        <span style="font-size:0.74rem;color:var(--text-secondary);">
+          <i class="bi bi-info-circle me-1"></i>Download untuk simpan ke riwayat
+        </span>
+      </div>
+    </div>
+
+    <!-- Area Iframe -->
+    <div class="preview-iframe-wrap" style="flex:1;">
+      <!-- Empty State -->
+      <div class="preview-empty-state" id="previewEmptyState">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <h6 style="font-weight:600;color:var(--text-primary);margin-bottom:0.4rem;">Belum Ada Preview</h6>
+        <p style="font-size:0.83rem;max-width:240px;margin:0 auto;line-height:1.5;">
+          Atur filter, klik <strong>Tampilkan</strong>, lalu <strong>Generate Laporan</strong>.
+        </p>
+      </div>
+      <!-- Loading State -->
+      <div id="previewLoading" style="display:none;text-align:center;">
+        <div class="spinner-border" style="color:var(--accent-color);width:2.5rem;height:2.5rem;" role="status"></div>
+        <p style="margin-top:1rem;color:var(--text-secondary);font-size:0.85rem;" id="previewLoadingText">
+          Membuat laporan PDF...
+        </p>
+      </div>
+      <!-- PDF Iframe -->
+      <iframe id="previewIframe" title="Preview Laporan PDF"></iframe>
+    </div>
+
+    <!-- Download Bar — muncul setelah generate berhasil -->
+    <div class="preview-download-bar" id="previewDownloadBtns">
+      <a href="#" id="btnDlPdf" class="btn-dl-pdf">
+        <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
+      </a>
+      <a href="#" id="btnDlExcel" class="btn-dl-excel">
+        <i class="bi bi-file-earmark-excel-fill"></i> Download Excel
+      </a>
+      <button onclick="printPdf()" class="btn-print">
+        <i class="bi bi-printer-fill"></i> Cetak
+      </button>
+      <div class="dl-hint" id="dlHintText">
+        <i class="bi bi-arrow-down-circle me-1"></i>
+        Klik Download → laporan tersimpan otomatis ke Riwayat
+      </div>
+    </div>
+
+  </div><!-- end kolom kanan -->
+
+</div><!-- end laporan-layout -->
+
+
+<!-- ============================================================
+     4. RIWAYAT LAPORAN
+============================================================ -->
+<div class="card-panel mt-3">
+  <div class="card-panel-header">
+    <h5 class="card-panel-title">
+      <span class="section-badge me-2">4</span>
+      Riwayat Laporan
+    </h5>
+    <button onclick="refreshRiwayat()" class="btn-reset" title="Refresh riwayat" style="padding:0.3rem 0.65rem;font-size:0.78rem;">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+  </div>
+  <div class="card-panel-body riwayat-section" style="padding: 0;">
+    {% if riwayat %}
+    <table class="riwayat-tabel">
+      <thead>
+        <tr>
+          <th style="width:160px;">Nomor / Periode</th>
+          <th>Judul Laporan</th>
+          <th style="text-align:center;width:80px;">Wilayah</th>
+          <th style="text-align:center;width:60px;">Total</th>
+          <th style="width:130px;">Tanggal Buat</th>
+          <th style="text-align:center;width:90px;">Status</th>
+          <th style="text-align:center;width:130px;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="riwayat-tbody">
+        {% for lap in riwayat %}
+        <tr id="row-{{ lap.id }}">
+          <!-- Nomor + Periode -->
+          <td>
+            <div class="nomor-chip">
+              <i class="bi bi-file-earmark-text" style="font-size:0.7rem;"></i>
+              {{ lap.nomor_laporan }}
+            </div>
+            <div class="periode-chip">
+              <i class="bi bi-calendar3" style="font-size:0.68rem;"></i>
+              {{ lap.periode_label }}
+            </div>
+          </td>
+          <!-- Judul -->
+          <td>
+            <span class="judul-laporan" title="{{ lap.judul }}">{{ lap.judul }}</span>
+          </td>
+          <!-- Wilayah -->
+          <td style="text-align:center;">
+            <span style="font-size:0.78rem;color:var(--text-secondary);">{{ lap.wilayah or 'Jawa Barat' }}</span>
+          </td>
+          <!-- Total -->
+          <td style="text-align:center;">
+            <span class="total-pill">{{ "{:,}".format(lap.total_berita) }}</span>
+          </td>
+          <!-- Tanggal Buat -->
+          <td>
+            <div class="tgl-main">{{ lap.created_at.strftime('%d %b %Y') }}</div>
+            <div class="tgl-sub"><i class="bi bi-clock me-1"></i>{{ lap.created_at.strftime('%H:%M') }} WIB</div>
+          </td>
+          <!-- Status -->
+          <td style="text-align:center;">
+            <span class="badge-status-selesai">
+              <i class="bi bi-check-circle-fill"></i>Selesai
+            </span>
+          </td>
+          <!-- Aksi -->
+          <td>
+            <div class="action-group">
+              {% if lap.path_pdf %}
+              <button onclick="previewInPanel(
+                '{{ url_for('laporan.view_pdf', laporan_id=lap.id) }}',
+                '{{ lap.nomor_laporan }}',
+                '{{ url_for('laporan.download_pdf', laporan_id=lap.id) }}',
+                '{{ url_for('laporan.download_excel', laporan_id=lap.id) if lap.path_excel else '' }}',
+                this)"
+                 class="btn-riwayat-action btn-panel" title="Tampilkan di Preview Panel">
+                <i class="bi bi-layout-sidebar-inset"></i>
+              </button>
+              <a href="{{ url_for('laporan.view_pdf', laporan_id=lap.id) }}" target="_blank"
+                 class="btn-riwayat-action btn-preview" title="Buka di Tab Baru">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+              <a href="{{ url_for('laporan.download_pdf', laporan_id=lap.id) }}"
+                 class="btn-riwayat-action btn-pdf" title="Download PDF">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+              {% endif %}
+              {% if lap.path_excel %}
+              <button onclick="previewExcelInPanel(
+                '{{ url_for('laporan.preview_excel_riwayat', laporan_id=lap.id) }}',
+                '{{ lap.nomor_laporan }}',
+                '{{ url_for('laporan.download_pdf', laporan_id=lap.id) if lap.path_pdf else '' }}',
+                '{{ url_for('laporan.download_excel', laporan_id=lap.id) }}',
+                this)"
+                 class="btn-riwayat-action btn-excel" title="Preview Excel di Panel">
+                <i class="bi bi-table"></i>
+              </button>
+              <a href="{{ url_for('laporan.download_excel', laporan_id=lap.id) }}"
+                 class="btn-riwayat-action btn-excel" title="Download Excel">
+                <i class="bi bi-file-earmark-excel"></i>
+              </a>
+              {% endif %}
+              <div class="action-divider"></div>
+              <button class="btn-riwayat-action btn-delete" title="Hapus Laporan"
+                      onclick="hapusLaporan({{ lap.id }}, '{{ lap.nomor_laporan }}')">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <!-- Empty state saat tidak ada riwayat -->
+    <div class="riwayat-empty" id="riwayat-empty-state">
+      <i class="bi bi-archive riwayat-empty-icon"></i>
+      <h6>Belum Ada Riwayat</h6>
+      <p>Generate laporan, lalu <strong>Download</strong> agar tersimpan di sini.</p>
+    </div>
+    <table class="riwayat-tabel" id="riwayatTableDynamic" style="display:none;">
+      <thead>
+        <tr>
+          <th style="width:160px;">Nomor / Periode</th>
+          <th>Judul Laporan</th>
+          <th style="text-align:center;width:60px;">Total</th>
+          <th style="width:130px;">Tanggal Buat</th>
+          <th style="text-align:center;width:130px;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="riwayat-tbody"></tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Hapus -->
+<div class="modal fade" id="modalHapusLaporan" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="border-radius:12px;border:1px solid var(--border-color);">
+      <div class="modal-body text-center py-4 px-3">
+        <div style="font-size:2.2rem;margin-bottom:0.5rem;">🗑️</div>
+        <h6 class="fw-bold mb-1" style="color:#1e293b;">Hapus Laporan?</h6>
+        <p class="text-muted mb-1" style="font-size:0.83rem;font-weight:600;" id="hapusLaporanNomor"></p>
+        <p class="text-muted mb-3" style="font-size:0.78rem;line-height:1.5;">
+          File PDF dan Excel akan ikut dihapus dan tidak dapat dikembalikan.
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-sm btn-danger px-3" id="btnKonfirmasiHapus">
+            <i class="bi bi-trash3 me-1"></i>Ya, Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ====== STATE ======
+let currentLaporanId = null;
+let filterData = null;
+let tanggalDari = null;
+let tanggalSampai = null;
+let triwulanVal = null;
+
+// ====== INISIALISASI ======
+document.addEventListener("DOMContentLoaded", function () {
+  updatePeriodeUI();
+  document.querySelectorAll('input[name="jenis_periode"]').forEach(r => {
+    r.addEventListener("change", updatePeriodeUI);
+  });
+  document.getElementById("sel-triwulan").addEventListener("change", updateTanggalDariTriwulan);
+  document.getElementById("sel-tahun").addEventListener("change", updateTanggalDariTriwulan);
+  updateTanggalDariTriwulan();
+});
+
+// ====== PERIODE LOGIC ======
+function updatePeriodeUI() {
+  const jenis = document.querySelector('input[name="jenis_periode"]:checked')?.value || "triwulan";
+  const showTriwulan = (jenis === "triwulan");
+  const showRentang  = !showTriwulan;
+
+  document.getElementById("triwulan-picker").style.display = showTriwulan ? "" : "none";
+  document.getElementById("rentang-picker").style.display  = showRentang  ? "" : "none";
+
+  if (!showTriwulan) {
+    const today = new Date();
+    const fmt = d => d.toISOString().split("T")[0];
+
+    if (jenis === "harian") {
+      setTanggal(fmt(today), fmt(today));
+    } else if (jenis === "mingguan") {
+      const mon = new Date(today); mon.setDate(today.getDate() - today.getDay() + 1);
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      setTanggal(fmt(mon), fmt(sun));
+    } else if (jenis === "bulanan") {
+      const f = new Date(today.getFullYear(), today.getMonth(), 1);
+      const l = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      setTanggal(fmt(f), fmt(l));
+    } else if (jenis === "tahunan") {
+      setTanggal(`${today.getFullYear()}-01-01`, `${today.getFullYear()}-12-31`);
+    }
+  } else {
+    updateTanggalDariTriwulan();
+  }
+}
+
+function setTanggal(dari, sampai) {
+  document.getElementById("inp-dari").value  = dari;
+  document.getElementById("inp-sampai").value = sampai;
+  tanggalDari = dari; tanggalSampai = sampai;
+}
+
+function updateTanggalDariTriwulan() {
+  const q = parseInt(document.getElementById("sel-triwulan").value);
+  const y = parseInt(document.getElementById("sel-tahun").value);
+  triwulanVal = q;
+
+  const qMap = {
+    1: ["01-01", "03-31"],
+    2: ["04-01", "06-30"],
+    3: ["07-01", "09-30"],
+    4: ["10-01", "12-31"],
+  };
+  tanggalDari    = `${y}-${qMap[q][0]}`;
+  tanggalSampai  = `${y}-${qMap[q][1]}`;
+}
+
+// ====== RESET FILTER ======
+function resetFilter() {
+  document.getElementById("p-triwulan").checked = true;
+  document.getElementById("sel-triwulan").value = "2";
+  document.getElementById("sel-tahun").value = new Date().getFullYear();
+  document.getElementById("sel-wilayah").value = "Jawa Barat";
+  document.getElementById("sel-jenis-media").value = "semua";
+  document.getElementById("sel-topik").value = "";
+  document.getElementById("sel-media").value = "";
+  updatePeriodeUI();
+
+  // Reset stat cards
+  ["st-total","st-positif","st-netral","st-negatif"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "—";
+  });
+  ["st-pct-positif","st-pct-netral","st-pct-negatif"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "";
+  });
+  const stKota  = document.getElementById("st-kota");
+  const stTopik = document.getElementById("st-topik");
+  if (stKota)  stKota.textContent  = "—";
+  if (stTopik) stTopik.textContent = "—";
+
+  const disc = document.getElementById("ringkasan-disclaimer");
+  if (disc) disc.style.display = "none";
+  document.getElementById("btnGenerate").disabled = true;
+
+  // Reset preview area
+  document.getElementById("previewIframe").style.display = "none";
+  document.getElementById("previewIframe").src = "";
+  document.getElementById("previewEmptyState").style.display = "block";
+  document.getElementById("previewDownloadBtns").style.display = "none";
+  const badge = document.getElementById("previewNomorBadge");
+  if (badge) { badge.textContent = ""; badge.style.display = "none"; }
+
+  // Clear temp state
+  currentTempKey = null;
+}
+
+// ====== TAMPILKAN RINGKASAN (AJAX PREVIEW) ======
+async function tampilkanRingkasan() {
+  const btn = document.getElementById("btnTampilkan");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Memuat...';
+
+  // Skeleton loading
+  ["st-total","st-positif","st-netral","st-negatif"].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = "...";
+    el.classList.add("skeleton");
+  });
+
+  const jenis = document.querySelector('input[name="jenis_periode"]:checked')?.value || "triwulan";
+  let dari = tanggalDari, sampai = tanggalSampai;
+  if (jenis !== "triwulan") {
+    dari   = document.getElementById("inp-dari").value;
+    sampai = document.getElementById("inp-sampai").value;
+  }
+
+  const payload = {
+    tanggal_dari:  dari,
+    tanggal_sampai: sampai,
+    wilayah:       document.getElementById("sel-wilayah").value,
+    topik:         document.getElementById("sel-topik").value,
+    jenis_media:   document.getElementById("sel-jenis-media").value,
+  };
+
+  try {
+    const resp = await fetch("{{ url_for('laporan.preview_data') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+
+    if (!json.success) throw new Error(json.error || "Gagal memuat data.");
+
+    const d = json.data;
+    filterData = { ...payload, jenis_periode: jenis };
+
+    // Update stat cards
+    ["st-total","st-positif","st-netral","st-negatif"].forEach(id => {
+      document.getElementById(id).classList.remove("skeleton");
+    });
+
+    document.getElementById("st-total").textContent    = d.total.toLocaleString("id-ID");
+    document.getElementById("st-positif").textContent  = d.positif.toLocaleString("id-ID");
+    document.getElementById("st-netral").textContent   = d.netral.toLocaleString("id-ID");
+    document.getElementById("st-negatif").textContent  = d.negatif.toLocaleString("id-ID");
+    document.getElementById("st-pct-positif").textContent = d.pct_positif + "%";
+    document.getElementById("st-pct-netral").textContent  = d.pct_netral  + "%";
+    document.getElementById("st-pct-negatif").textContent = d.pct_negatif + "%";
+    document.getElementById("st-kota").textContent  = d.kota_terbanyak  ? `${d.kota_terbanyak.kota} (${d.kota_terbanyak.jumlah} berita)` : "—";
+    document.getElementById("st-topik").textContent = d.topik_terbanyak ? `${d.topik_terbanyak.topik} (${d.topik_terbanyak.jumlah})` : "—";
+
+    document.getElementById("ringkasan-disclaimer").style.display = "flex";
+    document.getElementById("btnGenerate").disabled = (d.total === 0);
+
+    if (d.total === 0) {
+      document.getElementById("ringkasan-disclaimer-text").innerHTML =
+        "<strong>Tidak ada data</strong> pada filter yang dipilih. Ubah filter dan coba lagi.";
+      document.getElementById("ringkasan-disclaimer").style.background = "#fff7ed";
+      document.getElementById("ringkasan-disclaimer").style.borderColor = "#fed7aa";
+      document.getElementById("ringkasan-disclaimer").style.color = "#c2410c";
+    } else {
+      document.getElementById("ringkasan-disclaimer-text").innerHTML =
+        `Ditemukan <strong>${d.total.toLocaleString("id-ID")} berita</strong> sesuai filter. Klik <strong>Generate Laporan</strong> untuk membuat dokumen resmi.`;
+      document.getElementById("ringkasan-disclaimer").style.background = "";
+      document.getElementById("ringkasan-disclaimer").style.borderColor = "";
+      document.getElementById("ringkasan-disclaimer").style.color = "";
+    }
+
+  } catch (err) {
+    ["st-total","st-positif","st-netral","st-negatif"].forEach(id => {
+      document.getElementById(id).classList.remove("skeleton");
+      document.getElementById(id).textContent = "—";
+    });
+    alert("Gagal memuat preview: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-search"></i> Tampilkan';
+  }
+}
+
+// ====== GENERATE LAPORAN ======
+// State: temp_key dari server setelah generate
+let currentTempKey   = null;
+let currentTempPdfUrl   = null;
+let currentTempExcelUrl = null;
+
+async function generateLaporan() {
+  const btn        = document.getElementById("btnGenerate");
+  const progress   = document.getElementById("generateProgress");
+  const statusText = document.getElementById("generateStatusText");
+
+  btn.disabled     = true;
+  btn.innerHTML    = '<i class="bi bi-hourglass-split"></i> Sedang Membuat...';
+  progress.style.display = "block";
+
+  // Tampilkan loading di panel kanan
+  document.getElementById("previewEmptyState").style.display = "none";
+  document.getElementById("previewLoading").style.display    = "block";
+  document.getElementById("previewIframe").style.display     = "none";
+  document.getElementById("previewDownloadBtns").style.display = "none";
+
+
+  const jenis = document.querySelector('input[name="jenis_periode"]:checked')?.value || "triwulan";
+  let dari = tanggalDari, sampai = tanggalSampai;
+  if (jenis !== "triwulan") {
+    dari   = document.getElementById("inp-dari").value;
+    sampai = document.getElementById("inp-sampai").value;
+  }
+
+  const statusMessages = [
+    "Mengumpulkan data berita...",
+    "Menganalisis sentimen dan tren...",
+    "Membuat grafik dan chart...",
+    "Merender dokumen PDF...",
+    "Finalisasi laporan...",
+  ];
+  let msgIdx = 0;
+  const statusInterval = setInterval(() => {
+    statusText.textContent = statusMessages[Math.min(msgIdx++, statusMessages.length - 1)];
+  }, 2500);
+
+  const payload = {
+    jenis_periode:  jenis,
+    tanggal_dari:   dari,
+    tanggal_sampai: sampai,
+    wilayah:        document.getElementById("sel-wilayah").value,
+    topik:          document.getElementById("sel-topik").value || null,
+    jenis_media:    document.getElementById("sel-jenis-media").value,
+    triwulan_val:   triwulanVal,
+  };
+
+  try {
+    const resp = await fetch("{{ url_for('laporan.generate') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+    clearInterval(statusInterval);
+
+    if (!json.success) throw new Error(json.error || "Gagal generate laporan.");
+
+    // Simpan temp_key dan URL untuk digunakan saat download
+    currentTempKey      = json.temp_key;
+    currentTempPdfUrl   = json.download_pdf_url;
+    currentTempExcelUrl = json.download_excel_url;
+
+    // Tampilkan PDF di iframe (dari URL preview temp — belum masuk riwayat)
+    const iframe = document.getElementById("previewIframe");
+    iframe.src = json.preview_url;
+    iframe.style.display = "block";
+    document.getElementById("previewLoading").style.display = "none";
+
+    // Update badge nomor laporan di header preview
+    const nomorBadge = document.getElementById("previewNomorBadge");
+    if (nomorBadge) {
+      nomorBadge.textContent = json.nomor_laporan;
+      nomorBadge.style.display = "inline";
+    }
+
+    // Tampilkan download bar di bawah iframe
+    const dlBar = document.getElementById("previewDownloadBtns");
+    dlBar.style.display = "flex";
+
+    // Set href tombol download ke endpoint download_temp
+    const btnPdf   = document.getElementById("btnDlPdf");
+    const btnExcel = document.getElementById("btnDlExcel");
+    const dlHint   = document.getElementById("dlHintText");
+    btnPdf.href   = json.download_pdf_url;
+    btnExcel.href = json.download_excel_url;
+    // Pastikan tombol & hint selalu tampil (mungkin tersembunyi dari context riwayat)
+    btnPdf.style.display   = "";
+    btnExcel.style.display = "";
+    if (dlHint) dlHint.style.display = "";
+    // Sembunyikan tab toggle (generate baru belum ada context Excel tab dari riwayat)
+    const tabs = document.getElementById("previewTabs");
+    if (tabs) tabs.style.display = "none";
+
+    // Pasang event listener agar setelah download → refresh tabel riwayat
+    btnPdf.onclick   = () => { setTimeout(refreshRiwayat, 1500); };
+    btnExcel.onclick = () => { setTimeout(refreshRiwayat, 1500); };
+
+    // Tampilkan banner info
+    showInfoBanner(
+      `Laporan <strong>${json.nomor_laporan}</strong> berhasil dibuat. ` +
+      `<strong>Download</strong> di bawah preview untuk menyimpan ke riwayat.`,
+      "success"
+    );
+
+  } catch (err) {
+    clearInterval(statusInterval);
+    document.getElementById("previewLoading").style.display  = "none";
+    document.getElementById("previewEmptyState").style.display = "block";
+    document.getElementById("previewEmptyState").innerHTML = `
+      <i class="bi bi-exclamation-triangle-fill" style="font-size:2.5rem;color:#dc2626;opacity:1;margin-bottom:1rem;display:block;"></i>
+      <h6 style="color:#dc2626;">Gagal Generate Laporan</h6>
+      <p style="font-size:0.83rem;color:var(--text-secondary);">${err.message}</p>
+      <button onclick="clearGenerateError()" class="btn btn-sm btn-outline-danger mt-2">Coba Lagi</button>
+    `;
+    showInfoBanner("Gagal generate laporan: " + err.message, "error");
+    console.error(err);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> Generate Laporan';
+    progress.style.display = "none";
+  }
+}
+
+function clearGenerateError() {
+  document.getElementById("previewEmptyState").innerHTML = `
+    <i class="bi bi-file-earmark-pdf" style="font-size:3rem;opacity:0.2;margin-bottom:1rem;display:block;"></i>
+    <p style="color:var(--text-secondary);font-size:0.9rem;">Preview laporan akan muncul di sini<br>setelah Anda klik <strong>Generate Laporan</strong></p>
+  `;
+  document.getElementById("previewEmptyState").style.display = "block";
+}
+
+// ====== BANNER INFO ======
+function showInfoBanner(message, type = "success") {
+  let banner = document.getElementById("infoBanner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "infoBanner";
+    banner.style.cssText = `
+      position: fixed; top: 70px; right: 20px; z-index: 9999;
+      max-width: 400px; padding: 0.75rem 1rem; border-radius: 8px;
+      font-size: 0.84rem; line-height: 1.5; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      transition: opacity 0.4s;
+    `;
+    document.body.appendChild(banner);
+  }
+  const colors = {
+    success: { bg: "#f0fdf4", border: "#bbf7d0", color: "#15803d" },
+    error:   { bg: "#fef2f2", border: "#fecaca", color: "#dc2626" },
+    info:    { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
+  };
+  const c = colors[type] || colors.info;
+  banner.style.background   = c.bg;
+  banner.style.border       = `1px solid ${c.border}`;
+  banner.style.color        = c.color;
+  banner.innerHTML          = message;
+  banner.style.opacity      = "1";
+
+  clearTimeout(banner._timeout);
+  banner._timeout = setTimeout(() => { banner.style.opacity = "0"; }, 5000);
+}
+
+// ====== PREVIEW IN PANEL (dari Riwayat → iframe preview) ======
+// State URL untuk tab switching
+let _panelPdfUrl   = null;
+let _panelExcelUrl = null;
+let _panelNomor    = null;
+
+function switchPreviewTab(tab) {
+  const iframe = document.getElementById('previewIframe');
+  const tabPdf   = document.getElementById('tabBtnPdf');
+  const tabExcel = document.getElementById('tabBtnExcel');
+  const loading  = document.getElementById('previewLoading');
+
+  if (tab === 'pdf' && _panelPdfUrl) {
+    tabPdf.classList.add('active');
+    tabExcel.classList.remove('active');
+    loading.style.display = 'block';
+    iframe.style.display  = 'none';
+    iframe.onload = () => { loading.style.display='none'; iframe.style.display='block'; iframe.onload=null; };
+    iframe.src = _panelPdfUrl;
+  } else if (tab === 'excel' && _panelExcelUrl) {
+    tabExcel.classList.add('active');
+    tabPdf.classList.remove('active');
+    loading.style.display = 'block';
+    iframe.style.display  = 'none';
+    iframe.onload = () => { loading.style.display='none'; iframe.style.display='block'; iframe.onload=null; };
+    iframe.src = _panelExcelUrl;
+  }
+}
+
+function previewExcelInPanel(excelPreviewUrl, nomor, dlPdfUrl, dlExcelUrl, triggerBtn) {
+  document.querySelectorAll('.riwayat-tabel tbody tr').forEach(tr => tr.classList.remove('row-active-preview'));
+  if (triggerBtn) triggerBtn.closest('tr').classList.add('row-active-preview');
+
+  _panelExcelUrl = excelPreviewUrl;
+  _panelNomor    = nomor;
+
+  const iframe     = document.getElementById('previewIframe');
+  const emptyState = document.getElementById('previewEmptyState');
+  const loading    = document.getElementById('previewLoading');
+  const dlBar      = document.getElementById('previewDownloadBtns');
+  const nomorBadge = document.getElementById('previewNomorBadge');
+  const loadText   = document.getElementById('previewLoadingText');
+  const tabs       = document.getElementById('previewTabs');
+  const btnPdf     = document.getElementById('btnDlPdf');
+  const btnExcel   = document.getElementById('btnDlExcel');
+  const dlHint     = document.getElementById('dlHintText');
+
+  emptyState.style.display = 'none';
+  iframe.style.display     = 'none';
+  dlBar.style.display      = 'none';
+  loading.style.display    = 'block';
+  if (loadText) loadText.textContent = 'Memuat preview Excel...';
+
+  if (nomorBadge) { nomorBadge.textContent = nomor; nomorBadge.style.display = 'inline'; }
+
+  // Set download URLs
+  if (btnPdf)   { btnPdf.href   = dlPdfUrl   || '#'; btnPdf.style.display   = dlPdfUrl   ? '' : 'none'; }
+  if (btnExcel) { btnExcel.href = dlExcelUrl  || '#'; btnExcel.style.display = dlExcelUrl  ? '' : 'none'; }
+  if (dlHint) dlHint.style.display = 'none';
+
+  // Tab Excel aktif
+  if (tabs) tabs.style.display = dlPdfUrl ? 'flex' : 'none';
+  document.getElementById('tabBtnExcel').classList.add('active');
+  document.getElementById('tabBtnPdf').classList.remove('active');
+
+  // Simpan PDF URL untuk tab switching
+  if (dlPdfUrl) _panelPdfUrl = dlPdfUrl;
+
+  iframe.onload = function () {
+    loading.style.display = 'none';
+    iframe.style.display  = 'block';
+    dlBar.style.display   = 'flex';
+    iframe.onload = null;
+  };
+  iframe.src = excelPreviewUrl;
+
+  const previewPanel = document.querySelector('.card-panel:has(#previewIframe)');
+  if (previewPanel) previewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  showInfoBanner(`Preview Excel laporan <strong>${nomor}</strong> ditampilkan.`, 'info');
+}
+
+function previewInPanel(pdfUrl, nomor, dlPdfUrl, dlExcelUrl, triggerBtn) {
+  document.querySelectorAll('.riwayat-tabel tbody tr').forEach(tr => tr.classList.remove('row-active-preview'));
+  if (triggerBtn) triggerBtn.closest('tr').classList.add('row-active-preview');
+
+  _panelPdfUrl   = pdfUrl;
+  _panelNomor    = nomor;
+  _panelExcelUrl = dlExcelUrl ? ('{{ url_for("laporan.preview_excel_riwayat", laporan_id=0) }}'.replace('/0', '') + dlExcelUrl.replace('/laporan/download/', '/laporan/preview-excel/').replace('/excel', '')) : null;
+
+  const iframe     = document.getElementById('previewIframe');
+  const emptyState = document.getElementById('previewEmptyState');
+  const loading    = document.getElementById('previewLoading');
+  const dlBar      = document.getElementById('previewDownloadBtns');
+  const nomorBadge = document.getElementById('previewNomorBadge');
+  const loadText   = document.getElementById('previewLoadingText');
+  const tabs       = document.getElementById('previewTabs');
+  const btnPdf     = document.getElementById('btnDlPdf');
+  const btnExcel   = document.getElementById('btnDlExcel');
+  const dlHint     = document.getElementById('dlHintText');
+
+  emptyState.style.display = 'none';
+  iframe.style.display     = 'none';
+  dlBar.style.display      = 'none';
+  loading.style.display    = 'block';
+  if (loadText) loadText.textContent = 'Memuat preview laporan...';
+
+  if (nomorBadge) { nomorBadge.textContent = nomor; nomorBadge.style.display = 'inline'; }
+
+  // Set download URLs ke bar
+  if (btnPdf)   { btnPdf.href   = dlPdfUrl || '#'; btnPdf.style.display   = dlPdfUrl   ? '' : 'none'; }
+  if (btnExcel) { btnExcel.href = dlExcelUrl || '#'; btnExcel.style.display = dlExcelUrl ? '' : 'none'; }
+  // Hint: sudah tersimpan di riwayat
+  if (dlHint) dlHint.style.display = 'none';
+
+  // Tab PDF aktif, tampilkan jika ada Excel
+  if (tabs) tabs.style.display = dlExcelUrl ? 'flex' : 'none';
+  document.getElementById('tabBtnPdf').classList.add('active');
+  document.getElementById('tabBtnExcel').classList.remove('active');
+
+  iframe.onload = function () {
+    loading.style.display = 'none';
+    iframe.style.display  = 'block';
+    dlBar.style.display   = 'flex';
+    iframe.onload = null;
+  };
+  iframe.src = pdfUrl;
+
+  const previewPanel = document.querySelector('.card-panel:has(#previewIframe)');
+  if (previewPanel) previewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  showInfoBanner(`Preview laporan <strong>${nomor}</strong> ditampilkan di panel kanan.`, 'info');
+}
+
+// ====== REFRESH TABEL RIWAYAT (tanpa reload halaman) ======
+async function refreshRiwayat() {
+  try {
+    const resp = await fetch("{{ url_for('laporan.riwayat_json') }}");
+    const json = await resp.json();
+    if (!json.success) return;
+
+    // Cari tbody — bisa dari tabel yang sudah ada (jika riwayat tidak kosong)
+    // atau dari tabel dinamis (jika riwayat kosong saat load)
+    let tbody = document.getElementById("riwayat-tbody");
+    if (!tbody) return;
+
+    // Tampilkan tabel dinamis jika ada (kasus: riwayat awalnya kosong)
+    const dynTable = document.getElementById("riwayatTableDynamic");
+    if (dynTable && json.riwayat.length > 0) {
+      dynTable.style.display = "";
+    }
+
+    if (json.riwayat.length === 0) {
+      return; // jangan update jika kosong
+    }
+
+    // Build rows
+    tbody.innerHTML = json.riwayat.map(r => `
+      <tr id="row-${r.id}" style="animation: fadeInRow 0.3s ease;">
+        <td>
+          <div class="nomor-chip">
+            <i class="bi bi-file-earmark-text" style="font-size:0.7rem;"></i>
+            ${r.nomor_laporan}
+          </div>
+          <div class="periode-chip">
+            <i class="bi bi-calendar3" style="font-size:0.68rem;"></i>
+            ${r.periode_label}
+          </div>
+        </td>
+        <td><span class="judul-laporan" title="${r.judul}">${r.judul}</span></td>
+        <td style="text-align:center;"><span class="total-pill">${r.total_berita.toLocaleString('id-ID')}</span></td>
+        <td>
+          <div class="tgl-main">${r.created_at}</div>
+        </td>
+        <td>
+          <div class="action-group">
+            <button onclick="previewInPanel('${r.view_url}', '${r.nomor_laporan}', this)"
+               class="btn-riwayat-action btn-panel" title="Tampilkan di Preview Panel">
+              <i class="bi bi-layout-sidebar-inset"></i>
+            </button>
+            <a href="${r.view_url}" target="_blank" class="btn-riwayat-action btn-preview" title="Buka di Tab Baru">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            <a href="${r.download_pdf}" class="btn-riwayat-action btn-pdf" title="Download PDF">
+              <i class="bi bi-file-earmark-pdf"></i>
+            </a>
+            <a href="${r.download_excel}" class="btn-riwayat-action btn-excel" title="Download Excel">
+              <i class="bi bi-file-earmark-excel"></i>
+            </a>
+            <div class="action-divider"></div>
+            <button onclick="hapusLaporan(${r.id},'${r.nomor_laporan}')" class="btn-riwayat-action btn-delete" title="Hapus">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    showInfoBanner('Laporan berhasil didownload dan disimpan ke riwayat.', 'success');
+
+  } catch (err) {
+    console.warn("[refreshRiwayat] error:", err);
+  }
+}
+
+// ====== HAPUS LAPORAN ======
+let hapusTargetId = null;
+
+function hapusLaporan(id, nomor) {
+  hapusTargetId = id;
+  document.getElementById("hapusLaporanNomor").textContent = nomor;
+  const modal = new bootstrap.Modal(document.getElementById("modalHapusLaporan"));
+  modal.show();
+}
+
+document.getElementById("btnKonfirmasiHapus").addEventListener("click", async function () {
+  if (!hapusTargetId) return;
+  const btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Menghapus...';
+
+  try {
+    const resp = await fetch(`/laporan/hapus/${hapusTargetId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const json = await resp.json();
+    if (json.success) {
+      bootstrap.Modal.getInstance(document.getElementById("modalHapusLaporan")).hide();
+      const row = document.getElementById(`row-${hapusTargetId}`);
+      if (row) {
+        row.style.opacity = "0";
+        row.style.transition = "opacity 0.3s";
+        setTimeout(() => row.remove(), 300);
+      }
+      showInfoBanner("Laporan berhasil dihapus.", "info");
+    } else {
+      alert("Gagal menghapus: " + json.message);
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-trash3 me-1"></i>Ya, Hapus';
+    hapusTargetId = null;
+  }
+});
+
+// ====== PRINT ======
+function printPdf() {
+  const iframe = document.getElementById("previewIframe");
+  if (iframe.src && iframe.src !== "about:blank") {
+    iframe.contentWindow.print();
+  }
+}
+</script>
 {% endblock %}

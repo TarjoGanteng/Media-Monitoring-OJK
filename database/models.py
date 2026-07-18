@@ -46,6 +46,9 @@ class Berita(db.Model):
     ai_checked = db.Column(
         db.Boolean, default=False, nullable=False
     )  # sudah dianalisis AI?
+    ai_last_checked = db.Column(
+        db.DateTime, nullable=True
+    )  # waktu terakhir dianalisis/sinkronisasi AI
 
     def __repr__(self):
         return f"<Berita id={self.id} judul='{self.judul[:50]}...'>"
@@ -247,3 +250,43 @@ class Notifikasi(db.Model):
 
     def __repr__(self):
         return f"<Notifikasi id={self.id} tipe='{self.tipe}' is_read={self.is_read}>"
+
+
+class Laporan(db.Model):
+    """Model untuk menyimpan riwayat laporan yang digenerate."""
+
+    __tablename__ = "laporan"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nomor_laporan = db.Column(db.String(30), nullable=False, unique=True)  # LAP-MM-2026-001
+    judul = db.Column(db.String(300), nullable=False)
+    periode_label = db.Column(db.String(100), nullable=False)   # misal: "Triwulan II (Apr-Jun 2026)"
+    jenis_periode = db.Column(db.String(20), nullable=False)    # harian/mingguan/bulanan/triwulan/tahunan/custom
+    tanggal_dari = db.Column(db.Date, nullable=True)
+    tanggal_sampai = db.Column(db.Date, nullable=True)
+    wilayah = db.Column(db.String(100), nullable=True, default="Jawa Barat")
+    topik = db.Column(db.String(200), nullable=True)            # null = semua topik
+    jenis_media = db.Column(db.String(20), nullable=True)       # semua/lokal/non-lokal
+    path_pdf = db.Column(db.String(500), nullable=True)         # path file PDF
+    path_excel = db.Column(db.String(500), nullable=True)       # path file Excel
+    dibuat_oleh = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # Statistik snapshot saat laporan dibuat
+    total_berita = db.Column(db.Integer, default=0)
+    total_positif = db.Column(db.Integer, default=0)
+    total_negatif = db.Column(db.Integer, default=0)
+    total_netral = db.Column(db.Integer, default=0)
+
+    # Relationship
+    pembuat = db.relationship("User", foreign_keys=[dibuat_oleh], lazy="joined")
+
+    def __repr__(self):
+        return f"<Laporan id={self.id} nomor='{self.nomor_laporan}' periode='{self.periode_label}'>"
+
+    def get_status(self) -> str:
+        """Cek status file PDF — ada atau tidak."""
+        import os
+        if self.path_pdf and os.path.exists(self.path_pdf):
+            return "selesai"
+        return "tidak ada"

@@ -23,6 +23,10 @@ class Config:
     # Cohere AI (UTAMA - Gratis, Anti Cloudflare)
     COHERE_API_KEY = os.environ.get("COHERE_API_KEY", "")
 
+    # OpenAI AI (Key Baru)
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+
+
     # Konfigurasi Database SQLite
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL",

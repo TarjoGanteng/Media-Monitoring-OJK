@@ -7,6 +7,7 @@ from routes.pemberitaan import bp as pemberitaan_bp
 from routes.crawler_api import bp as crawler_api_bp
 from routes.halaman import bp as halaman_bp
 from routes.auth import bp as auth_bp
+from routes.laporan import bp as laporan_bp
 
 
 def register_blueprints(app):
@@ -21,3 +22,4 @@ def register_blueprints(app):
     app.register_blueprint(pemberitaan_bp)
     app.register_blueprint(crawler_api_bp)
     app.register_blueprint(halaman_bp)
+    app.register_blueprint(laporan_bp)

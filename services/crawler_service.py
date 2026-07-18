@@ -122,9 +122,12 @@ class CrawlerService:
         ringkasan_final = ringkasan
         narasumber_final = article_data.get("narasumber")
         jenis_media_final = "Non-Lokal"
+        ai_checked_final = False
+        ai_last_checked_final = None
 
         try:
             from services.ai_service import gemini
+            from datetime import datetime
 
             if gemini.is_available():
                 ai_result = gemini.analisis_berita(judul, isi, ringkasan, article_data.get("media"))
@@ -145,6 +148,10 @@ class CrawlerService:
                         narasumber_final = ai_result["narasumber"]
                     if ai_result.get("jenis_media"):
                         jenis_media_final = ai_result["jenis_media"]
+                    
+                    ai_checked_final = True
+                    ai_last_checked_final = datetime.utcnow()
+                    
                     logger.debug(
                         f"[AI] Analisis OK: '{judul[:50]}' → {sentimen_final}, {topik_final}"
                     )
@@ -178,6 +185,8 @@ class CrawlerService:
             triwulan=article_data.get("triwulan"),
             keyword=article_data.get("keyword"),
             status="aktif",
+            ai_checked=ai_checked_final,
+            ai_last_checked=ai_last_checked_final,
         )
 
         db.session.add(berita)
@@ -188,13 +197,12 @@ class CrawlerService:
             if sentimen_final == "Negatif":
                 try:
                     from services.notifikasi_service import NotifikasiService
-                    import urllib.parse
 
                     NotifikasiService.tambah_notifikasi(
                         tipe="danger",
                         judul="⚠️ Berita Sentimen Negatif",
                         pesan=f"Terdeteksi berita negatif: '{judul[:80]}...'",
-                        link=f"/pemberitaan?sentimen=Negatif&keyword={urllib.parse.quote(judul[:20])}",
+                        link=f"/pemberitaan/{berita.id}",
                     )
                 except Exception as e:
                     logger.error(f"Gagal kirim notif negatif: {e}")
@@ -334,13 +342,6 @@ class CrawlerService:
                     f"URL={hasil_dedup['lapis_1_url']['dihapus']}, "
                     f"Judul={hasil_dedup['lapis_2_judul']['dihapus']}, "
                     f"Mirip={hasil_dedup['lapis_3_mirip']['dihapus']}"
-                )
-                from services.notifikasi_service import NotifikasiService
-
-                NotifikasiService.tambah_notifikasi(
-                    tipe="info",
-                    judul="🧹 Pembersihan Otomatis",
-                    pesan=f"Sistem berhasil menghapus {hasil_dedup['total_dihapus']} berita duplikat demi menjaga efisiensi penyimpanan.",
                 )
         except Exception as e:
             logger.warning(f"[Dedup Auto] Gagal: {e}")

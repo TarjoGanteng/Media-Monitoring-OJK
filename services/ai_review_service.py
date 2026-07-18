@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 # ─── Konstanta ────────────────────────────────────────────────────────────────
 INTERVAL_DETIK = 60  # Cek ulang berita baru setiap 60 detik
-BATCH_SIZE = 20  # Jumlah berita yang diproses per siklus
-DELAY_PER_REQ = 12.0  # Jeda antar request ke AI (detik) → dinaikkan menjadi 12 detik agar terhindar dari Error 429 (Too Many Requests) batas gratis Cohere
+BATCH_SIZE = 2  # Jumlah berita yang diproses per siklus (diubah menjadi 2 agar aman dari limit API)
+DELAY_PER_REQ = 12.0  # Jeda antar request ke AI (detik)
 
 JABAR_KEYWORDS = [
     "jawa barat",
@@ -66,7 +66,7 @@ class AIReviewService:
     # ── Migrasi Database ──────────────────────────────────────────────────────
     @staticmethod
     def ensure_ai_checked_column(app):
-        """Memastikan kolom ai_checked ada di tabel berita."""
+        """Memastikan kolom ai_checked dan ai_last_checked ada di tabel berita."""
         with app.app_context():
             from sqlalchemy import text, inspect as sa_inspect
             from database.extensions import db
@@ -74,19 +74,29 @@ class AIReviewService:
             try:
                 inspector = sa_inspect(db.engine)
                 cols = [c["name"] for c in inspector.get_columns("berita")]
+                modified = False
                 if "ai_checked" not in cols:
                     db.session.execute(
                         text(
                             "ALTER TABLE berita ADD COLUMN ai_checked BOOLEAN DEFAULT 0 NOT NULL"
                         )
                     )
-                    db.session.commit()
-                    logger.info(
-                        "[AIReview] Kolom 'ai_checked' berhasil ditambahkan ke tabel berita."
+                    modified = True
+                    logger.info("[AIReview] Kolom 'ai_checked' berhasil ditambahkan.")
+                if "ai_last_checked" not in cols:
+                    db.session.execute(
+                        text(
+                            "ALTER TABLE berita ADD COLUMN ai_last_checked DATETIME NULL"
+                        )
                     )
+                    modified = True
+                    logger.info("[AIReview] Kolom 'ai_last_checked' berhasil ditambahkan.")
+                
+                if modified:
+                    db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                logger.warning(f"[AIReview] Gagal buat kolom ai_checked: {e}")
+                logger.warning(f"[AIReview] Gagal migrasi kolom berita: {e}")
 
     # ── Worker Loop ───────────────────────────────────────────────────────────
     @classmethod
@@ -114,27 +124,87 @@ class AIReviewService:
         from database.extensions import db
         from database.models import Berita
         from services.ai_service import gemini
+        from datetime import datetime
 
-        antrian = (
+        # PRIORITAS TINGGI: Re-analisis berita lama yang wilayah-nya masih generic 'Jawa Barat'
+        # Hanya ambil yang belum pernah dicek, atau yang terakhir dicek > 2 jam yang lalu agar tidak looping terus-menerus
+        from datetime import datetime, timedelta
+        batas_jabar = datetime.utcnow() - timedelta(hours=2)
+        antrian_jabar = (
             Berita.query.filter(
                 Berita.status == "aktif",
+                Berita.wilayah == "Jawa Barat",
                 db.or_(
-                    Berita.ai_checked == False,  # noqa: E712
-                    Berita.ai_checked.is_(None),  # noqa: E711
-                ),
+                    Berita.ai_last_checked.is_(None),
+                    Berita.ai_last_checked < batas_jabar
+                )
             )
-            .order_by(Berita.id.asc())
+            .order_by(
+                db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
+                Berita.id.asc()
+            )
             .limit(BATCH_SIZE)
             .all()
         )
 
+        antrian_baru = []
+        antrian_lama = []
+        is_reanalysis = False
+
+        if antrian_jabar:
+            # Jika ada antrean Jabar, kita jadikan antrean utama untuk diproses terlebih dahulu
+            antrian = antrian_jabar
+            is_reanalysis = True
+        else:
+            # Jika antrean Jabar sudah habis (0), baru kita proses berita baru & berita lama lainnya
+            antrian_baru = (
+                Berita.query.filter(
+                    Berita.status == "aktif",
+                    db.or_(
+                        Berita.ai_checked == False,  # noqa: E712
+                        Berita.ai_checked.is_(None),  # noqa: E711
+                    ),
+                )
+                .order_by(
+                    db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
+                    Berita.id.asc()
+                )
+                .limit(BATCH_SIZE)
+                .all()
+            )
+
+            if not antrian_baru:
+                from datetime import datetime, timedelta
+                # Re-analisis berita lama yang paling berhak (terakhir dicek > 12 jam yang lalu, atau belum pernah dicek ulang)
+                batas_re_analisis = datetime.utcnow() - timedelta(hours=12)
+                antrian_lama = (
+                    Berita.query.filter(
+                        Berita.status == "aktif",
+                        Berita.ai_checked == True,  # noqa: E712
+                        db.or_(
+                            Berita.ai_last_checked.is_(None),
+                            Berita.ai_last_checked < batas_re_analisis
+                        )
+                    )
+                    .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
+                    .limit(2)
+                    .all()
+                )
+                if antrian_lama:
+                    is_reanalysis = True
+
+            antrian = antrian_baru + antrian_lama
+
         if not antrian:
             logger.debug(
-                "[AIReview] Tidak ada berita baru yang perlu dicek. Menunggu..."
+                "[AIReview] Tidak ada berita baru maupun berita lama yang perlu disinkronkan. Menunggu..."
             )
             return
 
-        logger.info(f"[AIReview] Memproses {len(antrian)} berita belum dicek AI...")
+        if is_reanalysis:
+            logger.info(f"[AIReview] Memproses sinkronisasi ulang {len(antrian)} berita lama secara berkala...")
+        else:
+            logger.info(f"[AIReview] Memproses {len(antrian)} berita belum dicek AI...")
 
         dihapus = 0
         diupdate = 0
@@ -226,6 +296,11 @@ class AIReviewService:
                 if ai_result is None:
                     gagal += 1
                     logger.warning(f"[AIReview] AI gagal ID={berita.id} | {judul[:50]}")
+                    try:
+                        berita.ai_last_checked = datetime.utcnow()
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
                     continue
 
                 sentimen = ai_result.get("sentimen", "Netral")
@@ -236,9 +311,11 @@ class AIReviewService:
                     dihapus += 1
                     logger.debug(f"[AIReview] L2-HAPUS (tidak relevan) | {judul[:60]}")
                 else:
+                    old_sentimen = berita.sentimen
                     berita.sentimen = sentimen
                     berita.topik = ai_result.get("topik", berita.topik)
                     berita.ai_checked = True
+                    berita.ai_last_checked = datetime.utcnow()
 
                     wilayah_ai = ai_result.get("wilayah")
                     if wilayah_ai:
@@ -257,10 +334,28 @@ class AIReviewService:
                         f"[AIReview] OK | {sentimen:7} | {berita.wilayah or '?':20} | {judul[:45]}"
                     )
 
+                    # Kirim notifikasi jika terdeteksi sentimen negatif baru
+                    if sentimen == "Negatif" and old_sentimen != "Negatif":
+                        try:
+                            from services.notifikasi_service import NotifikasiService
+                            NotifikasiService.tambah_notifikasi(
+                                tipe="danger",
+                                judul="⚠️ Berita Sentimen Negatif",
+                                pesan=f"Terdeteksi berita negatif dari review AI: '{judul[:80]}...'",
+                                link=f"/pemberitaan/{berita.id}",
+                            )
+                        except Exception as ne:
+                            logger.error(f"[AIReview] Gagal kirim notif negatif: {ne}")
+
             except Exception as e:
                 db.session.rollback()
                 gagal += 1
                 logger.error(f"[AIReview] Error analisis ID={berita.id}: {e}")
+                try:
+                    berita.ai_last_checked = datetime.utcnow()
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
 
         if dihapus or diupdate:
             logger.info(

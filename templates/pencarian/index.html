@@ -37,9 +37,20 @@
                     <label class="filter-label">Media</label>
                     <select name="media" class="form-select filter-input">
                         <option value="">Semua Media</option>
-                        {% for m in daftar_media %}
-                        <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
-                        {% endfor %}
+                        {% if daftar_media_grouped.lokal %}
+                        <optgroup label="Lokal (Jawa Barat)">
+                            {% for m in daftar_media_grouped.lokal %}
+                            <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if daftar_media_grouped.non_lokal %}
+                        <optgroup label="Non-Lokal (Nasional / Luar Jabar)">
+                            {% for m in daftar_media_grouped.non_lokal %}
+                            <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
                     </select>
                 </div>
                 <div class="col-md-2">

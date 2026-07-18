@@ -41,9 +41,13 @@
     }
     .select2-results__option {
         font-size: 0.85rem;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
     }
-    /* Membatasi tinggi scroll dropdown */
-    .select2-results__options {
+    /* Membatasi tinggi scroll dropdown hanya pada level teratas */
+    .select2-results > .select2-results__options {
         max-height: 300px !important;
     }
     /* Memaksa input flatpickr agar warnanya seragam dengan form lain */
@@ -155,9 +159,20 @@
                     <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Wilayah/Kota</label>
                     <select name="wilayah" class="form-select select2-search" style="width: 100%;">
                         <option value=""></option>
-                        {% for w in daftar_wilayah %}
-                        <option value="{{ w }}" {% if filter_wilayah == w %}selected{% endif %}>{{ w }}</option>
-                        {% endfor %}
+                        {% if daftar_wilayah_grouped.lokal %}
+                        <optgroup label="Lokal (Jawa Barat)">
+                            {% for w in daftar_wilayah_grouped.lokal %}
+                            <option value="{{ w }}" {% if filter_wilayah == w %}selected{% endif %}>{{ w }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if daftar_wilayah_grouped.non_lokal %}
+                        <optgroup label="Non-Lokal (Luar Jabar)">
+                            {% for w in daftar_wilayah_grouped.non_lokal %}
+                            <option value="{{ w }}" {% if filter_wilayah == w %}selected{% endif %}>{{ w }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
                     </select>
                 </div>
 
@@ -166,9 +181,20 @@
                     <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Media</label>
                     <select name="media" id="mediaSelect" class="form-select select2-search" style="width: 100%;">
                         <option value=""></option>
-                        {% for m in daftar_media %}
-                        <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
-                        {% endfor %}
+                        {% if daftar_media_grouped.lokal %}
+                        <optgroup label="Lokal (Jawa Barat)">
+                            {% for m in daftar_media_grouped.lokal %}
+                            <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if daftar_media_grouped.non_lokal %}
+                        <optgroup label="Non-Lokal (Nasional / Luar Jabar)">
+                            {% for m in daftar_media_grouped.non_lokal %}
+                            <option value="{{ m }}" {% if filter_media == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
                     </select>
                 </div>
 
@@ -449,6 +475,53 @@
             allowClear: true,
             width: '100%'
         });
+
+        // Cegah seleksi tidak sengaja akibat drag/touchpad pada dropdown Select2 menggunakan event capturing
+        let mousedownX = 0;
+        let mousedownY = 0;
+        let mousedownTarget = null;
+        let isDragCancelled = false;
+
+        document.addEventListener('mousedown', function(e) {
+            let option = e.target.closest('.select2-results__option');
+            if (option) {
+                mousedownX = e.pageX;
+                mousedownY = e.pageY;
+                mousedownTarget = option;
+                isDragCancelled = false;
+            }
+        }, true);
+
+        document.addEventListener('mouseup', function(e) {
+            let option = e.target.closest('.select2-results__option');
+            if (option) {
+                let mouseupX = e.pageX;
+                let mouseupY = e.pageY;
+                let dx = mouseupX - mousedownX;
+                let dy = mouseupY - mousedownY;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Jika target mousedown berbeda dengan mouseup (drag antar elemen),
+                // atau jarak pergeseran kursor > 8px (drag jauh), batalkan pemilihan sebelum diterima Select2
+                if (mousedownTarget !== option || distance > 8) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    isDragCancelled = true;
+                    return false;
+                }
+            }
+        }, true);
+
+        document.addEventListener('click', function(e) {
+            let option = e.target.closest('.select2-results__option');
+            if (option) {
+                if (isDragCancelled) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        }, true);
 
         // Khusus untuk dropdown select2
         $('.select2-no-search').select2({

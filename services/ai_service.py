@@ -50,7 +50,6 @@ WILAYAH_VALID = [
     "Ciamis",
     "Banjar",
     "Pangandaran",
-    "Jawa Barat",
 ]
 
 
@@ -69,7 +68,7 @@ Konten: {konten}
   "analisis_konteks": "<1-2 kalimat analisis inti berita dan dampaknya terhadap reputasi OJK>",
   "sentimen": "<PILIH SATU: Positif | Negatif | Netral>",
   "topik": "<PILIH SATU: {" | ".join(TOPIK_VALID)}>",
-  "wilayah": "<nama kota/kabupaten/provinsi lokasi utama berita jika ada (misal: Bandung, Jakarta, Bogor, dsb), atau null>",
+  "wilayah": "<nama kota/kabupaten lokasi utama berita di Jawa Barat jika ada (PILIH DARI: Bandung, Bekasi, Bogor, Cirebon, Depok, Sukabumi, Karawang, Tasikmalaya, Garut, Cianjur, Subang, Purwakarta, Indramayu, Majalengka, Sumedang, Kuningan, Ciamis, Banjar, Pangandaran). Jika tidak disebutkan secara eksplisit di dalam konten, analisislah asal media tersebut (misal: 'Radar Bogor' -> Bogor, 'Radar Cirebon' -> Cirebon, 'Pikiran Rakyat' -> Bandung, 'Tribun Jabar' -> Bandung). Jika benar-benar tidak terdeteksi, berikan null>",
   "ringkasan": "<ringkasan 1-2 kalimat bahasa Indonesia>",
   "narasumber": "<nama dan jabatan narasumber yang dikutip, atau null>",
   "jenis_media": "<PILIH SATU: Lokal | Non-Lokal>"
@@ -94,13 +93,13 @@ def normalize_wilayah_name(w: str) -> str:
     
     # Pencocokan khusus
     if "bandung barat" in w_lower:
-        return "Bandung Barat"
+        return "Bandung"
     if "bandung" in w_lower:
         return "Bandung"
     if "jakarta" in w_lower:
         return "Jakarta"
     if "jawa barat" in w_lower or "jabar" in w_lower:
-        return "Jawa Barat"
+        return "Bandung"  # Map general Jawa Barat to Bandung
         
     # Bersihkan awalan Kota / Kabupaten / Kab.
     import re
@@ -123,25 +122,67 @@ def _parse_result(result: dict, media: str = None) -> dict:
 
     # Penentuan wilayah
     wilayah = result.get("wilayah")
-    if wilayah and str(wilayah).lower() not in ["null", "none", ""]:
+    if wilayah and str(wilayah).lower() not in ["null", "none", "", "jawa barat"]:
         wilayah = normalize_wilayah_name(wilayah)
     else:
         wilayah = None
 
+    media_lower = str(media or "").lower()
+    # Jika nama media adalah media lokal Jabar
+    is_local_media = any(k in media_lower for k in [
+        "jabar", "jawa barat", "bjb", "bandung", "ciamik", "bogor", "depok", "bekasi", "cirebon", 
+        "pikiran rakyat", "radar", "cianjur", "tasikmalaya", "garut", "subang", 
+        "purwakarta", "indramayu", "majalengka", "sumedang", "kuningan", "ciamis", 
+        "banjar", "pangandaran", "sukabumi", "karawang", "pasundan"
+    ])
+
     jenis_media = result.get("jenis_media", "Non-Lokal")
-    if jenis_media not in ["Lokal", "Non-Lokal"]:
+    if is_local_media:
+        jenis_media = "Lokal"
+    elif jenis_media not in ["Lokal", "Non-Lokal"]:
         jenis_media = "Non-Lokal"
 
-    # Logika fallback lokasi jika tidak terindikasi di isi berita
-    if not wilayah:
-        media_lower = str(media or "").lower()
-        # Jika nama media adalah media lokal Jabar
-        is_local_media = any(k in media_lower for k in ["jabar", "bandung", "ciamik", "bogor", "depok", "bekasi", "cirebon", "pikiran rakyat", "radar"])
-        
-        if is_local_media or jenis_media == "Lokal":
-            wilayah = "Jawa Barat"
+    # Logika fallback lokasi berdasarkan nama media
+    if not wilayah or wilayah == "Jawa Barat":
+        if "cirebon" in media_lower:
+            wilayah = "Cirebon"
+        elif "bogor" in media_lower:
+            wilayah = "Bogor"
+        elif "sukabumi" in media_lower:
+            wilayah = "Sukabumi"
+        elif "karawang" in media_lower:
+            wilayah = "Karawang"
+        elif "tasikmalaya" in media_lower or "priangan" in media_lower:
+            wilayah = "Tasikmalaya"
+        elif "garut" in media_lower:
+            wilayah = "Garut"
+        elif "cianjur" in media_lower:
+            wilayah = "Cianjur"
+        elif "subang" in media_lower or "pasundan" in media_lower:
+            wilayah = "Subang"
+        elif "purwakarta" in media_lower:
+            wilayah = "Purwakarta"
+        elif "indramayu" in media_lower:
+            wilayah = "Indramayu"
+        elif "majalengka" in media_lower:
+            wilayah = "Majalengka"
+        elif "sumedang" in media_lower:
+            wilayah = "Sumedang"
+        elif "kuningan" in media_lower:
+            wilayah = "Kuningan"
+        elif "ciamis" in media_lower:
+            wilayah = "Ciamis"
+        elif "banjar" in media_lower:
+            wilayah = "Banjar"
+        elif "pangandaran" in media_lower:
+            wilayah = "Pangandaran"
+        elif "depok" in media_lower:
+            wilayah = "Depok"
+        elif "bekasi" in media_lower:
+            wilayah = "Bekasi"
+        elif is_local_media or jenis_media == "Lokal":
+            wilayah = "Bandung"
         else:
-            # Default media nasional ke Jakarta
             wilayah = "Jakarta"
 
     return {
@@ -292,7 +333,137 @@ class CohereService:
             }
 
 
+class OpenAIService:
+    """
+    Analisis berita menggunakan OpenAI API (Model gpt-4o-mini).
+    """
+
+    MODEL_NAME = "gpt-4o-mini"
+    API_BASE = "https://api.openai.com/v1/chat/completions"
+
+    def __init__(self, api_key: str = None):
+        self._api_key = api_key
+        self._initialized = False
+        self._available = False
+
+    def _init(self) -> bool:
+        if self._initialized:
+            return self._available
+        self._initialized = True
+
+        if not self._api_key:
+            try:
+                import os
+                from dotenv import load_dotenv
+
+                load_dotenv(override=True)
+                self._api_key = os.environ.get("OPENAI_API_KEY", "")
+                if not self._api_key:
+                    from config import Config
+
+                    self._api_key = getattr(Config, "OPENAI_API_KEY", "")
+            except Exception:
+                pass
+
+        if not self._api_key:
+            logger.debug("[OpenAI] API Key tidak ditemukan. Dilewat.")
+            return False
+
+        self._available = True
+        logger.info(f"[OpenAI] Siap digunakan dengan model {self.MODEL_NAME}")
+        return True
+
+    def is_available(self) -> bool:
+        return self._init()
+
+    def analisis_berita(
+        self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
+    ) -> dict | None:
+        if not self._init():
+            return None
+
+        konten = isi or ringkasan or ""
+        konten_pendek = konten[:2500] if konten else "Konten tidak tersedia."
+        prompt = _build_prompt(judul, konten_pendek, media)
+
+        try:
+            import requests
+
+            headers = {
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": self.MODEL_NAME,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+            resp = requests.post(
+                self.API_BASE, headers=headers, json=payload, timeout=30
+            )
+            resp.raise_for_status()
+
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            result = json.loads(content)
+
+            alasan = result.get("analisis_konteks", "")
+            if alasan:
+                logger.debug(f"[OpenAI] Reasoning: {alasan[:80]}")
+
+            return _parse_result(result, media)
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"[OpenAI] Gagal parse JSON: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"[OpenAI] Error: {e}")
+            return None
+
+    def cek_koneksi(self) -> dict:
+        if not self._init():
+            return {
+                "ok": False,
+                "pesan": "OPENAI_API_KEY tidak ditemukan di .env",
+                "model": None,
+            }
+        try:
+            import requests
+
+            headers = {
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": self.MODEL_NAME,
+                "messages": [
+                    {"role": "user", "content": 'Balas dengan JSON: {"status": "ok"}'}
+                ],
+                "response_format": {"type": "json_object"},
+            }
+            resp = requests.post(
+                self.API_BASE, headers=headers, json=payload, timeout=10
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            json.loads(content)
+            return {
+                "ok": True,
+                "pesan": "Koneksi ke OpenAI berhasil.",
+                "model": self.MODEL_NAME,
+            }
+        except Exception as e:
+            return {
+                "ok": False,
+                "pesan": f"Gagal terhubung ke OpenAI: {str(e)}",
+                "model": self.MODEL_NAME,
+            }
+
+
 class OpenRouterService:
+
     """
     Analisis berita menggunakan OpenRouter API.
     Mendukung model gratis: meta-llama/llama-3.1-8b-instruct:free, dll.
@@ -563,40 +734,49 @@ class GeminiService:
 class AIService:
     """
     Facade tunggal untuk seluruh aplikasi.
-    Urutan prioritas: OpenRouter → Gemini → None (fallback rule-based)
+    Urutan prioritas: OpenAI -> Cohere → OpenRouter → Gemini → None (fallback rule-based)
     """
 
     def __init__(self):
+        self._openai = OpenAIService()
         self._cohere = CohereService()
         self._openrouter = OpenRouterService()
         self._gemini = GeminiService()
-        self._active_provider = None
-
-    def _get_provider(self):
-        """Pilih provider yang aktif secara lazy. Prioritas: Cohere → OpenRouter → Gemini"""
-        if self._active_provider:
-            return self._active_provider
-        if self._cohere.is_available():
-            self._active_provider = self._cohere
-            logger.info("[AI] Menggunakan provider: Cohere")
-        elif self._openrouter.is_available():
-            self._active_provider = self._openrouter
-            logger.info("[AI] Menggunakan provider: OpenRouter")
-        elif self._gemini.is_available():
-            self._active_provider = self._gemini
-            logger.info("[AI] Menggunakan provider: Gemini")
-        return self._active_provider
 
     def is_available(self) -> bool:
-        return self._get_provider() is not None
+        return (self._openai.is_available() or
+                self._cohere.is_available() or 
+                self._openrouter.is_available() or 
+                self._gemini.is_available())
 
     def analisis_berita(
         self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
     ) -> dict | None:
-        provider = self._get_provider()
-        if not provider:
+        # Kumpulkan provider yang API Key-nya tersedia di .env
+        available_providers = []
+        if self._openai.is_available():
+            available_providers.append(("OpenAI", self._openai))
+        if self._cohere.is_available():
+            available_providers.append(("Cohere", self._cohere))
+        if self._openrouter.is_available():
+            available_providers.append(("OpenRouter", self._openrouter))
+        if self._gemini.is_available():
+            available_providers.append(("Gemini", self._gemini))
+
+        if not available_providers:
             return None
-        return provider.analisis_berita(judul, isi, ringkasan, media)
+
+        # Coba satu per satu sesuai prioritas
+        for name, provider in available_providers:
+            try:
+                result = provider.analisis_berita(judul, isi, ringkasan, media)
+                if result is not None:
+                    return result
+                logger.warning(f"[AI] Provider {name} mengembalikan None (limit/quota habis). Mencoba fallback...")
+            except Exception as e:
+                logger.warning(f"[AI] Provider {name} error: {e}. Mencoba fallback...")
+
+        return None
 
     def analisis_batch(self, berita_list: list, delay_per_request: float = 2.0) -> dict:
         if not self.is_available():
@@ -604,7 +784,7 @@ class AIService:
                 "diproses": 0,
                 "berhasil": 0,
                 "gagal": 0,
-                "error": "Tidak ada provider AI yang tersedia. Cek OPENROUTER_API_KEY atau GEMINI_API_KEY di .env",
+                "error": "Tidak ada provider AI yang tersedia. Cek OPENAI_API_KEY di .env",
             }
 
         stats = {"diproses": 0, "berhasil": 0, "gagal": 0, "error": None}
@@ -639,10 +819,13 @@ class AIService:
 
     def cek_koneksi(self) -> dict:
         """Tes koneksi semua provider dan kembalikan status."""
+        op_status = self._openai.cek_koneksi()
         co_status = self._cohere.cek_koneksi()
         or_status = self._openrouter.cek_koneksi()
         gem_status = self._gemini.cek_koneksi()
 
+        if op_status["ok"]:
+            return {**op_status, "provider": "OpenAI"}
         if co_status["ok"]:
             return {**co_status, "provider": "Cohere"}
         if or_status["ok"]:
@@ -654,12 +837,67 @@ class AIService:
             "ok": False,
             "provider": None,
             "model": None,
-            "pesan": f"Cohere: {co_status['pesan']} | OR: {or_status['pesan']} | Gemini: {gem_status['pesan']}",
+            "pesan": f"OpenAI: {op_status['pesan']} | Cohere: {co_status['pesan']} | OR: {or_status['pesan']} | Gemini: {gem_status['pesan']}",
         }
+
+    def generate_narasi(self, prompt: str, temperature: float = 0.5) -> str | None:
+        """
+        Helper method untuk men-generate teks narasi bebas (seperti ringkasan/penjelasan laporan).
+        Mencoba memanggil provider yang aktif (diutamakan OpenAI).
+        """
+        # Coba OpenAI
+        if self._openai.is_available():
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {self._openai._api_key}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "model": self._openai.MODEL_NAME,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
+                }
+                resp = requests.post(self._openai.API_BASE, headers=headers, json=payload, timeout=30)
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                logger.warning(f"[AIService] generate_narasi OpenAI gagal: {e}")
+
+        # Fallback ke Cohere
+        if self._cohere.is_available():
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {self._cohere._api_key}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "message": prompt,
+                    "model": self._cohere.MODEL_NAME,
+                    "temperature": temperature,
+                }
+                resp = requests.post(self._cohere.API_BASE, headers=headers, json=payload, timeout=30)
+                resp.raise_for_status()
+                return resp.json()["text"].strip()
+            except Exception as e:
+                logger.warning(f"[AIService] generate_narasi Cohere gagal: {e}")
+
+        # Fallback ke Gemini
+        if self._gemini.is_available():
+            try:
+                from google.genai import types
+                response = self._gemini._client.models.generate_content(
+                    model=self._gemini.MODEL_NAME,
+                    contents=prompt,
+                )
+                return response.text.strip()
+            except Exception as e:
+                logger.warning(f"[AIService] generate_narasi Gemini gagal: {e}")
+
+        return None
 
 
 # ─── Singleton instance ───────────────────────────────────────────────────────
 # Backward-compatible: kode lama yang memanggil `gemini.xxx` tetap bisa dipakai
-gemini = AIService()
-
-"Bandung Barat",
+gemini = AIService()

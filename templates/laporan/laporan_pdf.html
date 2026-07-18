@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>{{ params.judul }}</title>
+<style>
+/*
+  LAPORAN PDF — xhtml2pdf (Layout Rapi v3)
+  A4: 210x297mm, margin 15mm kiri/kanan, 15mm atas, 18mm bawah
+  Pendekatan: Grafik + Tabel di atas, Analisis FULL-WIDTH di bawah.
+  TIDAK ada 2-kolom untuk narasi agar teks tidak terpotong.
+*/
+
+@page {
+  size: A4 portrait;
+  margin-top: 14mm;
+  margin-bottom: 18mm;
+  margin-left: 15mm;
+  margin-right: 15mm;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 9pt;
+  color: #1e293b;
+  line-height: 1.55;
+}
+
+/* ---- PAGE BREAK ---- */
+.page-break { page-break-before: always; }
+
+/* ---- PAGE HEADER ---- */
+.ph-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-bottom: 0.5mm solid #c8002d;
+  margin-bottom: 4mm;
+}
+.ph-title {
+  font-size: 8pt;
+  font-weight: bold;
+  color: #c8002d;
+  text-align: left;
+  padding-bottom: 1.5mm;
+}
+.ph-meta {
+  font-size: 7pt;
+  color: #94a3b8;
+  text-align: right;
+  padding-bottom: 1.5mm;
+}
+
+/* ---- SECTION TITLE ---- */
+.section-title {
+  font-size: 11pt;
+  font-weight: bold;
+  color: #c8002d;
+  border-left: 3mm solid #c8002d;
+  padding: 1.5mm 0 1.5mm 3mm;
+  margin-bottom: 4mm;
+  background-color: #fff5f5;
+}
+
+/* ============================================================
+   COVER PAGE
+   ============================================================ */
+.cover-top-bar {
+  background-color: #c8002d;
+  height: 7mm;
+  width: 100%;
+  margin-bottom: 4mm;
+}
+
+.cover-main-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 3mm;
+}
+.cover-left {
+  width: 58mm;
+  background-color: #c8002d;
+  padding: 5mm 4mm;
+  vertical-align: top;
+}
+.cover-right {
+  padding: 5mm 7mm;
+  vertical-align: top;
+}
+.cover-ojk-text {
+  color: #ffffff;
+  font-size: 8.5pt;
+  font-weight: bold;
+  line-height: 1.4;
+  margin-top: 3mm;
+}
+.cover-divider {
+  border-bottom: 0.4mm solid rgba(255,255,255,0.3);
+  margin: 3.5mm 0;
+}
+.cover-info-label { color: rgba(255,255,255,0.75); font-size: 7pt; margin-bottom: 0.5mm; }
+.cover-info-val   { color: #ffffff; font-size: 8pt; font-weight: bold; margin-bottom: 2.5mm; }
+.cover-badge {
+  background-color: #8b0000;
+  color: #ffffff;
+  font-size: 6.5pt;
+  font-weight: bold;
+  padding: 1mm 3mm;
+  display: inline-block;
+  margin-bottom: 3mm;
+  letter-spacing: 1px;
+}
+.cover-judul {
+  font-size: 20pt;
+  font-weight: bold;
+  color: #c8002d;
+  line-height: 1.15;
+  margin-bottom: 1.5mm;
+}
+.cover-subtitle {
+  font-size: 10pt;
+  font-weight: bold;
+  color: #c8002d;
+  margin-bottom: 1mm;
+}
+.cover-period {
+  font-size: 8pt;
+  color: #64748b;
+  padding-bottom: 3mm;
+  border-bottom: 0.3mm solid #e2e8f0;
+  margin-bottom: 3mm;
+}
+.cover-stat-table { width: 100%; border-collapse: collapse; margin-bottom: 3.5mm; }
+.cover-stat-td {
+  width: 33.3%;
+  border: 0.3mm solid #e2e8f0;
+  padding: 2.5mm;
+  text-align: center;
+  vertical-align: top;
+}
+.cover-stat-val { font-size: 13pt; font-weight: bold; color: #1e293b; }
+.cover-stat-lbl { font-size: 7pt; color: #64748b; margin-top: 0.5mm; }
+.cover-disusun-box {
+  background-color: #c8002d;
+  color: #ffffff;
+  padding: 3mm 4mm;
+  margin-top: 3mm;
+}
+.cover-disusun-label { font-size: 7pt; opacity: 0.8; margin-bottom: 0.5mm; }
+.cover-disusun-nama  { font-size: 9pt; font-weight: bold; }
+.cover-disusun-sub   { font-size: 7.5pt; opacity: 0.85; margin-top: 0.5mm; }
+.cover-nomor { font-size: 7pt; color: #94a3b8; margin-top: 2.5mm; }
+.cover-bottom-bar { background-color: #1e293b; padding: 2.5mm 0; margin-top: 4mm; }
+.cover-bottom-tbl { width: 100%; border-collapse: collapse; padding: 0 5mm; }
+.cover-bottom-left  { font-size: 7pt; color: #94a3b8; text-align: left;  }
+.cover-bottom-right { font-size: 7pt; color: #c8002d; font-weight: bold; text-align: right; }
+
+/* ============================================================
+   STAT CARDS (ringkasan eksekutif)
+   ============================================================ */
+.stat-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+.stat-td {
+  width: 25%;
+  border: 0.3mm solid #e2e8f0;
+  padding: 3.5mm 3mm;
+  text-align: center;
+  vertical-align: top;
+}
+.stat-td.red  { border-top: 1.5mm solid #c8002d; }
+.stat-td.grn  { border-top: 1.5mm solid #16a34a; }
+.stat-td.gry  { border-top: 1.5mm solid #64748b; }
+.stat-td.dred { border-top: 1.5mm solid #dc2626; }
+.stat-val { font-size: 16pt; font-weight: bold; color: #1e293b; }
+.stat-pct { font-size: 8pt; font-weight: bold; margin-top: 1mm; }
+.stat-lbl { font-size: 7pt; color: #64748b; margin-top: 1mm; }
+.pct-grn  { color: #16a34a; }
+.pct-gry  { color: #64748b; }
+.pct-dred { color: #dc2626; }
+
+/* ============================================================
+   INFO TABLE (ringkasan cepat 4-kolom)
+   ============================================================ */
+.info-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+.info-td {
+  width: 25%;
+  border: 0.3mm solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 2.5mm 3mm;
+  vertical-align: top;
+}
+.info-lbl { font-size: 7pt; color: #64748b; margin-bottom: 0.5mm; }
+.info-val  { font-size: 9pt; font-weight: bold; color: #1e293b; }
+.info-sub  { font-size: 7pt; color: #64748b; }
+
+/* ============================================================
+   LAYOUT 2 KOLOM — Hanya untuk grafik + tabel data (bukan narasi)
+   Narasi analisis selalu full-width di bawah grafik
+   ============================================================ */
+.two-col { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
+.col-l { width: 55%; vertical-align: top; padding-right: 3mm; }
+.col-r { width: 45%; vertical-align: top; }
+
+/* ============================================================
+   DATA TABLE
+   ============================================================ */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+  margin-bottom: 3.5mm;
+}
+.data-table th {
+  background-color: #c8002d;
+  color: #ffffff;
+  padding: 2mm 2.5mm;
+  text-align: left;
+  font-weight: bold;
+  font-size: 8pt;
+}
+.data-table td {
+  padding: 2mm 2.5mm;
+  border-bottom: 0.2mm solid #e2e8f0;
+  vertical-align: middle;
+}
+.tr-even td { background-color: #fef8f8; }
+
+/* ============================================================
+   BADGES & PROGRESS BAR
+   ============================================================ */
+.badge-pos { background-color: #dcfce7; color: #15803d; padding: 0.5mm 2mm; font-size: 7.5pt; font-weight: bold; }
+.badge-neg { background-color: #fee2e2; color: #dc2626; padding: 0.5mm 2mm; font-size: 7.5pt; font-weight: bold; }
+.badge-net { background-color: #f1f5f9; color: #475569; padding: 0.5mm 2mm; font-size: 7.5pt; font-weight: bold; }
+
+.prog-wrap { background-color: #f1f5f9; height: 3mm; margin: 0.5mm 0 1.5mm 0; }
+.prog-red  { background-color: #c8002d; height: 3mm; display: block; }
+.prog-grn  { background-color: #16a34a; height: 3mm; display: block; }
+.prog-gry  { background-color: #64748b; height: 3mm; display: block; }
+
+/* ============================================================
+   ANALISIS NARASI — Gaya laporan formal, Times New Roman
+   Tidak ada background berwarna, tampil seperti laporan resmi
+   ============================================================ */
+.analisis-wrap {
+  margin-top: 5mm;
+  padding-top: 0;
+}
+.analisis-judul {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  font-weight: bold;
+  color: #1e293b;
+  margin-bottom: 2.5mm;
+}
+.analisis-teks {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  font-weight: normal;
+  color: #1e293b;
+  line-height: 1.75;
+  text-align: justify;
+}
+.analisis-para {
+  margin-bottom: 3mm;
+  text-indent: 10mm;
+}
+.analisis-para:first-child { text-indent: 10mm; }
+.analisis-para:last-child  { margin-bottom: 0; }
+
+/* ============================================================
+   RINGKASAN EKSEKUTIF — Times New Roman, tanpa background
+   ============================================================ */
+.ringkasan-box {
+  border-top: 0.4mm solid #c8002d;
+  border-bottom: 0.4mm solid #e2e8f0;
+  padding: 4mm 0;
+  margin-bottom: 5mm;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  line-height: 1.75;
+  color: #1e293b;
+  text-align: justify;
+  text-indent: 10mm;
+}
+
+/* ============================================================
+   CHART IMAGE
+   ============================================================ */
+.chart-img-full { width: 100%; height: auto; max-height: 78mm; margin-bottom: 2mm; }
+.chart-img-half { width: 100%; height: auto; max-height: 68mm; }
+
+/* ============================================================
+   TOC (Daftar Isi)
+   ============================================================ */
+.toc-row {
+  padding: 2mm 0 2mm 3mm;
+  border-bottom: 0.2mm dotted #cbd5e1;
+  font-size: 9pt;
+}
+.toc-num { color: #c8002d; font-weight: bold; margin-right: 2mm; }
+
+/* ============================================================
+   BERITA NEGATIF CARD
+   ============================================================ */
+.neg-card {
+  border: 0.3mm solid #fecaca;
+  border-left: 2.5mm solid #dc2626;
+  padding: 3mm 4mm;
+  margin-bottom: 3mm;
+  background-color: #fff8f8;
+}
+.neg-title { font-size: 8.5pt; font-weight: bold; margin: 1mm 0; color: #1e293b; }
+.neg-meta  { font-size: 7pt; color: #94a3b8; }
+.neg-isi   { font-size: 7.5pt; color: #64748b; margin-top: 1mm; line-height: 1.5; }
+.neg-tag   {
+  background-color: #fee2e2;
+  color: #dc2626;
+  font-size: 7pt;
+  padding: 0.5mm 2mm;
+  display: inline-block;
+  margin-top: 1.5mm;
+}
+
+/* ============================================================
+   PENUTUP & REKOMENDASI
+   ============================================================ */
+.penutup-box {
+  background-color: #fef2f2;
+  border: 0.3mm solid #fecaca;
+  padding: 4mm 5mm;
+  margin-top: 4mm;
+}
+.penutup-item { margin-bottom: 3mm; font-size: 8.5pt; line-height: 1.7; }
+.penutup-num  { color: #c8002d; font-weight: bold; }
+
+/* ============================================================
+   TANDA TANGAN
+   ============================================================ */
+.ttd-table { width: 100%; border-collapse: collapse; margin-top: 8mm; }
+.ttd-right { width: 50%; text-align: right; padding-left: 10mm; vertical-align: top; }
+.ttd-inner { display: inline-block; min-width: 55mm; text-align: center; }
+.ttd-lbl   { font-size: 8pt; color: #64748b; }
+.ttd-space { height: 13mm; display: block; }
+.ttd-line  { border-bottom: 0.4mm solid #1e293b; margin-bottom: 1mm; }
+.ttd-name  { font-size: 8.5pt; font-weight: bold; }
+.ttd-pos   { font-size: 7.5pt; color: #64748b; }
+
+/* ============================================================
+   FOOTER NOTE
+   ============================================================ */
+.footer-note {
+  margin-top: 5mm;
+  padding: 2mm 3mm;
+  background-color: #f8fafc;
+  border: 0.3mm solid #e2e8f0;
+  font-size: 7pt;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* ============================================================
+   KONTRIBUSI AREA (halaman kontribusi Jabar)
+   ============================================================ */
+.kontribusi-big {
+  font-size: 36pt;
+  font-weight: bold;
+  color: #c8002d;
+  text-align: center;
+  line-height: 1;
+  margin-bottom: 1mm;
+}
+.kontribusi-sub {
+  font-size: 8.5pt;
+  color: #64748b;
+  text-align: center;
+  margin-bottom: 4mm;
+}
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     HALAMAN 1: COVER
+================================================================ -->
+
+<!-- Garis merah atas -->
+<div class="cover-top-bar"></div>
+
+<!-- Body cover: 2 kolom menggunakan table -->
+<table class="cover-main-table">
+  <tr>
+    <!-- Kolom kiri: merah -->
+    <td class="cover-left">
+      {% if logo_b64 %}
+      <img src="{{ logo_b64 }}" style="width:16mm; height:auto;" alt="OJK">
+      {% endif %}
+      <div class="cover-ojk-text">OTORITAS<br>JASA KEUANGAN</div>
+
+      <div class="cover-divider"></div>
+
+      <div class="cover-info-label">Kantor Regional</div>
+      <div class="cover-info-val">Jawa Barat</div>
+
+      <div class="cover-info-label">Nomor Laporan</div>
+      <div class="cover-info-val" style="font-size:7.5pt;">{{ params.nomor_laporan }}</div>
+
+      <div class="cover-info-label">Tanggal Terbit</div>
+      <div class="cover-info-val" style="font-size:7pt;">{{ params.tanggal_cetak }}</div>
+
+      <div class="cover-divider"></div>
+
+      <div class="cover-info-label">Total Berita</div>
+      <div style="color:#ffffff; font-size:15pt; font-weight:bold; margin-bottom:1mm;">
+        {{ "{:,}".format(data.statistik.total) }}
+      </div>
+      <div style="color:rgba(255,255,255,0.75); font-size:7pt; margin-bottom:0.5mm;">Positif: <strong style="color:#fff;">{{ data.statistik.pct_positif }}%</strong></div>
+      <div style="color:rgba(255,255,255,0.75); font-size:7pt; margin-bottom:0.5mm;">Netral: <strong style="color:#fff;">{{ data.statistik.pct_netral }}%</strong></div>
+      <div style="color:rgba(255,255,255,0.75); font-size:7pt;">Negatif: <strong style="color:#fff;">{{ data.statistik.pct_negatif }}%</strong></div>
+    </td>
+
+    <!-- Kolom kanan: putih -->
+    <td class="cover-right">
+      <div class="cover-judul">LAPORAN<br>PEMBERITAAN OJK</div>
+      <div class="cover-subtitle">{{ params.periode_label.upper() }}</div>
+      <div class="cover-period">
+        Periode: {{ params.tanggal_dari_str }} &ndash; {{ params.tanggal_sampai_str }}<br>
+        Wilayah: {{ params.wilayah }}
+      </div>
+
+      {% if kantor_b64 %}
+      <img src="{{ kantor_b64 }}" style="width:100%; max-height:33mm; margin-bottom:3mm;" alt="Kantor OJK">
+      {% endif %}
+
+      <!-- Stat ringkasan di cover -->
+      <table class="cover-stat-table">
+        <tr>
+          <td class="cover-stat-td" style="border-top:1.5mm solid #c8002d;">
+            <div class="cover-stat-val">{{ "{:,}".format(data.statistik.total) }}</div>
+            <div class="cover-stat-lbl">Total Berita</div>
+          </td>
+          <td class="cover-stat-td" style="border-top:1.5mm solid #16a34a;">
+            <div class="cover-stat-val">{{ data.statistik.pct_positif }}%</div>
+            <div class="cover-stat-lbl">Sentimen Positif</div>
+          </td>
+          <td class="cover-stat-td" style="border-top:1.5mm solid #64748b;">
+            <div class="cover-stat-val" style="font-size:9pt;">{{ params.wilayah }}</div>
+            <div class="cover-stat-lbl">Wilayah Laporan</div>
+          </td>
+        </tr>
+      </table>
+
+      <div style="margin-top:4mm; padding: 3mm 0; border-top: 0.3mm solid #e2e8f0;">
+        <div style="font-size:7pt; color:#94a3b8; margin-bottom:0.5mm;">Disusun oleh:</div>
+        <div style="font-size:9pt; font-weight:bold; color:#1e293b;">{{ params.dibuat_oleh_nama }}</div>
+        <div style="font-size:7.5pt; color:#64748b; margin-top:0.5mm;">Media Monitoring OJK &mdash; Kantor Provinsi Jawa Barat</div>
+      </div>
+
+      <div class="cover-nomor">
+        Nomor: <strong>{{ params.nomor_laporan }}</strong> &nbsp;|&nbsp;
+        Terbit: <strong>{{ params.tanggal_cetak }}</strong>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- Bottom bar cover -->
+<div class="cover-bottom-bar">
+  <table class="cover-bottom-tbl">
+    <tr>
+      <td class="cover-bottom-left">Sumber: Media Monitoring OJK Jawa Barat</td>
+      <td class="cover-bottom-right">OJK &mdash; Otoritas Jasa Keuangan</td>
+    </tr>
+  </table>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 2: DAFTAR ISI
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">{{ params.judul }}</td>
+    <td class="ph-meta">{{ params.nomor_laporan }} | {{ params.tanggal_cetak }}</td>
+  </tr></table>
+
+  <div class="section-title">Daftar Isi</div>
+
+  {% for num, judul_sec in [
+    ("1", "Ringkasan Eksekutif"),
+    ("2", "Trend Pemberitaan Harian"),
+    ("3", "Distribusi Sentimen Pemberitaan"),
+    ("4", "Top 5 Topik Pemberitaan Terbanyak"),
+    ("5", "Top 5 Kota Pemberitaan Terbanyak"),
+    ("6", "Media Pemberitaan Teraktif"),
+    ("7", "Kontribusi Jawa Barat vs Pemberitaan Nasional"),
+    ("8", "Trend Pemberitaan Bulanan"),
+    ("9", "Berita Negatif Menonjol"),
+    ("10", "Daftar Berita Periode Ini"),
+    ("11", "Penutup dan Rekomendasi"),
+  ] %}
+  <div class="toc-row">
+    <span class="toc-num">{{ num }}.</span> {{ judul_sec }}
+  </div>
+  {% endfor %}
+
+  <div style="margin-top:7mm; font-size:7.5pt; color:#94a3b8; font-style:italic;">
+    Laporan ini digenerate secara otomatis oleh Sistem Media Monitoring OJK Jawa Barat.
+    Nomor: <strong>{{ params.nomor_laporan }}</strong>.
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 3: RINGKASAN EKSEKUTIF
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">1. Ringkasan Eksekutif</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Ringkasan Eksekutif</div>
+
+  <!-- Narasi Ringkasan AI -->
+  <div class="ringkasan-box">
+    {{ data.ringkasan_ai }}
+  </div>
+
+  <!-- 4 Kartu Statistik -->
+  <table class="stat-table">
+    <tr>
+      <td class="stat-td red">
+        <div class="stat-val">{{ "{:,}".format(data.statistik.total) }}</div>
+        <div class="stat-lbl">Total Berita</div>
+      </td>
+      <td class="stat-td grn">
+        <div class="stat-val">{{ "{:,}".format(data.statistik.positif) }}</div>
+        <div class="stat-pct pct-grn">{{ data.statistik.pct_positif }}%</div>
+        <div class="stat-lbl">Berita Positif</div>
+      </td>
+      <td class="stat-td gry">
+        <div class="stat-val">{{ "{:,}".format(data.statistik.netral) }}</div>
+        <div class="stat-pct pct-gry">{{ data.statistik.pct_netral }}%</div>
+        <div class="stat-lbl">Berita Netral</div>
+      </td>
+      <td class="stat-td dred">
+        <div class="stat-val">{{ "{:,}".format(data.statistik.negatif) }}</div>
+        <div class="stat-pct pct-dred">{{ data.statistik.pct_negatif }}%</div>
+        <div class="stat-lbl">Berita Negatif</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- 4 Info Cepat -->
+  <table class="info-table">
+    <tr>
+      <td class="info-td" style="border-top:1.5mm solid #2563eb;">
+        <div class="info-lbl">Kota Terbanyak</div>
+        <div class="info-val">{{ data.kota_utama }}</div>
+        {% if data.kota_terbanyak %}<div class="info-sub">{{ data.kota_terbanyak[0].jumlah }} berita</div>{% endif %}
+      </td>
+      <td class="info-td" style="border-top:1.5mm solid #7c3aed;">
+        <div class="info-lbl">Topik Terbanyak</div>
+        <div class="info-val">{{ data.topik_utama }}</div>
+        {% if data.topik_terbanyak %}<div class="info-sub">{{ data.topik_terbanyak[0].jumlah }} berita</div>{% endif %}
+      </td>
+      <td class="info-td" style="border-top:1.5mm solid #0891b2;">
+        <div class="info-lbl">Media Teraktif</div>
+        <div class="info-val">{{ data.media_utama }}</div>
+        {% if data.media_teraktif %}<div class="info-sub">{{ data.media_teraktif[0].jumlah }} berita</div>{% endif %}
+      </td>
+      <td class="info-td" style="border-top:1.5mm solid #c8002d;">
+        <div class="info-lbl">Kontribusi Jabar</div>
+        <div class="info-val" style="color:#c8002d;">{{ data.kontribusi.pct }}%</div>
+        <div class="info-sub">dari pemberitaan nasional</div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 4: TREND HARIAN
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">2. Trend Pemberitaan Harian</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Trend Pemberitaan Harian</div>
+
+  <!-- Grafik full-width -->
+  {% if charts.trend_harian %}
+  <img src="{{ charts.trend_harian }}" class="chart-img-full" alt="Trend Harian">
+  {% else %}
+  <p style="color:#94a3b8; font-style:italic; margin-bottom:3mm;">Data grafik tidak tersedia.</p>
+  {% endif %}
+
+  <!-- Analisis FULL-WIDTH di bawah grafik -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Penjelasan Grafik</div>
+    <div class="analisis-teks">
+    {% set paras_trend = analisis.trend_harian.split('\n\n') %}
+    {% for para in paras_trend %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 5: SENTIMEN
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">3. Distribusi Sentimen Pemberitaan</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Distribusi Sentimen Pemberitaan</div>
+
+  <!-- Grafik Donut + Meter Sentimen dalam 2 kolom -->
+  <table class="two-col">
+    <tr>
+      <!-- Kiri: Donut Chart -->
+      <td class="col-l" style="text-align:center;">
+        {% if charts.donut_sentimen %}
+        <img src="{{ charts.donut_sentimen }}" class="chart-img-half" alt="Donut Sentimen">
+        {% endif %}
+      </td>
+      <!-- Kanan: Progress bars -->
+      <td class="col-r" style="padding-top:8mm;">
+        <div style="font-size:8.5pt; font-weight:bold; color:#16a34a; margin-bottom:0.5mm;">
+          Positif &mdash; {{ "{:,}".format(data.statistik.positif) }} berita
+        </div>
+        <div style="font-size:10pt; font-weight:bold; color:#16a34a; margin-bottom:1mm;">{{ data.statistik.pct_positif }}%</div>
+        <div class="prog-wrap"><div class="prog-grn" style="width:{{ data.statistik.pct_positif }}%;"></div></div>
+
+        <div style="font-size:8.5pt; font-weight:bold; color:#64748b; margin-bottom:0.5mm; margin-top:3mm;">
+          Netral &mdash; {{ "{:,}".format(data.statistik.netral) }} berita
+        </div>
+        <div style="font-size:10pt; font-weight:bold; color:#64748b; margin-bottom:1mm;">{{ data.statistik.pct_netral }}%</div>
+        <div class="prog-wrap"><div class="prog-gry" style="width:{{ data.statistik.pct_netral }}%;"></div></div>
+
+        <div style="font-size:8.5pt; font-weight:bold; color:#dc2626; margin-bottom:0.5mm; margin-top:3mm;">
+          Negatif &mdash; {{ "{:,}".format(data.statistik.negatif) }} berita
+        </div>
+        <div style="font-size:10pt; font-weight:bold; color:#dc2626; margin-bottom:1mm;">{{ data.statistik.pct_negatif }}%</div>
+        <div class="prog-wrap"><div class="prog-red" style="width:{{ data.statistik.pct_negatif }}%;"></div></div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Analisis FULL-WIDTH -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Penjelasan Grafik</div>
+    <div class="analisis-teks">
+    {% set paras_sent = analisis.sentimen.split('\n\n') %}
+    {% for para in paras_sent %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 6: TOP 5 TOPIK
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">4. Top 5 Topik Pemberitaan</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Top 5 Topik Pemberitaan Terbanyak</div>
+
+  <!-- Grafik + Tabel dalam 2 kolom -->
+  <table class="two-col">
+    <tr>
+      <td class="col-l">
+        {% if charts.bar_topik %}
+        <img src="{{ charts.bar_topik }}" class="chart-img-half" alt="Bar Topik">
+        {% endif %}
+      </td>
+      <td class="col-r">
+        <table class="data-table">
+          <thead><tr>
+            <th style="width:8%;">No</th>
+            <th>Topik</th>
+            <th style="text-align:center; width:15%;">Jml</th>
+            <th style="text-align:center; width:12%;">%</th>
+          </tr></thead>
+          <tbody>
+            {% for t in data.topik_terbanyak %}
+            <tr class="{{ 'tr-even' if loop.index % 2 == 0 else '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ t.topik }}</td>
+              <td style="text-align:center;">{{ "{:,}".format(t.jumlah) }}</td>
+              <td style="text-align:center;">{{ t.pct }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Analisis FULL-WIDTH -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Penjelasan Grafik</div>
+    <div class="analisis-teks">
+    {% set paras_topik = analisis.topik.split('\n\n') %}
+    {% for para in paras_topik %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 7: TOP 5 KOTA
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">5. Top 5 Kota Pemberitaan</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Top 5 Kota Pemberitaan Terbanyak</div>
+
+  <!-- Grafik + Tabel dalam 2 kolom -->
+  <table class="two-col">
+    <tr>
+      <td class="col-l">
+        {% if charts.bar_kota %}
+        <img src="{{ charts.bar_kota }}" class="chart-img-half" alt="Bar Kota">
+        {% endif %}
+      </td>
+      <td class="col-r">
+        <table class="data-table">
+          <thead><tr>
+            <th style="width:8%;">No</th>
+            <th>Kota/Kabupaten</th>
+            <th style="text-align:center; width:20%;">Berita</th>
+          </tr></thead>
+          <tbody>
+            {% for k in data.kota_terbanyak %}
+            <tr class="{{ 'tr-even' if loop.index % 2 == 0 else '' }}">
+              <td style="text-align:center;">{{ loop.index }}</td>
+              <td>{{ k.kota }}</td>
+              <td style="text-align:center;">{{ "{:,}".format(k.jumlah) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Analisis FULL-WIDTH -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Penjelasan Grafik</div>
+    <div class="analisis-teks">
+    {% set paras_kota = analisis.kota.split('\n\n') %}
+    {% for para in paras_kota %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 8: MEDIA TERAKTIF
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">6. Media Pemberitaan Teraktif</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Media Pemberitaan Teraktif</div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width:5%;">No</th>
+        <th>Nama Media</th>
+        <th style="width:20%; text-align:center;">Jumlah Berita</th>
+        <th style="width:40%;">Proporsi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set max_m = data.media_teraktif[0].jumlah if data.media_teraktif else 1 %}
+      {% for m in data.media_teraktif %}
+      <tr class="{{ 'tr-even' if loop.index % 2 == 0 else '' }}">
+        <td style="text-align:center;">{{ loop.index }}</td>
+        <td><strong>{{ m.media }}</strong></td>
+        <td style="text-align:center;">{{ "{:,}".format(m.jumlah) }}</td>
+        <td>
+          <div class="prog-wrap"><div class="prog-red" style="width:{{ (m.jumlah / max_m * 100)|round }}%;"></div></div>
+          <span style="font-size:7pt; color:#64748b;">{{ (m.jumlah / max_m * 100)|round }}% dari media teraktif</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Analisis FULL-WIDTH -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Analisis Media Pemberitaan</div>
+    <div class="analisis-teks">
+    {% set paras_media = analisis.media.split('\n\n') %}
+    {% for para in paras_media %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 9: KONTRIBUSI JABAR
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">7. Kontribusi Jawa Barat vs Nasional</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Kontribusi Jawa Barat terhadap Pemberitaan Nasional</div>
+
+  <!-- Grafik Donut + Angka Besar dalam 2 kolom -->
+  <table class="two-col">
+    <tr>
+      <td class="col-l" style="text-align:center;">
+        {% if charts.donut_kontribusi %}
+        <img src="{{ charts.donut_kontribusi }}" style="width:65mm; max-height:62mm; height:auto;" alt="Kontribusi Jabar">
+        {% endif %}
+      </td>
+      <td class="col-r" style="padding-top:10mm; text-align:center;">
+        <div class="kontribusi-big">{{ data.kontribusi.pct }}%</div>
+        <div class="kontribusi-sub">Kontribusi Jawa Barat<br>dari Total Nasional</div>
+        <table class="stat-table" style="margin-top:3mm;">
+          <tr>
+            <td class="stat-td red">
+              <div class="stat-val">{{ "{:,}".format(data.kontribusi.jabar) }}</div>
+              <div class="stat-lbl">Berita dari Jawa Barat</div>
+            </td>
+          </tr>
+        </table>
+        <table class="stat-table">
+          <tr>
+            <td class="stat-td gry">
+              <div class="stat-val">{{ "{:,}".format(data.kontribusi.nasional) }}</div>
+              <div class="stat-lbl">Total Pemberitaan Nasional</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Analisis FULL-WIDTH -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Analisis Kontribusi Pemberitaan</div>
+    <div class="analisis-teks">
+    {% set paras_kontr = analisis.kontribusi.split('\n\n') %}
+    {% for para in paras_kontr %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 10: TREND BULANAN
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">8. Trend Pemberitaan Bulanan</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Trend Pemberitaan per Bulan</div>
+
+  {% if charts.trend_bulanan %}
+  <img src="{{ charts.trend_bulanan }}" class="chart-img-full" alt="Trend Bulanan">
+  {% endif %}
+
+  {% if data.trend_bulanan.labels %}
+  <table class="data-table" style="margin-top:3mm;">
+    <thead>
+      <tr>
+        <th>Bulan</th>
+        <th style="text-align:center; width:25%;">Total Berita</th>
+        <th style="text-align:center; width:20%;">% Positif</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in range(data.trend_bulanan.labels | length) %}
+      <tr class="{{ 'tr-even' if i % 2 == 1 else '' }}">
+        <td>{{ data.trend_bulanan.labels[i] }}</td>
+        <td style="text-align:center;">{{ "{:,}".format(data.trend_bulanan.total[i]) }}</td>
+        <td style="text-align:center;">{{ data.trend_bulanan.pct_positif[i] }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <!-- Analisis FULL-WIDTH -->
+  <div class="analisis-wrap">
+    <div class="analisis-judul">Penjelasan Grafik</div>
+    <div class="analisis-teks">
+    {% set paras_bul = analisis.trend_bulanan.split('\n\n') %}
+    {% for para in paras_bul %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 11: BERITA NEGATIF MENONJOL
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">9. Berita Negatif Menonjol</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Berita Negatif Menonjol yang Perlu Perhatian</div>
+
+  <p style="font-size:8pt; color:#64748b; margin-bottom:4mm; font-style:italic;">
+    Berita-berita dengan sentimen negatif yang menonjol dan berpotensi mempengaruhi reputasi OJK Jawa Barat selama periode laporan.
+  </p>
+
+  {% if data.berita_negatif %}
+  {% for berita in data.berita_negatif %}
+  <div class="neg-card">
+    <div class="neg-meta">
+      <span class="badge-neg">Negatif</span>
+      &nbsp; {{ berita.tanggal.strftime('%d %b %Y') if berita.tanggal else '-' }} | {{ berita.media or '-' }}
+    </div>
+    <div class="neg-title">{{ berita.judul }}</div>
+    {% if berita.ringkasan %}
+    <div class="neg-isi">{{ berita.ringkasan[:250] }}{% if berita.ringkasan|length > 250 %}...{% endif %}</div>
+    {% endif %}
+    {% if berita.topik %}
+    <div class="neg-tag">{{ berita.topik }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <p style="text-align:center; color:#94a3b8; padding:10mm; font-style:italic;">
+    Tidak ada berita negatif menonjol pada periode ini.
+  </p>
+  {% endif %}
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 12: DAFTAR BERITA
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">10. Daftar Berita Periode Ini</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Daftar Berita Terpilih (10 Berita Terbaru)</div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width:4%;">No</th>
+        <th style="width:11%;">Tanggal</th>
+        <th>Judul Berita</th>
+        <th style="width:14%;">Media</th>
+        <th style="width:12%;">Topik</th>
+        <th style="width:10%;">Sentimen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for berita in data.berita_terbaru %}
+      <tr class="{{ 'tr-even' if loop.index % 2 == 0 else '' }}">
+        <td style="text-align:center;">{{ loop.index }}</td>
+        <td style="font-size:7.5pt;">{{ berita.tanggal.strftime('%d/%m/%Y') if berita.tanggal else '-' }}</td>
+        <td style="font-size:7.5pt;">{{ berita.judul[:85] if berita.judul else '-' }}{% if berita.judul and berita.judul|length > 85 %}...{% endif %}</td>
+        <td style="font-size:7.5pt;">{{ berita.media or '-' }}</td>
+        <td style="font-size:7pt;">{{ berita.topik or '-' }}</td>
+        <td>
+          {% if berita.sentimen == 'Positif' %}<span class="badge-pos">Positif</span>
+          {% elif berita.sentimen == 'Negatif' %}<span class="badge-neg">Negatif</span>
+          {% else %}<span class="badge-net">Netral</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="font-size:7.5pt; color:#94a3b8; font-style:italic; margin-top:3mm;">
+    * Daftar lengkap seluruh berita tersedia pada file Excel yang disertakan bersama laporan ini.
+  </p>
+</div>
+
+
+<!-- ================================================================
+     HALAMAN 13: PENUTUP
+================================================================ -->
+<div class="page-break">
+  <table class="ph-table"><tr>
+    <td class="ph-title">11. Penutup dan Rekomendasi</td>
+    <td class="ph-meta">{{ params.nomor_laporan }}</td>
+  </tr></table>
+
+  <div class="section-title">Penutup dan Rekomendasi</div>
+
+  <!-- Narasi Penutup AI (full-width) -->
+  <div class="analisis-wrap" style="margin-bottom:5mm;">
+    <div class="analisis-judul">Kesimpulan</div>
+    <div class="analisis-teks">
+    {% set paras_penutup = analisis.penutup.split('\n\n') %}
+    {% for para in paras_penutup %}
+    {% if para.strip() %}
+    <div class="analisis-para">{{ para.strip() }}</div>
+    {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+
+  <div style="font-size:9pt; font-weight:bold; color:#1e293b; margin-bottom:3mm;">
+    Rekomendasi Tindak Lanjut
+  </div>
+
+  <div class="penutup-box">
+    <div class="penutup-item">
+      <span class="penutup-num">1. </span>
+      <strong>Pemantauan Topik Sensitif:</strong>
+      Tingkatkan monitoring terhadap topik <em>{{ data.topik_negatif_utama }}</em>
+      yang mencatat pemberitaan negatif terbanyak pada periode ini.
+    </div>
+    <div class="penutup-item">
+      <span class="penutup-num">2. </span>
+      <strong>Peningkatan Hubungan Media:</strong>
+      Perkuat komunikasi dan kemitraan dengan <em>{{ data.media_utama }}</em> sebagai media paling aktif
+      untuk memastikan pemberitaan yang berimbang dan akurat mengenai OJK.
+    </div>
+    <div class="penutup-item">
+      <span class="penutup-num">3. </span>
+      <strong>Program Edukasi Wilayah:</strong>
+      Fokuskan program literasi keuangan di kota <em>{{ data.kota_utama }}</em>
+      untuk mempertahankan dan meningkatkan sentimen positif yang telah dicapai.
+    </div>
+    <div class="penutup-item" style="margin-bottom:0;">
+      <span class="penutup-num">4. </span>
+      <strong>Respons Cepat Berita Negatif:</strong>
+      Terapkan protokol respons cepat (maksimal 24 jam) untuk setiap berita negatif
+      yang berpotensi mempengaruhi kepercayaan publik terhadap OJK Jawa Barat.
+    </div>
+  </div>
+
+  <!-- Tanda Tangan -->
+  <table class="ttd-table">
+    <tr>
+      <td style="width:50%;"></td>
+      <td class="ttd-right">
+        <div class="ttd-inner">
+          <div class="ttd-lbl">Dibuat oleh,</div>
+          <div class="ttd-lbl" style="margin-bottom:3mm; margin-top:1mm; font-style:italic;">{{ params.tanggal_cetak }}</div>
+          <span class="ttd-space"></span>
+          <div class="ttd-line"></div>
+          <div class="ttd-name">{{ params.dibuat_oleh_nama }}</div>
+          <div class="ttd-pos">Media Monitoring OJK Jawa Barat</div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="footer-note">
+    Laporan digenerate otomatis oleh Sistem Media Monitoring OJK Jawa Barat &nbsp;|&nbsp;
+    Nomor: <strong>{{ params.nomor_laporan }}</strong>
+  </div>
+</div>
+
+</body>
+</html>

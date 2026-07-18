@@ -280,27 +280,18 @@ def wilayah():
 @role_required("super_admin", "pemimpin")
 def media():
     """Halaman Media - daftar media yang paling aktif memberitakan OJK."""
-    sebaran_media = DashboardService.get_sebaran_media()
+    tipe_media = request.args.get("tipe", "semua")
+    if tipe_media not in ["semua", "lokal", "non-lokal"]:
+        tipe_media = "semua"
+        
+    sebaran_media = DashboardService.get_sebaran_media(tipe_media)
     return render_template(
         "media/index.html",
         sebaran_media=sebaran_media,
+        filter_tipe=tipe_media,
         active_page="media",
     )
 
-
-@bp.route("/laporan")
-@login_required
-@role_required("super_admin", "pemimpin")
-def laporan():
-    """Halaman Laporan - arsip laporan dengan berbagai filter."""
-    berita_terbaru = DashboardService.get_berita_terbaru(limit=10)
-    statistik = DashboardService.get_statistik_utama()
-    return render_template(
-        "laporan/index.html",
-        berita_terbaru=berita_terbaru,
-        statistik=statistik,
-        active_page="laporan",
-    )
 
 
 @bp.route("/notifikasi")
@@ -372,6 +363,9 @@ def pencarian():
     tanggal_dari = request.args.get("tanggal_dari", "")
     tanggal_sampai = request.args.get("tanggal_sampai", "")
     wilayah_filter = request.args.get("wilayah", "")
+    if wilayah_filter:
+        from services.ai_service import normalize_wilayah_name
+        wilayah_filter = normalize_wilayah_name(wilayah_filter) or ""
 
     pagination = None
     hasil = []
@@ -389,16 +383,18 @@ def pencarian():
         )
         hasil = pagination.items if pagination else []
 
-    daftar_media = BeritaService.get_daftar_media()
+    daftar_media_grouped = BeritaService.get_daftar_media_grouped()
     daftar_topik = BeritaService.get_daftar_topik()
+    daftar_wilayah_grouped = BeritaService.get_daftar_wilayah_grouped()
 
     return render_template(
         "pencarian/index.html",
         query_text=query_text,
         pagination=pagination,
         hasil=hasil,
-        daftar_media=daftar_media,
+        daftar_media_grouped=daftar_media_grouped,
         daftar_topik=daftar_topik,
+        daftar_wilayah_grouped=daftar_wilayah_grouped,
         filter_sentimen=sentimen,
         filter_media=media_filter,
         filter_topik=topik,
