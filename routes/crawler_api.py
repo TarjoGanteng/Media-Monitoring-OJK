@@ -228,8 +228,9 @@ def fetch_images():
 @login_required
 def ai_status():
     """
-    Cek status dan koneksi Gemini AI.
-    Mengembalikan info apakah API Key valid dan model siap.
+    Cek status dan koneksi multi-provider AI.
+    Urutan prioritas: Cohere -> Groq -> OpenRouter -> Gemini.
+    Mengembalikan info provider mana yang aktif dan siap digunakan.
     """
     from services.ai_service import gemini
 
@@ -239,6 +240,7 @@ def ai_status():
             "success": hasil["ok"],
             "pesan": hasil["pesan"],
             "model": hasil["model"],
+            "provider": hasil.get("provider"),
             "tersedia": hasil["ok"],
         }
     )

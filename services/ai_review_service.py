@@ -311,13 +311,37 @@ class AIReviewService:
                     dihapus += 1
                     logger.debug(f"[AIReview] L2-HAPUS (tidak relevan) | {judul[:60]}")
                 else:
+                    # ── Validasi Pasca-AI: Hapus jika wilayah bukan Jawa Barat ──────
+                    wilayah_ai = ai_result.get("wilayah")
+                    WILAYAH_LUAR_JABAR = [
+                        "Jakarta", "Surabaya", "Medan", "Bali", "Makassar",
+                        "Semarang", "Yogyakarta", "Palembang", "Pekanbaru",
+                        "Batam", "Banjarmasin", "Manado", "Padang", "Aceh",
+                        "Lampung", "Kalimantan", "Sulawesi", "Papua", "Maluku",
+                        "Sumatra", "Sumatera", "Lombok", "Nusa Tenggara",
+                    ]
+                    if wilayah_ai and any(
+                        luar.lower() in str(wilayah_ai).lower()
+                        for luar in WILAYAH_LUAR_JABAR
+                    ):
+                        try:
+                            db.session.delete(berita)
+                            db.session.commit()
+                            dihapus += 1
+                            logger.debug(
+                                f"[AIReview] L2-HAPUS (wilayah luar Jabar: {wilayah_ai}) | {judul[:55]}"
+                            )
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"[AIReview] Gagal hapus (wilayah luar) ID={berita.id}: {e}")
+                        continue
+
                     old_sentimen = berita.sentimen
                     berita.sentimen = sentimen
                     berita.topik = ai_result.get("topik", berita.topik)
                     berita.ai_checked = True
                     berita.ai_last_checked = datetime.utcnow()
 
-                    wilayah_ai = ai_result.get("wilayah")
                     if wilayah_ai:
                         berita.wilayah = wilayah_ai
                     elif not berita.wilayah:

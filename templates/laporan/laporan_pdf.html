@@ -28,8 +28,55 @@ body {
   line-height: 1.55;
 }
 
-/* ---- PAGE BREAK ---- */
+/* ---- PAGE BREAK — digunakan HANYA untuk Cover→TOC dan TOC→Section Pertama ---- */
 .page-break { page-break-before: always; }
+
+/* ---- SECTION KONTEN — mengalir natural, tidak paksa halaman baru ---- */
+.content-section {
+  margin-top: 0;
+  /* Tidak ada page-break-before agar konten sambung dari atas */
+}
+
+/* Header section dijaga agar tidak terpotong dari isinya */
+.section-title {
+  page-break-after: avoid;   /* judul tidak sendirian di bawah halaman */
+}
+
+/* Blok grafik + tabel 2-kolom tidak boleh terpotong */
+.two-col {
+  page-break-inside: avoid;
+}
+
+/* Blok analisis teks: boleh terpotong antar paragraf, tapi judul ikut baris pertama */
+.analisis-wrap {
+  page-break-inside: auto;
+}
+.analisis-judul {
+  page-break-after: avoid;
+}
+
+/* Kartu berita negatif tidak terpotong di tengah */
+.neg-card {
+  page-break-inside: avoid;
+}
+
+/* Stat cards dan info cards tidak terpotong */
+.stat-table, .info-table {
+  page-break-inside: avoid;
+}
+
+/* Header halaman (nomor laporan) tidak terpisah dari konten di bawahnya */
+.ph-table {
+  page-break-after: avoid;
+}
+
+/* Pemisah visual antar section (garis tipis) */
+.section-divider {
+  border: none;
+  border-top: 0.3mm solid #e2e8f0;
+  margin: 6mm 0 4mm 0;
+  page-break-after: avoid;
+}
 
 /* ---- PAGE HEADER ---- */
 .ph-table {
@@ -61,6 +108,7 @@ body {
   padding: 1.5mm 0 1.5mm 3mm;
   margin-bottom: 4mm;
   background-color: #fff5f5;
+  page-break-after: avoid;
 }
 
 /* ============================================================
@@ -407,15 +455,51 @@ body {
       <div class="cover-info-label">Tanggal Terbit</div>
       <div class="cover-info-val" style="font-size:7pt;">{{ params.tanggal_cetak }}</div>
 
+      <div class="cover-info-label">Periode</div>
+      <div class="cover-info-val" style="font-size:7pt;">
+        {{ params.tanggal_dari_str }}<br>s.d. {{ params.tanggal_sampai_str }}
+      </div>
+
       <div class="cover-divider"></div>
 
-      <div class="cover-info-label">Total Berita</div>
-      <div style="color:#ffffff; font-size:15pt; font-weight:bold; margin-bottom:1mm;">
+      <div class="cover-info-label">Total Berita Teranalisis</div>
+      <div style="color:#ffffff; font-size:20pt; font-weight:bold; margin-bottom:1.5mm; line-height:1;">
         {{ "{:,}".format(data.statistik.total) }}
       </div>
-      <div style="color:rgba(255,255,255,0.75); font-size:7pt; margin-bottom:0.5mm;">Positif: <strong style="color:#fff;">{{ data.statistik.pct_positif }}%</strong></div>
-      <div style="color:rgba(255,255,255,0.75); font-size:7pt; margin-bottom:0.5mm;">Netral: <strong style="color:#fff;">{{ data.statistik.pct_netral }}%</strong></div>
-      <div style="color:rgba(255,255,255,0.75); font-size:7pt;">Negatif: <strong style="color:#fff;">{{ data.statistik.pct_negatif }}%</strong></div>
+
+      <!-- Sentimen breakdown -->
+      <div style="color:rgba(255,255,255,0.8); font-size:6.5pt; margin-bottom:0.3mm;">Positif</div>
+      <div style="color:#ffffff; font-size:8pt; font-weight:bold; margin-bottom:1.5mm;">
+        {{ data.statistik.pct_positif }}% &mdash; {{ "{:,}".format(data.statistik.positif) }} berita
+      </div>
+      <div style="color:rgba(255,255,255,0.8); font-size:6.5pt; margin-bottom:0.3mm;">Netral</div>
+      <div style="color:#ffffff; font-size:8pt; font-weight:bold; margin-bottom:1.5mm;">
+        {{ data.statistik.pct_netral }}% &mdash; {{ "{:,}".format(data.statistik.netral) }} berita
+      </div>
+      <div style="color:rgba(255,255,255,0.8); font-size:6.5pt; margin-bottom:0.3mm;">Negatif</div>
+      <div style="color:#ffffff; font-size:8pt; font-weight:bold; margin-bottom:3mm;">
+        {{ data.statistik.pct_negatif }}% &mdash; {{ "{:,}".format(data.statistik.negatif) }} berita
+      </div>
+
+      <div class="cover-divider"></div>
+
+      <div class="cover-info-label">Kontribusi Jawa Barat</div>
+      <div style="color:#ffffff; font-size:18pt; font-weight:bold; margin-bottom:0.5mm; line-height:1;">
+        {{ data.kontribusi.pct }}%
+      </div>
+      <div style="color:rgba(255,255,255,0.7); font-size:6.5pt; margin-bottom:3mm;">
+        dari pemberitaan nasional
+      </div>
+
+      <div class="cover-divider"></div>
+
+      <div class="cover-info-label">Disusun oleh</div>
+      <div style="color:#ffffff; font-size:7.5pt; font-weight:bold; margin-bottom:0.5mm;">
+        {{ params.dibuat_oleh_nama }}
+      </div>
+      <div style="color:rgba(255,255,255,0.75); font-size:6.5pt;">
+        Media Monitoring OJK<br>Kantor Provinsi Jawa Barat
+      </div>
     </td>
 
     <!-- Kolom kanan: putih -->
@@ -431,7 +515,7 @@ body {
       <img src="{{ kantor_b64 }}" style="width:100%; max-height:33mm; margin-bottom:3mm;" alt="Kantor OJK">
       {% endif %}
 
-      <!-- Stat ringkasan di cover -->
+      <!-- 3 Stat card -->
       <table class="cover-stat-table">
         <tr>
           <td class="cover-stat-td" style="border-top:1.5mm solid #c8002d;">
@@ -439,7 +523,7 @@ body {
             <div class="cover-stat-lbl">Total Berita</div>
           </td>
           <td class="cover-stat-td" style="border-top:1.5mm solid #16a34a;">
-            <div class="cover-stat-val">{{ data.statistik.pct_positif }}%</div>
+            <div class="cover-stat-val" style="color:#16a34a;">{{ data.statistik.pct_positif }}%</div>
             <div class="cover-stat-lbl">Sentimen Positif</div>
           </td>
           <td class="cover-stat-td" style="border-top:1.5mm solid #64748b;">
@@ -449,10 +533,49 @@ body {
         </tr>
       </table>
 
-      <div style="margin-top:4mm; padding: 3mm 0; border-top: 0.3mm solid #e2e8f0;">
-        <div style="font-size:7pt; color:#94a3b8; margin-bottom:0.5mm;">Disusun oleh:</div>
-        <div style="font-size:9pt; font-weight:bold; color:#1e293b;">{{ params.dibuat_oleh_nama }}</div>
-        <div style="font-size:7.5pt; color:#64748b; margin-top:0.5mm;">Media Monitoring OJK &mdash; Kantor Provinsi Jawa Barat</div>
+      <!-- 4 Info highlight -->
+      <table class="info-table" style="margin-bottom:3mm;">
+        <tr>
+          <td class="info-td" style="border-top:1.5mm solid #2563eb; width:50%;">
+            <div class="info-lbl">Kota Pemberitaan Terbanyak</div>
+            <div class="info-val">{{ data.kota_utama }}</div>
+            {% if data.kota_terbanyak %}
+            <div class="info-sub">{{ data.kota_terbanyak[0].jumlah }} berita</div>
+            {% endif %}
+          </td>
+          <td class="info-td" style="border-top:1.5mm solid #7c3aed; width:50%;">
+            <div class="info-lbl">Topik Pemberitaan Terbanyak</div>
+            <div class="info-val">{{ data.topik_utama }}</div>
+            {% if data.topik_terbanyak %}
+            <div class="info-sub">{{ data.topik_terbanyak[0].jumlah }} berita</div>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td class="info-td" style="border-top:1.5mm solid #0891b2; width:50%;">
+            <div class="info-lbl">Media Pemberitaan Teraktif</div>
+            <div class="info-val">{{ data.media_utama }}</div>
+            {% if data.media_teraktif %}
+            <div class="info-sub">{{ data.media_teraktif[0].jumlah }} berita</div>
+            {% endif %}
+          </td>
+          <td class="info-td" style="border-top:1.5mm solid #c8002d; width:50%;">
+            <div class="info-lbl">Kontribusi Jawa Barat</div>
+            <div class="info-val" style="color:#c8002d;">{{ data.kontribusi.pct }}%</div>
+            <div class="info-sub">dari pemberitaan nasional</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Ringkasan singkat -->
+      <div class="ringkasan-box" style="margin-bottom:3mm;">
+        {% set paras_ring = data.ringkasan_ai.split('\n\n') if data.ringkasan_ai else [] %}
+        {% if paras_ring and paras_ring[0].strip() %}
+          {{ paras_ring[0].strip()[:450] }}{% if paras_ring[0].strip()|length > 450 %}...{% endif %}
+        {% else %}
+          Laporan pemberitaan OJK Jawa Barat periode {{ params.periode_label }} mencakup analisis
+          {{ "{:,}".format(data.statistik.total) }} berita dari berbagai media massa di wilayah Jawa Barat.
+        {% endif %}
       </div>
 
       <div class="cover-nomor">
@@ -472,6 +595,7 @@ body {
     </tr>
   </table>
 </div>
+
 
 
 <!-- ================================================================
@@ -511,7 +635,8 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 3: RINGKASAN EKSEKUTIF
+     HALAMAN 3+: RINGKASAN EKSEKUTIF
+     (mulai section konten — mengalir natural dari TOC)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -580,7 +705,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 4: TREND HARIAN
+     HAL. 4: TREND HARIAN (halaman sendiri)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -590,20 +715,18 @@ body {
 
   <div class="section-title">Trend Pemberitaan Harian</div>
 
-  <!-- Grafik full-width -->
   {% if charts.trend_harian %}
   <img src="{{ charts.trend_harian }}" class="chart-img-full" alt="Trend Harian">
   {% else %}
   <p style="color:#94a3b8; font-style:italic; margin-bottom:3mm;">Data grafik tidak tersedia.</p>
   {% endif %}
 
-  <!-- Analisis FULL-WIDTH di bawah grafik -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Penjelasan Grafik</div>
     <div class="analisis-teks">
     {% set paras_trend = analisis.trend_harian.split('\n\n') %}
     {% for para in paras_trend %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -613,7 +736,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 5: SENTIMEN
+     HAL. 5: SENTIMEN (halaman sendiri)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -623,16 +746,13 @@ body {
 
   <div class="section-title">Distribusi Sentimen Pemberitaan</div>
 
-  <!-- Grafik Donut + Meter Sentimen dalam 2 kolom -->
   <table class="two-col">
     <tr>
-      <!-- Kiri: Donut Chart -->
       <td class="col-l" style="text-align:center;">
         {% if charts.donut_sentimen %}
         <img src="{{ charts.donut_sentimen }}" class="chart-img-half" alt="Donut Sentimen">
         {% endif %}
       </td>
-      <!-- Kanan: Progress bars -->
       <td class="col-r" style="padding-top:8mm;">
         <div style="font-size:8.5pt; font-weight:bold; color:#16a34a; margin-bottom:0.5mm;">
           Positif &mdash; {{ "{:,}".format(data.statistik.positif) }} berita
@@ -655,13 +775,12 @@ body {
     </tr>
   </table>
 
-  <!-- Analisis FULL-WIDTH -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Penjelasan Grafik</div>
     <div class="analisis-teks">
     {% set paras_sent = analisis.sentimen.split('\n\n') %}
     {% for para in paras_sent %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -671,17 +790,16 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 6: TOP 5 TOPIK
+     HAL. 6: TOP 5 TOPIK (halaman sendiri — Ide A)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
-    <td class="ph-title">4. Top 5 Topik Pemberitaan</td>
+    <td class="ph-title">4. Top 5 Topik Pemberitaan Terbanyak</td>
     <td class="ph-meta">{{ params.nomor_laporan }}</td>
   </tr></table>
 
   <div class="section-title">Top 5 Topik Pemberitaan Terbanyak</div>
 
-  <!-- Grafik + Tabel dalam 2 kolom -->
   <table class="two-col">
     <tr>
       <td class="col-l">
@@ -712,13 +830,12 @@ body {
     </tr>
   </table>
 
-  <!-- Analisis FULL-WIDTH -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Penjelasan Grafik</div>
     <div class="analisis-teks">
     {% set paras_topik = analisis.topik.split('\n\n') %}
     {% for para in paras_topik %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -728,17 +845,16 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 7: TOP 5 KOTA
+     HAL. 7: TOP 5 KOTA (halaman sendiri — Ide A)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
-    <td class="ph-title">5. Top 5 Kota Pemberitaan</td>
+    <td class="ph-title">5. Top 5 Kota Pemberitaan Terbanyak</td>
     <td class="ph-meta">{{ params.nomor_laporan }}</td>
   </tr></table>
 
   <div class="section-title">Top 5 Kota Pemberitaan Terbanyak</div>
 
-  <!-- Grafik + Tabel dalam 2 kolom -->
   <table class="two-col">
     <tr>
       <td class="col-l">
@@ -767,13 +883,12 @@ body {
     </tr>
   </table>
 
-  <!-- Analisis FULL-WIDTH -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Penjelasan Grafik</div>
     <div class="analisis-teks">
     {% set paras_kota = analisis.kota.split('\n\n') %}
     {% for para in paras_kota %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -783,7 +898,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 8: MEDIA TERAKTIF
+     HAL. 8: MEDIA TERAKTIF (halaman sendiri — Ide A)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -818,13 +933,12 @@ body {
     </tbody>
   </table>
 
-  <!-- Analisis FULL-WIDTH -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Analisis Media Pemberitaan</div>
     <div class="analisis-teks">
     {% set paras_media = analisis.media.split('\n\n') %}
     {% for para in paras_media %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -834,7 +948,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 9: KONTRIBUSI JABAR
+     HAL. 9: KONTRIBUSI JAWA BARAT (halaman sendiri — Ide A)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -844,7 +958,6 @@ body {
 
   <div class="section-title">Kontribusi Jawa Barat terhadap Pemberitaan Nasional</div>
 
-  <!-- Grafik Donut + Angka Besar dalam 2 kolom -->
   <table class="two-col">
     <tr>
       <td class="col-l" style="text-align:center;">
@@ -875,13 +988,12 @@ body {
     </tr>
   </table>
 
-  <!-- Analisis FULL-WIDTH -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Analisis Kontribusi Pemberitaan</div>
     <div class="analisis-teks">
     {% set paras_kontr = analisis.kontribusi.split('\n\n') %}
     {% for para in paras_kontr %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -891,7 +1003,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 10: TREND BULANAN
+     HAL. 8: TREND BULANAN (halaman sendiri)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -926,13 +1038,12 @@ body {
   </table>
   {% endif %}
 
-  <!-- Analisis FULL-WIDTH -->
   <div class="analisis-wrap">
     <div class="analisis-judul">Penjelasan Grafik</div>
     <div class="analisis-teks">
     {% set paras_bul = analisis.trend_bulanan.split('\n\n') %}
     {% for para in paras_bul %}
-    {% if para.strip() %}
+    {% if para.strip() and loop.index <= 2 %}
     <div class="analisis-para">{{ para.strip() }}</div>
     {% endif %}
     {% endfor %}
@@ -942,7 +1053,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 11: BERITA NEGATIF MENONJOL
+     HAL. 9: BERITA NEGATIF (halaman sendiri)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>
@@ -981,7 +1092,7 @@ body {
 
 
 <!-- ================================================================
-     HALAMAN 12: DAFTAR BERITA
+     SECTION: DAFTAR BERITA (mulai halaman baru — konten panjang)
 ================================================================ -->
 <div class="page-break">
   <table class="ph-table"><tr>

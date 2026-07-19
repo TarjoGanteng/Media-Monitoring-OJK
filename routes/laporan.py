@@ -326,9 +326,10 @@ def generate():
             "success":            True,
             "temp_key":           temp_key,
             "nomor_laporan":      nomor_laporan,
-            "preview_url":        url_for("laporan.preview_temp", temp_key=temp_key),
-            "download_pdf_url":   url_for("laporan.download_temp", temp_key=temp_key, fmt="pdf"),
-            "download_excel_url": url_for("laporan.download_temp", temp_key=temp_key, fmt="excel"),
+            "preview_url":        url_for("laporan.preview_temp",       temp_key=temp_key),
+            "excel_preview_url":  url_for("laporan.preview_excel_temp", temp_key=temp_key),
+            "download_pdf_url":   url_for("laporan.download_temp",      temp_key=temp_key, fmt="pdf"),
+            "download_excel_url": url_for("laporan.download_temp",      temp_key=temp_key, fmt="excel"),
             "statistik":          s,
         })
 
@@ -673,16 +674,21 @@ def riwayat_json():
     riwayat = LaporanService.get_riwayat(limit=20)
     data = []
     for r in riwayat:
+        has_pdf   = bool(r.path_pdf   and os.path.exists(r.path_pdf))
+        has_excel = bool(r.path_excel and os.path.exists(r.path_excel))
         data.append({
-            "id":            r.id,
-            "nomor_laporan": r.nomor_laporan,
-            "judul":         r.judul,
-            "periode_label": r.periode_label,
-            "total_berita":  r.total_berita,
-            "created_at":    r.created_at.strftime("%d %b %Y %H:%M") if r.created_at else "-",
-            "view_url":      url_for("laporan.view_pdf",      laporan_id=r.id),
-            "download_pdf":  url_for("laporan.download_pdf",  laporan_id=r.id),
-            "download_excel":url_for("laporan.download_excel", laporan_id=r.id),
-            "hapus_url":     url_for("laporan.hapus",         laporan_id=r.id),
+            "id":                r.id,
+            "nomor_laporan":     r.nomor_laporan,
+            "judul":             r.judul,
+            "periode_label":     r.periode_label,
+            "wilayah":           r.wilayah or "Jawa Barat",
+            "total_berita":      r.total_berita,
+            "created_at":        r.created_at.strftime("%d %b %Y %H:%M") if r.created_at else "-",
+            "view_url":          url_for("laporan.view_pdf",          laporan_id=r.id) if has_pdf   else None,
+            "download_pdf":      url_for("laporan.download_pdf",      laporan_id=r.id) if has_pdf   else None,
+            "download_excel":    url_for("laporan.download_excel",    laporan_id=r.id) if has_excel else None,
+            "excel_preview_url": url_for("laporan.preview_excel_riwayat", laporan_id=r.id) if has_excel else None,
+            "hapus_url":         url_for("laporan.hapus",             laporan_id=r.id),
         })
     return jsonify({"success": True, "riwayat": data})
+

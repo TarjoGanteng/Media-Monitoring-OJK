@@ -1476,9 +1476,15 @@ async function generateLaporan() {
     btnPdf.style.display   = "";
     btnExcel.style.display = "";
     if (dlHint) dlHint.style.display = "";
-    // Sembunyikan tab toggle (generate baru belum ada context Excel tab dari riwayat)
+    // Aktifkan tab PDF/Excel agar user bisa beralih antara preview PDF dan Excel
     const tabs = document.getElementById("previewTabs");
-    if (tabs) tabs.style.display = "none";
+    _panelPdfUrl   = json.preview_url;
+    _panelExcelUrl = json.excel_preview_url || null;
+    if (tabs) {
+      tabs.style.display = "flex";
+      document.getElementById("tabBtnPdf").classList.add("active");
+      document.getElementById("tabBtnExcel").classList.remove("active");
+    }
 
     // Pasang event listener agar setelah download → refresh tabel riwayat
     btnPdf.onclick   = () => { setTimeout(refreshRiwayat, 1500); };
@@ -1631,13 +1637,20 @@ function previewExcelInPanel(excelPreviewUrl, nomor, dlPdfUrl, dlExcelUrl, trigg
   showInfoBanner(`Preview Excel laporan <strong>${nomor}</strong> ditampilkan.`, 'info');
 }
 
-function previewInPanel(pdfUrl, nomor, dlPdfUrl, dlExcelUrl, triggerBtn) {
+function previewInPanel(pdfUrl, nomor, dlPdfUrl, dlExcelUrl, excelPreviewUrl, triggerBtn) {
+  // Support pemanggilan lama (4 arg) maupun baru (6 arg)
+  if (typeof excelPreviewUrl === 'object' || excelPreviewUrl === undefined) {
+    // Pemanggilan lama: arg ke-5 adalah triggerBtn
+    triggerBtn = excelPreviewUrl;
+    excelPreviewUrl = null;
+  }
   document.querySelectorAll('.riwayat-tabel tbody tr').forEach(tr => tr.classList.remove('row-active-preview'));
   if (triggerBtn) triggerBtn.closest('tr').classList.add('row-active-preview');
 
   _panelPdfUrl   = pdfUrl;
   _panelNomor    = nomor;
-  _panelExcelUrl = dlExcelUrl ? ('{{ url_for("laporan.preview_excel_riwayat", laporan_id=0) }}'.replace('/0', '') + dlExcelUrl.replace('/laporan/download/', '/laporan/preview-excel/').replace('/excel', '')) : null;
+  // Gunakan excelPreviewUrl langsung jika diberikan
+  _panelExcelUrl = excelPreviewUrl || null;
 
   const iframe     = document.getElementById('previewIframe');
   const emptyState = document.getElementById('previewEmptyState');
@@ -1664,10 +1677,12 @@ function previewInPanel(pdfUrl, nomor, dlPdfUrl, dlExcelUrl, triggerBtn) {
   // Hint: sudah tersimpan di riwayat
   if (dlHint) dlHint.style.display = 'none';
 
-  // Tab PDF aktif, tampilkan jika ada Excel
-  if (tabs) tabs.style.display = dlExcelUrl ? 'flex' : 'none';
+  // Tab PDF aktif, tampilkan tabs jika ada Excel
+  if (tabs) tabs.style.display = (dlExcelUrl || excelPreviewUrl) ? 'flex' : 'none';
   document.getElementById('tabBtnPdf').classList.add('active');
   document.getElementById('tabBtnExcel').classList.remove('active');
+  // Simpan Excel URL untuk tab switching
+  if (excelPreviewUrl) _panelExcelUrl = excelPreviewUrl;
 
   iframe.onload = function () {
     loading.style.display = 'none';
@@ -1720,13 +1735,18 @@ async function refreshRiwayat() {
           </div>
         </td>
         <td><span class="judul-laporan" title="${r.judul}">${r.judul}</span></td>
+        <td style="text-align:center;"><span style="font-size:0.78rem;color:var(--text-secondary);">${r.wilayah || 'Jawa Barat'}</span></td>
         <td style="text-align:center;"><span class="total-pill">${r.total_berita.toLocaleString('id-ID')}</span></td>
         <td>
           <div class="tgl-main">${r.created_at}</div>
         </td>
+        <td style="text-align:center;">
+          <span class="badge-status-selesai"><i class="bi bi-check-circle-fill"></i>Selesai</span>
+        </td>
         <td>
           <div class="action-group">
-            <button onclick="previewInPanel('${r.view_url}', '${r.nomor_laporan}', this)"
+            ${r.view_url ? `
+            <button onclick="previewInPanel('${r.view_url}', '${r.nomor_laporan}', '${r.download_pdf || ''}', '${r.download_excel || ''}', '${r.excel_preview_url || ''}', this)"
                class="btn-riwayat-action btn-panel" title="Tampilkan di Preview Panel">
               <i class="bi bi-layout-sidebar-inset"></i>
             </button>
@@ -1736,9 +1756,16 @@ async function refreshRiwayat() {
             <a href="${r.download_pdf}" class="btn-riwayat-action btn-pdf" title="Download PDF">
               <i class="bi bi-file-earmark-pdf"></i>
             </a>
+            ` : ''}
+            ${r.download_excel ? `
+            <button onclick="previewExcelInPanel('${r.excel_preview_url || ''}', '${r.nomor_laporan}', '${r.download_pdf || ''}', '${r.download_excel}', this)"
+               class="btn-riwayat-action btn-excel" title="Preview Excel di Panel">
+              <i class="bi bi-table"></i>
+            </button>
             <a href="${r.download_excel}" class="btn-riwayat-action btn-excel" title="Download Excel">
               <i class="bi bi-file-earmark-excel"></i>
             </a>
+            ` : ''}
             <div class="action-divider"></div>
             <button onclick="hapusLaporan(${r.id},'${r.nomor_laporan}')" class="btn-riwayat-action btn-delete" title="Hapus">
               <i class="bi bi-trash3"></i>

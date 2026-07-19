@@ -1,10 +1,13 @@
 """
 services/ai_service.py - Integrasi AI untuk analisis berita OJK
 
-Mendukung dua provider AI:
-  1. OpenRouter (DIUTAMAKAN) - Gratis, tanpa batas wilayah, model Llama/Gemma
-  2. Google Gemini (Fallback) - Jika GEMINI_API_KEY tersedia dan aktif
+Mendukung multi-provider AI (semua GRATIS):
+  1. Cohere (UTAMA)      - command-r-plus, sangat baik untuk NLP & JSON
+  2. Groq   (KEDUA)      - llama-3.3-70b, sangat cepat (inference terkencang)
+  3. OpenRouter (KETIGA) - llama-3.3-70b via aggregator, fallback stabil
+  4. Gemini (TERAKHIR)   - gemini-2.0-flash-lite, limit reset harian
 
+Urutan fallback: Cohere → Groq → OpenRouter → Gemini
 Mampu menganalisis: sentimen, topik, wilayah, ringkasan, dan narasumber.
 """
 
@@ -74,12 +77,19 @@ Konten: {konten}
   "jenis_media": "<PILIH SATU: Lokal | Non-Lokal>"
 }}
 
+=== KONTEKS SISTEM ===
+Sistem ini adalah MEDIA MONITORING KHUSUS OJK JAWA BARAT. Hanya berita yang relevan dengan OJK dan/atau wilayah Provinsi Jawa Barat yang boleh masuk.
+
 === PANDUAN SENTIMEN (SUDUT PANDANG INSTITUSI OJK) ===
 - POSITIF : Tindakan tegas OJK, prestasi OJK, apresiasi, literasi sukses, perlindungan konsumen dari OJK.
 - NETRAL  : Kasus pinjol/penipuan di masyarakat (OJK TIDAK disalahkan), regulasi, edukasi, peringatan.
 - NEGATIF : HANYA JIKA berita secara EKSPLISIT menyudutkan/mengkritik OJK, protes terhadap OJK.
-- TIDAK RELEVAN : Jika berita SAMA SEKALI tidak membahas OJK atau industri jasa keuangan secara umum.
-Jika ragu sentimennya → pilih NETRAL.
+- TIDAK RELEVAN : Gunakan ini jika SALAH SATU dari kondisi berikut terpenuhi:
+    (a) Berita sama sekali tidak membahas OJK atau industri jasa keuangan.
+    (b) Berita membahas OJK PUSAT / OJK NASIONAL tanpa keterkaitan apapun dengan Jawa Barat (tidak ada nama kota/kabupaten Jawa Barat, tidak ada kegiatan OJK di Jawa Barat, narasumber bukan dari OJK Jawa Barat).
+    (c) Berita membahas OJK atau keuangan di provinsi LAIN (misalnya Jakarta, Surabaya, Medan, Bali, dll.) bukan di Jawa Barat.
+Jika ragu apakah terkait Jawa Barat atau tidak → pilih TIDAK RELEVAN.
+Jika ragu sentimennya (tapi jelas relevan dengan Jawa Barat) → pilih NETRAL.
 
 - LOKAL     : Jika nama media merupakan media daerah Jawa Barat (misal: Tribun Jabar, Radar Bandung, Pikiran Rakyat, dsb).
 - NON-LOKAL : Jika media nasional (Kompas, Detik, CNBC) atau dari provinsi lain."""
@@ -333,13 +343,22 @@ class CohereService:
             }
 
 
-class OpenAIService:
+# =============================================================================
+# Provider 1b: Groq AI (KEDUA - Sangat Cepat, Gratis, Model Llama)
+# Daftar di: https://console.groq.com → API Keys → Create API Key
+# =============================================================================
+
+
+class GroqService:
     """
-    Analisis berita menggunakan OpenAI API (Model gpt-4o-mini).
+    Analisis berita menggunakan Groq API.
+    Groq adalah provider LLM GRATIS dengan kecepatan inferensi tertinggi.
+    Model: llama-3.3-70b-versatile (gratis, akurasi tinggi untuk bahasa Indonesia)
+    Limit: 14.400 request/hari (cukup untuk monitoring rutin).
     """
 
-    MODEL_NAME = "gpt-4o-mini"
-    API_BASE = "https://api.openai.com/v1/chat/completions"
+    MODEL_NAME = "llama-3.3-70b-versatile"
+    API_BASE = "https://api.groq.com/openai/v1/chat/completions"
 
     def __init__(self, api_key: str = None):
         self._api_key = api_key
@@ -357,20 +376,19 @@ class OpenAIService:
                 from dotenv import load_dotenv
 
                 load_dotenv(override=True)
-                self._api_key = os.environ.get("OPENAI_API_KEY", "")
+                self._api_key = os.environ.get("GROQ_API_KEY", "")
                 if not self._api_key:
                     from config import Config
-
-                    self._api_key = getattr(Config, "OPENAI_API_KEY", "")
+                    self._api_key = getattr(Config, "GROQ_API_KEY", "")
             except Exception:
                 pass
 
         if not self._api_key:
-            logger.debug("[OpenAI] API Key tidak ditemukan. Dilewat.")
+            logger.debug("[Groq] API Key tidak ditemukan. Dilewat.")
             return False
 
         self._available = True
-        logger.info(f"[OpenAI] Siap digunakan dengan model {self.MODEL_NAME}")
+        logger.info(f"[Groq] Siap digunakan dengan model {self.MODEL_NAME}")
         return True
 
     def is_available(self) -> bool:
@@ -410,22 +428,26 @@ class OpenAIService:
 
             alasan = result.get("analisis_konteks", "")
             if alasan:
-                logger.debug(f"[OpenAI] Reasoning: {alasan[:80]}")
+                logger.debug(f"[Groq] Reasoning: {alasan[:80]}")
 
             return _parse_result(result, media)
 
         except json.JSONDecodeError as e:
-            logger.warning(f"[OpenAI] Gagal parse JSON: {e}")
+            logger.warning(f"[Groq] Gagal parse JSON: {e}")
             return None
         except Exception as e:
-            logger.error(f"[OpenAI] Error: {e}")
+            err_str = str(e).lower()
+            if "429" in err_str or "rate" in err_str or "quota" in err_str:
+                logger.warning(f"[Groq] Rate limit: {e}")
+            else:
+                logger.error(f"[Groq] Error API: {e}")
             return None
 
     def cek_koneksi(self) -> dict:
         if not self._init():
             return {
                 "ok": False,
-                "pesan": "OPENAI_API_KEY tidak ditemukan di .env",
+                "pesan": "GROQ_API_KEY tidak ditemukan di .env",
                 "model": None,
             }
         try:
@@ -443,21 +465,20 @@ class OpenAIService:
                 "response_format": {"type": "json_object"},
             }
             resp = requests.post(
-                self.API_BASE, headers=headers, json=payload, timeout=10
+                self.API_BASE, headers=headers, json=payload, timeout=15
             )
             resp.raise_for_status()
-            data = resp.json()
-            content = data["choices"][0]["message"]["content"]
+            content = resp.json()["choices"][0]["message"]["content"]
             json.loads(content)
             return {
                 "ok": True,
-                "pesan": "Koneksi ke OpenAI berhasil.",
+                "pesan": f"Koneksi ke Groq berhasil. Model: {self.MODEL_NAME}",
                 "model": self.MODEL_NAME,
             }
         except Exception as e:
             return {
                 "ok": False,
-                "pesan": f"Gagal terhubung ke OpenAI: {str(e)}",
+                "pesan": f"Gagal terhubung ke Groq: {str(e)}",
                 "model": self.MODEL_NAME,
             }
 
@@ -470,8 +491,9 @@ class OpenRouterService:
     Daftar gratis di: https://openrouter.ai/sign-up
     """
 
-    # Model gratis terbaik di OpenRouter untuk analisis teks bahasa Indonesia
-    MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"
+    # "openrouter/free" adalah router resmi OpenRouter yang otomatis memilih
+    # model gratis terbaik yang tersedia saat ini — tidak perlu update manual.
+    MODEL_NAME = "openrouter/auto"
     API_BASE = "https://openrouter.ai/api/v1/chat/completions"
 
     def __init__(self, api_key: str = None):
@@ -734,30 +756,33 @@ class GeminiService:
 class AIService:
     """
     Facade tunggal untuk seluruh aplikasi.
-    Urutan prioritas: OpenAI -> Cohere → OpenRouter → Gemini → None (fallback rule-based)
+    Urutan prioritas: Cohere → Groq → OpenRouter → Gemini
+    Semua provider GRATIS. Jika satu kena rate limit, otomatis fallback ke berikutnya.
     """
 
     def __init__(self):
-        self._openai = OpenAIService()
         self._cohere = CohereService()
+        self._groq = GroqService()
         self._openrouter = OpenRouterService()
         self._gemini = GeminiService()
 
     def is_available(self) -> bool:
-        return (self._openai.is_available() or
-                self._cohere.is_available() or 
-                self._openrouter.is_available() or 
-                self._gemini.is_available())
+        return (
+            self._cohere.is_available()
+            or self._groq.is_available()
+            or self._openrouter.is_available()
+            or self._gemini.is_available()
+        )
 
     def analisis_berita(
         self, judul: str, isi: str = None, ringkasan: str = None, media: str = None
     ) -> dict | None:
-        # Kumpulkan provider yang API Key-nya tersedia di .env
+        # Kumpulkan provider yang API Key-nya tersedia di .env (urutan = prioritas)
         available_providers = []
-        if self._openai.is_available():
-            available_providers.append(("OpenAI", self._openai))
         if self._cohere.is_available():
             available_providers.append(("Cohere", self._cohere))
+        if self._groq.is_available():
+            available_providers.append(("Groq", self._groq))
         if self._openrouter.is_available():
             available_providers.append(("OpenRouter", self._openrouter))
         if self._gemini.is_available():
@@ -766,15 +791,16 @@ class AIService:
         if not available_providers:
             return None
 
-        # Coba satu per satu sesuai prioritas
+        # Coba satu per satu sesuai prioritas, fallback otomatis jika gagal/limit
         for name, provider in available_providers:
             try:
                 result = provider.analisis_berita(judul, isi, ringkasan, media)
                 if result is not None:
+                    logger.debug(f"[AI] Berhasil via {name}")
                     return result
-                logger.warning(f"[AI] Provider {name} mengembalikan None (limit/quota habis). Mencoba fallback...")
+                logger.warning(f"[AI] {name} mengembalikan None (limit/error). Mencoba fallback...")
             except Exception as e:
-                logger.warning(f"[AI] Provider {name} error: {e}. Mencoba fallback...")
+                logger.warning(f"[AI] {name} error: {e}. Mencoba fallback...")
 
         return None
 
@@ -784,7 +810,7 @@ class AIService:
                 "diproses": 0,
                 "berhasil": 0,
                 "gagal": 0,
-                "error": "Tidak ada provider AI yang tersedia. Cek OPENAI_API_KEY di .env",
+                "error": "Tidak ada provider AI yang tersedia. Tambahkan API key di .env",
             }
 
         stats = {"diproses": 0, "berhasil": 0, "gagal": 0, "error": None}
@@ -818,16 +844,17 @@ class AIService:
         return stats
 
     def cek_koneksi(self) -> dict:
-        """Tes koneksi semua provider dan kembalikan status."""
-        op_status = self._openai.cek_koneksi()
+        """Tes koneksi semua provider dan kembalikan status masing-masing."""
         co_status = self._cohere.cek_koneksi()
+        gr_status = self._groq.cek_koneksi()
         or_status = self._openrouter.cek_koneksi()
         gem_status = self._gemini.cek_koneksi()
 
-        if op_status["ok"]:
-            return {**op_status, "provider": "OpenAI"}
+        # Kembalikan provider pertama yang OK sebagai 'aktif'
         if co_status["ok"]:
             return {**co_status, "provider": "Cohere"}
+        if gr_status["ok"]:
+            return {**gr_status, "provider": "Groq"}
         if or_status["ok"]:
             return {**or_status, "provider": "OpenRouter"}
         if gem_status["ok"]:
@@ -837,34 +864,20 @@ class AIService:
             "ok": False,
             "provider": None,
             "model": None,
-            "pesan": f"OpenAI: {op_status['pesan']} | Cohere: {co_status['pesan']} | OR: {or_status['pesan']} | Gemini: {gem_status['pesan']}",
+            "pesan": (
+                f"Cohere: {co_status['pesan']} | "
+                f"Groq: {gr_status['pesan']} | "
+                f"OpenRouter: {or_status['pesan']} | "
+                f"Gemini: {gem_status['pesan']}"
+            ),
         }
 
     def generate_narasi(self, prompt: str, temperature: float = 0.5) -> str | None:
         """
         Helper method untuk men-generate teks narasi bebas (seperti ringkasan/penjelasan laporan).
-        Mencoba memanggil provider yang aktif (diutamakan OpenAI).
+        Mencoba provider secara berurutan: Cohere → Groq → OpenRouter → Gemini.
         """
-        # Coba OpenAI
-        if self._openai.is_available():
-            try:
-                import requests
-                headers = {
-                    "Authorization": f"Bearer {self._openai._api_key}",
-                    "Content-Type": "application/json",
-                }
-                payload = {
-                    "model": self._openai.MODEL_NAME,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": temperature,
-                }
-                resp = requests.post(self._openai.API_BASE, headers=headers, json=payload, timeout=30)
-                resp.raise_for_status()
-                return resp.json()["choices"][0]["message"]["content"].strip()
-            except Exception as e:
-                logger.warning(f"[AIService] generate_narasi OpenAI gagal: {e}")
-
-        # Fallback ke Cohere
+        # Coba Cohere
         if self._cohere.is_available():
             try:
                 import requests
@@ -882,6 +895,46 @@ class AIService:
                 return resp.json()["text"].strip()
             except Exception as e:
                 logger.warning(f"[AIService] generate_narasi Cohere gagal: {e}")
+
+        # Fallback ke Groq
+        if self._groq.is_available():
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {self._groq._api_key}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "model": self._groq.MODEL_NAME,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
+                }
+                resp = requests.post(self._groq.API_BASE, headers=headers, json=payload, timeout=30)
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                logger.warning(f"[AIService] generate_narasi Groq gagal: {e}")
+
+        # Fallback ke OpenRouter
+        if self._openrouter.is_available():
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {self._openrouter._api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://ojk-jabar-monitoring.app",
+                    "X-Title": "Media Monitoring OJK Jawa Barat",
+                }
+                payload = {
+                    "model": self._openrouter.MODEL_NAME,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
+                }
+                resp = requests.post(self._openrouter.API_BASE, headers=headers, json=payload, timeout=30)
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                logger.warning(f"[AIService] generate_narasi OpenRouter gagal: {e}")
 
         # Fallback ke Gemini
         if self._gemini.is_available():
