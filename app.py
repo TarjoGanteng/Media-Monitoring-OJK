@@ -72,9 +72,12 @@ def create_app(env: str = None) -> Flask:
     # Daftarkan context processor (variabel global template)
     register_context_processors(app)
 
-    # Inisialisasi database
+    # Inisialisasi database (safely wrapped)
     with app.app_context():
-        initialize_database(app)
+        try:
+            initialize_database(app)
+        except Exception as err:
+            logger.warning(f"Inisialisasi database ditunda/gagal: {err}")
 
     logger.info(f"Aplikasi '{config.APP_NAME}' berhasil dibuat (env={env})")
     return app
@@ -123,34 +126,41 @@ def initialize_database(app=None):
             logger.info("Kolom 'ai_checked' berhasil ditambahkan ke tabel berita.")
     except Exception as e:
         db.session.rollback()
-        logger.warning(f"Migrasi kolom users gagal (mungkin tabel belum ada): {e}")
+        logger.warning(f"Migrasi kolom users gagal: {e}")
 
     logger.info("Skema database berhasil diinisialisasi.")
 
     # Isi keyword default jika tabel kosong
-    DatabaseService.inisialisasi_keyword_default()
+    try:
+        DatabaseService.inisialisasi_keyword_default()
+    except Exception as e:
+        logger.warning(f"Inisialisasi keyword default gagal: {e}")
 
     # Buat user super_admin default jika belum ada user
-    if User.query.count() == 0:
-        default_admin = User(
-            username="super_admin",
-            password_hash=generate_password_hash("ojkjabar2026"),
-            role="super_admin",
-            status="aktif",
-        )
-        db.session.add(default_admin)
-        db.session.commit()
-        logger.info(
-            "Default user 'super_admin' berhasil dibuat. Segera ganti password melalui halaman pengaturan!"
-        )
+    try:
+        if User.query.count() == 0:
+            default_admin = User(
+                username="super_admin",
+                password_hash=generate_password_hash("ojkjabar2026"),
+                role="super_admin",
+                status="aktif",
+            )
+            db.session.add(default_admin)
+            db.session.commit()
+            logger.info(
+                "Default user 'super_admin' berhasil dibuat. Segera ganti password melalui halaman pengaturan!"
+            )
+    except Exception as e:
+        logger.warning(f"Pembuatan user default ditunda: {e}")
 
-    # Bersihkan duplikat yang sudah ada di database (jalankan di background)
+    # Bersihkan duplikat yang sudah ada di database (bukan di Vercel serverless)
     import threading
+    import os
 
     def _startup_dedup(flask_app):
         import time
 
-        time.sleep(3)  # Tunggu app fully ready
+        time.sleep(3)
         with flask_app.app_context():
             try:
                 from services.dedup_service import DeduplicateService
@@ -158,29 +168,23 @@ def initialize_database(app=None):
                 hasil = DeduplicateService.jalankan_semua(threshold_mirip=0.88)
                 if hasil["total_dihapus"] > 0:
                     logger.info(
-                        f"[Startup Dedup] Selesai: {hasil['total_dihapus']} berita duplikat dihapus "
-                        f"(URL={hasil['lapis_1_url']['dihapus']}, "
-                        f"Judul={hasil['lapis_2_judul']['dihapus']}, "
-                        f"Mirip={hasil['lapis_3_mirip']['dihapus']})"
+                        f"[Startup Dedup] Selesai: {hasil['total_dihapus']} berita duplikat dihapus"
                     )
-                else:
-                    logger.info("[Startup Dedup] Tidak ada duplikat ditemukan.")
             except Exception as e:
                 logger.warning(f"[Startup Dedup] Gagal: {e}")
 
-    # Hanya jalankan di proses utama (bukan reloader werkzeug)
-    import os
-
-    if app is not None and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+    # JANGAN jalankan background thread jika di environment Vercel
+    is_vercel = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
+    if app is not None and os.environ.get("WERKZEUG_RUN_MAIN") != "true" and not is_vercel:
         # Thread 1: Deduplikasi startup
         t_dedup = threading.Thread(target=_startup_dedup, args=(app,), daemon=True)
         t_dedup.start()
 
-        # Thread 2: AI Review Service — selalu aktif, cek berita belum teranalisis
+        # Thread 2: AI Review Service — selalu aktif
         def _start_ai_review(flask_app):
             import time
 
-            time.sleep(5)  # Tunggu app & dedup selesai init
+            time.sleep(5)
             from services.ai_review_service import AIReviewService
 
             AIReviewService.start(flask_app)
