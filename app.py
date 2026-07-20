@@ -309,17 +309,28 @@ app = create_app(_flask_env)
 def manual_init_db():
     """Endpoint manual untuk inisialisasi tabel & seeder database Supabase."""
     from flask import jsonify
+    from werkzeug.security import generate_password_hash
     try:
         initialize_database(app)
         from database.models import User, Berita
+
+        # Paksa reset password TANPA SYARAT untuk semua user default ke 'ojkjabar2026'
+        for uname in ["super_admin", "angga", "pemimpin"]:
+            u_obj = User.query.filter_by(username=uname).first()
+            if u_obj:
+                u_obj.password_hash = generate_password_hash("ojkjabar2026")
+                u_obj.status = "aktif"
+        db.session.commit()
+
         user_count = User.query.count()
         berita_count = Berita.query.count()
         return jsonify({
             "status": "success",
-            "message": f"Database berhasil diinisialisasi! Total User: {user_count}, Total Berita: {berita_count}",
+            "message": f"Database & password berhasil di-reset ke 'ojkjabar2026'! Total User: {user_count}, Total Berita: {berita_count}",
             "users": [u.username for u in User.query.all()]
         }), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
