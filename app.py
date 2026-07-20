@@ -190,8 +190,14 @@ def initialize_database(app=None):
                         )
                         db.session.add(b)
 
+                # Pastikan password_hash super_admin, angga, dan pemimpin di-reset ke 'ojkjabar2026'
+                for target_uname in ["super_admin", "angga", "pemimpin"]:
+                    u_obj = User.query.filter_by(username=target_uname).first()
+                    if u_obj:
+                        u_obj.password_hash = generate_password_hash("ojkjabar2026")
+
                 db.session.commit()
-                logger.info("Database berhasil diisi dari seed_data.json!")
+                logger.info("Database berhasil diisi dari seed_data.json dan password user disesuaikan!")
             else:
                 default_admin = User(
                     username="super_admin",
