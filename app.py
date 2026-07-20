@@ -234,9 +234,13 @@ def register_context_processors(app: Flask):
         }
 
 
-# === Entry Point ===
+# === Buat instance Flask global (diperlukan oleh Gunicorn / Koyeb) ===
+# Gunicorn membutuhkan variabel `app` di level modul, bukan di dalam if __main__
+_flask_env = os.environ.get("FLASK_ENV", "production")
+app = create_app(_flask_env)
+
+# === Entry Point (lokal development) ===
 if __name__ == "__main__":
-    app = create_app("development")
     logger.info("=" * 60)
     logger.info("  Media Monitoring OJK Jawa Barat")
     logger.info("  Versi: 1.0.0")
@@ -245,6 +249,6 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=5000,
-        debug=True,
-        use_reloader=True,
+        debug=(_flask_env == "development"),
+        use_reloader=(_flask_env == "development"),
     )
