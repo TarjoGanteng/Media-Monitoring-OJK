@@ -27,11 +27,18 @@ class Config:
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 
-    # Konfigurasi Database SQLite
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL",
-        f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'media_monitoring.db')}",
-    )
+    # Konfigurasi Database (Mendukung SQLite lokal & PostgreSQL/Supabase Vercel)
+    _raw_db_url = os.environ.get("DATABASE_URL", "")
+    if _raw_db_url:
+        if _raw_db_url.startswith("postgres://"):
+            _raw_db_url = _raw_db_url.replace("postgres://", "postgresql://", 1)
+        if "postgresql" in _raw_db_url and "sslmode" not in _raw_db_url:
+            _delim = "&" if "?" in _raw_db_url else "?"
+            _raw_db_url += f"{_delim}sslmode=require"
+        SQLALCHEMY_DATABASE_URI = _raw_db_url
+    else:
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'media_monitoring.db')}"
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # Set True untuk debug query SQL
 
