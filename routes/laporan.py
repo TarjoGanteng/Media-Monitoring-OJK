@@ -43,18 +43,35 @@ bp = Blueprint("laporan", __name__)
 # ==================== HELPER ====================
 
 def _get_laporan_dir() -> str:
-    """Direktori penyimpanan permanen laporan di instance/laporan/."""
-    d = os.path.join(current_app.instance_path, "laporan")
-    os.makedirs(d, exist_ok=True)
-    return d
+    """Direktori penyimpanan permanen laporan di instance/laporan/ (fallback ke /tmp jika read-only)."""
+    import tempfile
+    try:
+        d = os.path.join(current_app.instance_path, "laporan")
+        os.makedirs(d, exist_ok=True)
+        return d
+    except Exception:
+        d = os.path.join(tempfile.gettempdir(), "laporan")
+        os.makedirs(d, exist_ok=True)
+        return d
 
 
 def _get_temp_dir(temp_key: str = None) -> str:
-    """Direktori temp untuk laporan yang belum di-download."""
-    base = os.path.join(current_app.instance_path, "laporan_temp")
+    """Direktori temp untuk laporan yang belum di-download (fallback ke /tmp jika read-only)."""
+    import tempfile
+    try:
+        base = os.path.join(current_app.instance_path, "laporan_temp")
+        os.makedirs(base, exist_ok=True)
+    except Exception:
+        base = os.path.join(tempfile.gettempdir(), "laporan_temp")
+        os.makedirs(base, exist_ok=True)
+
     if temp_key:
-        return os.path.join(base, temp_key)
-    os.makedirs(base, exist_ok=True)
+        d = os.path.join(base, temp_key)
+        try:
+            os.makedirs(d, exist_ok=True)
+        except Exception:
+            pass
+        return d
     return base
 
 
@@ -67,7 +84,7 @@ def _validate_temp_key(temp_key: str) -> bool:
 def _cleanup_old_temp(max_age_hours: int = 24):
     """Hapus folder temp yang lebih tua dari max_age_hours."""
     import time
-    base = os.path.join(current_app.instance_path, "laporan_temp")
+    base = _get_temp_dir()
     if not os.path.exists(base):
         return
     now = time.time()

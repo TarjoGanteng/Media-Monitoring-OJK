@@ -46,8 +46,11 @@ def create_app(env: str = None) -> Flask:
     config = get_config(env)
     app.config.from_object(config)
 
-    # Pastikan direktori instance ada
-    os.makedirs(app.instance_path, exist_ok=True)
+    # Pastikan direktori instance ada (fallback jika read-only / Vercel)
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except Exception:
+        pass
 
     # Inisialisasi ekstensi
     db.init_app(app)
