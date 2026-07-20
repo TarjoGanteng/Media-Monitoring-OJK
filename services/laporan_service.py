@@ -241,6 +241,26 @@ def _chart_donut_kontribusi(jabar: int, nasional: int) -> str:
 
 # ==================== DATA QUERY ====================
 
+def _date_str_expr(field):
+    try:
+        bind = db.session.get_bind()
+        if bind and bind.dialect.name == "postgresql":
+            return func.to_char(field, "YYYY-MM-DD")
+    except Exception:
+        pass
+    return func.strftime("%Y-%m-%d", field)
+
+
+def _year_str_expr(field):
+    try:
+        bind = db.session.get_bind()
+        if bind and bind.dialect.name == "postgresql":
+            return func.to_char(field, "YYYY")
+    except Exception:
+        pass
+    return func.strftime("%Y", field)
+
+
 class LaporanService:
     """Service untuk logika bisnis fitur laporan."""
 
@@ -250,8 +270,9 @@ class LaporanService:
     def generate_nomor_laporan() -> str:
         """Generate nomor laporan unik: LAP-MM-YYYY-NNN."""
         tahun = datetime.now().year
+        yr_expr = _year_str_expr(Laporan.created_at)
         count = Laporan.query.filter(
-            func.strftime("%Y", Laporan.created_at) == str(tahun)
+            yr_expr == str(tahun)
         ).count() + 1
         return f"LAP-MM-{tahun}-{count:03d}"
 
@@ -356,16 +377,17 @@ class LaporanService:
         # --- Trend Harian ---
         hari = (tanggal_sampai - tanggal_dari).days + 1
         hari = min(hari, 30)  # Maks 30 hari untuk chart
+        tgl_expr = _date_str_expr(Berita.tanggal)
         trend_rows = (
             db.session.query(
-                func.strftime("%Y-%m-%d", Berita.tanggal).label("tgl"),
+                tgl_expr.label("tgl"),
                 func.count(Berita.id).label("total"),
                 func.sum(case((Berita.sentimen == "Positif", 1), else_=0)).label("positif"),
                 func.sum(case((Berita.sentimen == "Negatif", 1), else_=0)).label("negatif"),
                 func.sum(case((Berita.sentimen == "Netral",  1), else_=0)).label("netral"),
             )
             .filter(Berita.status == "aktif", Berita.tanggal >= dt_dari, Berita.tanggal <= dt_sampai)
-            .group_by(func.strftime("%Y-%m-%d", Berita.tanggal))
+            .group_by(tgl_expr)
             .all()
         )
         trend_map = {r.tgl: r for r in trend_rows}

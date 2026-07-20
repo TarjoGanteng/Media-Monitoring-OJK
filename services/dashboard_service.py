@@ -11,9 +11,19 @@ from database.models import Berita
 logger = logging.getLogger(__name__)
 
 
+def _date_str_expr(field):
+    """Helper ekspresi tanggal yang kompatibel dengan SQLite & PostgreSQL."""
+    try:
+        bind = db.session.get_bind()
+        if bind and bind.dialect.name == "postgresql":
+            return func.to_char(field, "YYYY-MM-DD")
+    except Exception:
+        pass
+    return func.strftime("%Y-%m-%d", field)
+
+
 class DashboardService:
     """Service untuk mengumpulkan data statistik yang ditampilkan di dashboard."""
-
 
     @staticmethod
     def _apply_media_filter(query, tipe_media: str = "semua"):
@@ -168,10 +178,12 @@ class DashboardService:
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(today, datetime.max.time())
 
+        tgl_expr = _date_str_expr(Berita.tanggal)
+
         # Satu query dengan GROUP BY tanggal dan agregasi sentimen
         query = (
             db.session.query(
-                func.strftime("%Y-%m-%d", Berita.tanggal).label("tgl"),
+                tgl_expr.label("tgl"),
                 func.count(Berita.id).label("total"),
                 func.sum(case((Berita.sentimen == "Positif", 1), else_=0)).label(
                     "positif"
@@ -188,9 +200,9 @@ class DashboardService:
                 Berita.tanggal >= start_dt,
                 Berita.tanggal <= end_dt,
             )
-            )
+        )
         query = DashboardService._apply_media_filter(query, tipe_media)
-        rows = query.group_by(func.strftime("%Y-%m-%d", Berita.tanggal)).all()
+        rows = query.group_by(tgl_expr).all()
 
         # Buat mapping tanggal -> data row
         data_map = {r.tgl: r for r in rows}

@@ -167,8 +167,8 @@ def initialize_database(app=None):
                         kw = Keyword(kata=kw_data["kata"], aktif=kw_data.get("aktif", True))
                         db.session.add(kw)
 
-                # Import berita (sampai 100 terbaru untuk inisialisasi awal)
-                for b_data in seed_data.get("berita", [])[:100]:
+                # Import berita (seluruh data dari seed_data.json)
+                for b_data in seed_data.get("berita", []):
                     if not Berita.query.filter_by(link=b_data["link"]).first():
                         b = Berita(
                             judul=b_data["judul"],
