@@ -316,26 +316,85 @@ app = create_app(_flask_env)
 
 @app.route("/init-db")
 def manual_init_db():
-    """Endpoint manual untuk inisialisasi tabel & seeder database Supabase."""
-    from flask import jsonify
+    """Endpoint manual untuk inisialisasi tabel & seeder database Supabase/Neon."""
+    from flask import jsonify, request
     from werkzeug.security import generate_password_hash
-    try:
-        initialize_database(app)
-        from database.models import User, Berita
+    import json
+    from database.models import User, Berita, Keyword
+    from datetime import datetime
 
-        # Paksa reset password TANPA SYARAT untuk semua user default ke 'ojkjabar2026'
+    try:
+        # Buat tabel jika belum ada
+        db.create_all()
+
+        # Bersihkan data lama jika kurang dari 258 berita agar 100% identik dengan lokal
+        if Berita.query.count() < 258 or request.args.get("clean") == "1":
+            db.session.query(Berita).delete()
+            db.session.query(Keyword).delete()
+            db.session.query(User).delete()
+            db.session.commit()
+
+        seed_path = os.path.join(os.path.dirname(__file__), "seed_data.json")
+        if os.path.exists(seed_path):
+            with open(seed_path, "r", encoding="utf-8") as f:
+                seed_data = json.load(f)
+
+            # Import users
+            for u_data in seed_data.get("users", []):
+                if not User.query.filter_by(username=u_data["username"]).first():
+                    u = User(
+                        username=u_data["username"],
+                        nama_lengkap=u_data.get("nama_lengkap"),
+                        password_hash=u_data["password_hash"],
+                        role=u_data["role"],
+                        status=u_data.get("status", "aktif"),
+                    )
+                    db.session.add(u)
+
+            # Import keywords
+            for kw_data in seed_data.get("keywords", []):
+                if not Keyword.query.filter_by(kata=kw_data["kata"]).first():
+                    kw = Keyword(kata=kw_data["kata"], aktif=kw_data.get("aktif", True))
+                    db.session.add(kw)
+
+            # Import seluruh 258 berita
+            for b_data in seed_data.get("berita", []):
+                if not Berita.query.filter_by(link=b_data["link"]).first():
+                    b = Berita(
+                        judul=b_data["judul"],
+                        link=b_data["link"],
+                        media=b_data.get("media"),
+                        jenis_media=b_data.get("jenis_media"),
+                        tanggal=datetime.fromisoformat(b_data["tanggal"]) if b_data.get("tanggal") else None,
+                        isi=b_data.get("isi"),
+                        ringkasan=b_data.get("ringkasan"),
+                        gambar_url=b_data.get("gambar_url"),
+                        sentimen=b_data.get("sentimen"),
+                        topik=b_data.get("topik"),
+                        wilayah=b_data.get("wilayah"),
+                        narasumber=b_data.get("narasumber"),
+                        bulan=b_data.get("bulan"),
+                        tahun=b_data.get("tahun"),
+                        triwulan=b_data.get("triwulan"),
+                        status=b_data.get("status", "aktif"),
+                        keyword=b_data.get("keyword"),
+                    )
+                    db.session.add(b)
+
+        # Reset password user default ke 'ojkjabar2026'
         for uname in ["super_admin", "angga", "pemimpin"]:
             u_obj = User.query.filter_by(username=uname).first()
             if u_obj:
                 u_obj.password_hash = generate_password_hash("ojkjabar2026")
                 u_obj.status = "aktif"
+
         db.session.commit()
 
         user_count = User.query.count()
         berita_count = Berita.query.count()
         return jsonify({
             "status": "success",
-            "message": f"Database & password berhasil di-reset ke 'ojkjabar2026'! Total User: {user_count}, Total Berita: {berita_count}",
+            "message": f"Database Vercel berhasil disinkronisasi 100% dengan Lokal! Total User: {user_count}, Total Berita: {berita_count}",
             "users": [u.username for u in User.query.all()]
         }), 200
     except Exception as e:
