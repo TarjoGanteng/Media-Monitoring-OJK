@@ -654,19 +654,22 @@ Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
             from services.ai_service import gemini
 
             if not gemini.is_available():
-                raise ValueError("Gemini tidak tersedia")
+                raise ValueError("AI tidak tersedia")
 
-            # Gunakan model tanpa JSON mode (output narasi bebas)
+            # Gunakan multi-provider AI atau gemini-2.0-flash-lite
             import google.generativeai as genai
             from config import Config
 
-            genai.configure(api_key=Config.GEMINI_API_KEY)
-            model_narasi = genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
-                generation_config={"temperature": 0.4},
-            )
-            response = model_narasi.generate_content(prompt)
-            ringkasan_ai = response.text.strip()
+            if Config.GEMINI_API_KEY:
+                genai.configure(api_key=Config.GEMINI_API_KEY)
+                model_narasi = genai.GenerativeModel(
+                    model_name="gemini-2.0-flash-lite",
+                    generation_config={"temperature": 0.4},
+                )
+                response = model_narasi.generate_content(prompt)
+                ringkasan_ai = response.text.strip()
+            else:
+                raise ValueError("GEMINI_API_KEY tidak dikonfigurasi")
 
         except Exception as e:
             logger.warning(f"[AI Dashboard] Gagal generate ringkasan: {e}")
