@@ -126,44 +126,46 @@ class AIReviewService:
         from services.ai_service import gemini
         from datetime import datetime
 
-        # PRIORITAS TINGGI: Re-analisis berita lama yang wilayah-nya masih generic 'Jawa Barat'
-        # Hanya ambil yang belum pernah dicek, atau yang terakhir dicek > 2 jam yang lalu agar tidak looping terus-menerus
-        from datetime import datetime, timedelta
-        batas_jabar = datetime.utcnow() - timedelta(hours=2)
-        antrian_jabar = (
+        # PRIORITAS UTAMA (PALING TINGGI): Re-analisis berita yang saat ini ber-sentimen 'Negatif'!
+        # Cek apakah sentimennya benar Negatif atau sebenarnya Netral/Positif/Bukan OJK Jabar
+        batas_negatif = datetime.utcnow() - timedelta(minutes=5)
+        antrian_negatif = (
             Berita.query.filter(
                 Berita.status == "aktif",
-                Berita.wilayah == "Jawa Barat",
+                Berita.sentimen == "Negatif",
                 db.or_(
                     Berita.ai_last_checked.is_(None),
-                    Berita.ai_last_checked < batas_jabar
+                    Berita.ai_last_checked < batas_negatif
                 )
             )
             .order_by(
                 db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
                 Berita.id.asc()
             )
-            .limit(BATCH_SIZE)
+            .limit(20)
             .all()
         )
 
+        antrian_jabar = []
         antrian_baru = []
         antrian_lama = []
         is_reanalysis = False
 
-        if antrian_jabar:
-            # Jika ada antrean Jabar, kita jadikan antrean utama untuk diproses terlebih dahulu
-            antrian = antrian_jabar
+        if antrian_negatif:
+            antrian = antrian_negatif
             is_reanalysis = True
+            logger.info(f"[AIReview] PRIORITAS UTAMA: Memproses {len(antrian_negatif)} berita bertag Negatif untuk verifikasi sentimen...")
         else:
-            # Jika antrean Jabar sudah habis (0), baru kita proses berita baru & berita lama lainnya
-            antrian_baru = (
+            # PRIORITAS 2: Re-analisis berita lama yang wilayah-nya masih generic 'Jawa Barat'
+            batas_jabar = datetime.utcnow() - timedelta(hours=2)
+            antrian_jabar = (
                 Berita.query.filter(
                     Berita.status == "aktif",
+                    Berita.wilayah == "Jawa Barat",
                     db.or_(
-                        Berita.ai_checked == False,  # noqa: E712
-                        Berita.ai_checked.is_(None),  # noqa: E711
-                    ),
+                        Berita.ai_last_checked.is_(None),
+                        Berita.ai_last_checked < batas_jabar
+                    )
                 )
                 .order_by(
                     db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
@@ -173,27 +175,47 @@ class AIReviewService:
                 .all()
             )
 
-            if not antrian_baru:
-                from datetime import datetime, timedelta
-                # Re-analisis berita lama yang paling berhak (terakhir dicek > 12 jam yang lalu, atau belum pernah dicek ulang)
-                batas_re_analisis = datetime.utcnow() - timedelta(hours=12)
-                antrian_lama = (
+            if antrian_jabar:
+                antrian = antrian_jabar
+                is_reanalysis = True
+            else:
+                # PRIORITAS 3: Berita baru yang belum dicek AI
+                antrian_baru = (
                     Berita.query.filter(
                         Berita.status == "aktif",
-                        Berita.ai_checked == True,  # noqa: E712
                         db.or_(
-                            Berita.ai_last_checked.is_(None),
-                            Berita.ai_last_checked < batas_re_analisis
-                        )
+                            Berita.ai_checked == False,  # noqa: E712
+                            Berita.ai_checked.is_(None),  # noqa: E711
+                        ),
                     )
-                    .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
-                    .limit(2)
+                    .order_by(
+                        db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
+                        Berita.id.asc()
+                    )
+                    .limit(BATCH_SIZE)
                     .all()
                 )
-                if antrian_lama:
-                    is_reanalysis = True
 
-            antrian = antrian_baru + antrian_lama
+                if not antrian_baru:
+                    # PRIORITAS 4: Re-analisis berita lama umum
+                    batas_re_analisis = datetime.utcnow() - timedelta(hours=12)
+                    antrian_lama = (
+                        Berita.query.filter(
+                            Berita.status == "aktif",
+                            Berita.ai_checked == True,  # noqa: E712
+                            db.or_(
+                                Berita.ai_last_checked.is_(None),
+                                Berita.ai_last_checked < batas_re_analisis
+                            )
+                        )
+                        .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
+                        .limit(5)
+                        .all()
+                    )
+                    if antrian_lama:
+                        is_reanalysis = True
+
+                antrian = antrian_baru + antrian_lama
 
         if not antrian:
             logger.debug(
