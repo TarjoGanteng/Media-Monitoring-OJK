@@ -40,10 +40,18 @@ def run_crawler():
         total_disimpan = sum(h["jumlah_disimpan"] for h in hasil_list)
         total_duplikat = sum(h["jumlah_duplikat"] for h in hasil_list)
 
+        # Trigger AI Review langsung secara synchronous untuk memverifikasi sentimen & menghapus berita non-OJK Jabar
+        try:
+            from flask import current_app
+            from services.ai_review_service import AIReviewService
+            AIReviewService._proses_batch(current_app)
+        except Exception as ai_err:
+            pass
+
         return jsonify(
             {
                 "success": True,
-                "message": f"Crawling selesai. Ditemukan {total_ditemukan}, disimpan {total_disimpan} berita baru.",
+                "message": f"Crawling selesai. Ditemukan {total_ditemukan}, disimpan {total_disimpan} berita baru. AI Review langsung memverifikasi & membersihkan berita.",
                 "detail": hasil_list,
                 "total": {
                     "ditemukan": total_ditemukan,
