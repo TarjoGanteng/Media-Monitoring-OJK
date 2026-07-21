@@ -167,9 +167,10 @@ def initialize_database(app=None):
                         kw = Keyword(kata=kw_data["kata"], aktif=kw_data.get("aktif", True))
                         db.session.add(kw)
 
-                # Import berita (seluruh data dari seed_data.json)
+                # Import & sync berita (seluruh data dari seed_data.json)
                 for b_data in seed_data.get("berita", []):
-                    if not Berita.query.filter_by(link=b_data["link"]).first():
+                    existing = Berita.query.filter_by(link=b_data["link"]).first()
+                    if not existing:
                         b = Berita(
                             judul=b_data["judul"],
                             link=b_data["link"],
@@ -189,6 +190,14 @@ def initialize_database(app=None):
                             keyword=b_data.get("keyword"),
                         )
                         db.session.add(b)
+                    else:
+                        # Update isi, gambar, dan ringkasan jika di database online masih kosong
+                        if not existing.isi and b_data.get("isi"):
+                            existing.isi = b_data.get("isi")
+                        if not existing.gambar_url and b_data.get("gambar_url"):
+                            existing.gambar_url = b_data.get("gambar_url")
+                        if not existing.ringkasan and b_data.get("ringkasan"):
+                            existing.ringkasan = b_data.get("ringkasan")
 
                 # Pastikan password_hash super_admin, angga, dan pemimpin di-reset ke 'ojkjabar2026'
                 for target_uname in ["super_admin", "angga", "pemimpin"]:
