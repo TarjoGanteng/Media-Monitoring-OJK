@@ -402,6 +402,26 @@ def manual_init_db():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+from datetime import datetime
+_last_auto_ai_check = datetime.min
+
+
+@app.before_request
+def auto_ai_review_trigger():
+    """Jalankan AI review secara otomatis 24/7 tanpa perlu menekan tombol manual."""
+    global _last_auto_ai_check
+    now = datetime.utcnow()
+    if (now - _last_auto_ai_check).total_seconds() > 45:
+        _last_auto_ai_check = now
+        try:
+            import threading
+            from services.ai_review_service import AIReviewService
+            t = threading.Thread(target=AIReviewService._proses_batch, args=(app,), daemon=True)
+            t.start()
+        except Exception:
+            pass
+
+
 @app.route("/run-ai-review", methods=["GET", "POST"])
 @app.route("/run-ai-review/", methods=["GET", "POST"])
 def manual_run_ai_review():
