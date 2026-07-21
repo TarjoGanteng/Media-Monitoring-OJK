@@ -402,8 +402,9 @@ def manual_init_db():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@app.route("/run-ai-review")
-def run_ai_review():
+@app.route("/run-ai-review", methods=["GET", "POST"])
+@app.route("/run-ai-review/", methods=["GET", "POST"])
+def manual_run_ai_review():
     """Endpoint manual / Vercel Cron Job untuk menjalankan siklus analisis & pembersihan AI di Vercel."""
     from flask import jsonify
     try:
@@ -411,7 +412,7 @@ def run_ai_review():
         AIReviewService._proses_batch(app)
         return jsonify({
             "status": "success",
-            "message": "Siklus AI Review & pembersihan berita non-OJK Jabar berhasil dijalankan di Vercel!"
+            "message": "Siklus AI Review (Prioritas Sentimen Negatif) berhasil dijalankan di Vercel!"
         }), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
