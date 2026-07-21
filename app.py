@@ -408,16 +408,68 @@ _last_auto_ai_check = datetime.min
 
 @app.before_request
 def auto_ai_review_trigger():
-    """Jalankan AI review secara otomatis 24/7 di Vercel secara synchronous tanpa background thread."""
+    """Jalankan AI review otomatis 24/7 tanpa memblokir response halaman."""
+    from flask import request as flask_request
     global _last_auto_ai_check
+
+    # Skip untuk static assets, favicon, dll agar tidak memperlambat
+    path = flask_request.path
+    if any(path.startswith(p) for p in ["/static", "/favicon", "/api/status-ai"]):
+        return
+
     now = datetime.utcnow()
-    if (now - _last_auto_ai_check).total_seconds() > 30:
+    if (now - _last_auto_ai_check).total_seconds() > 60:
         _last_auto_ai_check = now
         try:
+            import threading
             from services.ai_review_service import AIReviewService
-            AIReviewService._proses_batch(app)
+            # Jalankan di daemon thread agar tidak memblokir response
+            t = threading.Thread(
+                target=AIReviewService._proses_batch,
+                args=(app,),
+                daemon=True
+            )
+            t.start()
         except Exception as err:
             logger.warning(f"Auto AI Review Error: {err}")
+
+
+@app.route("/api/status-ai")
+def status_ai():
+    """Endpoint publik untuk monitoring status AI di Vercel."""
+    from flask import jsonify
+    from database.models import Berita
+    from database.extensions import db
+    try:
+        total = Berita.query.filter_by(status="aktif").count()
+        negatif = Berita.query.filter_by(status="aktif", sentimen="Negatif").count()
+        positif = Berita.query.filter_by(status="aktif", sentimen="Positif").count()
+        netral = Berita.query.filter_by(status="aktif", sentimen="Netral").count()
+        sudah_dicek = Berita.query.filter_by(status="aktif", ai_checked=True).count()
+        belum_dicek = Berita.query.filter_by(status="aktif", ai_checked=False).count()
+        terakhir_dicek = (
+            Berita.query
+            .filter(Berita.ai_last_checked.isnot(None))
+            .order_by(Berita.ai_last_checked.desc())
+            .first()
+        )
+        return jsonify({
+            "status": "ok",
+            "database": {
+                "total_berita": total,
+                "positif": positif,
+                "netral": netral,
+                "negatif": negatif,
+            },
+            "ai_review": {
+                "sudah_dicek": sudah_dicek,
+                "belum_dicek": belum_dicek,
+                "terakhir_dicek": terakhir_dicek.ai_last_checked.isoformat() if terakhir_dicek and terakhir_dicek.ai_last_checked else None,
+                "judul_terakhir": terakhir_dicek.judul[:60] if terakhir_dicek else None,
+            }
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/run-ai-review", methods=["GET", "POST"])
