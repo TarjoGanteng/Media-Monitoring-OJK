@@ -316,6 +316,23 @@ class AIReviewService:
                 time.sleep(DELAY_PER_REQ)
 
                 if ai_result is None:
+                    # Heuristic Fallback jika API AI terkena rate limit (429):
+                    # Koreksi sentimen Negatif jika berita berisi tindakan OJK (bukan kritikan terhadap OJK)
+                    if berita.sentimen == "Negatif":
+                        judul_txt = (berita.judul or "").lower()
+                        ringkasan_txt = (berita.ringkasan or "").lower()
+                        gabung = f"{judul_txt} {ringkasan_txt}"
+                        kata_tindakan = ["ungkap", "imbau", "edukasi", "dorong", "ingatkan", "sosialisasi", "tindak", "gandeng", "gelar", "beberkan", "buka suara"]
+                        kata_kritikan = ["kritik", "protes", "didemo", "disorot", "gagal", "lalai", "bobrok", "kecam", "tuding"]
+                        if any(w in gabung for w in kata_tindakan) and not any(w in gabung for w in kata_kritikan):
+                            berita.sentimen = "Netral"
+                            berita.ai_checked = True
+                            berita.ai_last_checked = datetime.utcnow()
+                            db.session.commit()
+                            diupdate += 1
+                            logger.info(f"[AIReview] Local Fallback: Koreksi sentimen Negatif -> Netral untuk ID={berita.id}")
+                            continue
+
                     gagal += 1
                     logger.warning(f"[AIReview] AI gagal ID={berita.id} | {judul[:50]}")
                     try:
