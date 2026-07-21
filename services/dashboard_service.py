@@ -3,11 +3,13 @@ services/dashboard_service.py - Service untuk data dashboard dan statistik
 """
 
 import logging
+import warnings
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, case
 from database.extensions import db
 from database.models import Berita
 
+warnings.filterwarnings("ignore", category=FutureWarning)
 logger = logging.getLogger(__name__)
 
 
