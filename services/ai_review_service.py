@@ -124,7 +124,7 @@ class AIReviewService:
         from database.extensions import db
         from database.models import Berita
         from services.ai_service import gemini
-        from datetime import datetime
+        from datetime import datetime, timedelta
 
         # PRIORITAS UTAMA (PALING TINGGI): Re-analisis berita yang saat ini ber-sentimen 'Negatif'!
         # Cek apakah sentimennya benar Negatif atau sebenarnya Netral/Positif/Bukan OJK Jabar
