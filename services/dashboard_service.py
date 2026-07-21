@@ -652,24 +652,69 @@ Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
 
         try:
             from services.ai_service import gemini
+            from config import Config
 
             if not gemini.is_available():
                 raise ValueError("AI tidak tersedia")
 
-            # Gunakan multi-provider AI atau gemini-2.0-flash-lite
-            import google.generativeai as genai
-            from config import Config
+            res_text = None
+            # Fallback 1: Cohere
+            if hasattr(gemini, "_cohere") and gemini._cohere.is_available():
+                try:
+                    import requests
+                    headers = {
+                        "Authorization": f"Bearer {gemini._cohere._api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": "command-r-plus-08-2024",
+                        "message": prompt
+                    }
+                    resp = requests.post("https://api.cohere.ai/v1/chat", headers=headers, json=payload, timeout=15)
+                    if resp.status_code == 200:
+                        res_text = resp.json().get("text", "").strip()
+                except Exception:
+                    pass
 
-            if Config.GEMINI_API_KEY:
-                genai.configure(api_key=Config.GEMINI_API_KEY)
-                model_narasi = genai.GenerativeModel(
-                    model_name="gemini-2.0-flash-lite",
-                    generation_config={"temperature": 0.4},
-                )
-                response = model_narasi.generate_content(prompt)
-                ringkasan_ai = response.text.strip()
+            # Fallback 2: Groq
+            if not res_text and hasattr(gemini, "_groq") and gemini._groq.is_available():
+                try:
+                    import requests
+                    headers = {
+                        "Authorization": f"Bearer {gemini._groq._api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": "llama-3.3-70b-versatile",
+                        "messages": [{"role": "user", "content": prompt}]
+                    }
+                    resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=15)
+                    if resp.status_code == 200:
+                        res_text = resp.json()["choices"][0]["message"]["content"].strip()
+                except Exception:
+                    pass
+
+            # Fallback 3: Gemini 2.0 Flash Lite (New SDK)
+            if not res_text and Config.GEMINI_API_KEY:
+                try:
+                    from google import genai
+                    client = genai.Client(api_key=Config.GEMINI_API_KEY)
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash-lite",
+                        contents=prompt
+                    )
+                    res_text = response.text.strip()
+                except Exception:
+                    import google.generativeai as genai_old
+                    genai_old.configure(api_key=Config.GEMINI_API_KEY)
+                    m = genai_old.GenerativeModel("models/gemini-2.0-flash-lite")
+                    response = m.generate_content(prompt)
+                    res_text = response.text.strip()
+
+            if res_text:
+                ringkasan_ai = res_text
             else:
-                raise ValueError("GEMINI_API_KEY tidak dikonfigurasi")
+                raise ValueError("Gagal mendapatkan respons dari provider AI")
 
         except Exception as e:
             logger.warning(f"[AI Dashboard] Gagal generate ringkasan: {e}")
