@@ -4,5 +4,11 @@
       "source": "/(.*)",
       "destination": "/app.py"
     }
+  ],
+  "crons": [
+    {
+      "path": "/run-ai-review",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }
