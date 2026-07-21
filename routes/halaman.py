@@ -19,6 +19,21 @@ from routes.auth import role_required
 bp = Blueprint("halaman", __name__)
 
 
+@bp.route("/run-ai-review")
+def run_ai_review():
+    """Endpoint manual / Vercel Cron Job untuk memproses AI Review dengan prioritas sentimen Negatif."""
+    from flask import jsonify, current_app
+    try:
+        from services.ai_review_service import AIReviewService
+        AIReviewService._proses_batch(current_app)
+        return jsonify({
+            "status": "success",
+            "message": "Siklus AI Review (Prioritas Sentimen Negatif) berhasil diproses di Vercel!"
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @bp.route("/fix-db")
 @login_required
 @role_required("super_admin")
