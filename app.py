@@ -408,18 +408,16 @@ _last_auto_ai_check = datetime.min
 
 @app.before_request
 def auto_ai_review_trigger():
-    """Jalankan AI review secara otomatis 24/7 tanpa perlu menekan tombol manual."""
+    """Jalankan AI review secara otomatis 24/7 di Vercel secara synchronous tanpa background thread."""
     global _last_auto_ai_check
     now = datetime.utcnow()
-    if (now - _last_auto_ai_check).total_seconds() > 45:
+    if (now - _last_auto_ai_check).total_seconds() > 30:
         _last_auto_ai_check = now
         try:
-            import threading
             from services.ai_review_service import AIReviewService
-            t = threading.Thread(target=AIReviewService._proses_batch, args=(app,), daemon=True)
-            t.start()
-        except Exception:
-            pass
+            AIReviewService._proses_batch(app)
+        except Exception as err:
+            logger.warning(f"Auto AI Review Error: {err}")
 
 
 @app.route("/run-ai-review", methods=["GET", "POST"])
