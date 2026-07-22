@@ -436,8 +436,8 @@ def auto_ai_review_trigger():
 
 @app.route("/api/status-ai")
 def status_ai():
-    """Endpoint publik untuk monitoring status AI di Vercel."""
-    from flask import jsonify
+    """Endpoint publik & Halaman Monitoring UI untuk status AI di Vercel."""
+    from flask import request, jsonify, render_template
     from database.models import Berita
     from database.extensions import db
     try:
@@ -447,29 +447,52 @@ def status_ai():
         netral = Berita.query.filter_by(status="aktif", sentimen="Netral").count()
         sudah_dicek = Berita.query.filter_by(status="aktif", ai_checked=True).count()
         belum_dicek = Berita.query.filter_by(status="aktif", ai_checked=False).count()
+
+        pct_checked = round((sudah_dicek / total * 100), 1) if total > 0 else 0
+        pct_positif = round((positif / total * 100), 1) if total > 0 else 0
+        pct_netral = round((netral / total * 100), 1) if total > 0 else 0
+        pct_negatif = round((negatif / total * 100), 1) if total > 0 else 0
+
         terakhir_dicek = (
             Berita.query
             .filter(Berita.ai_last_checked.isnot(None))
             .order_by(Berita.ai_last_checked.desc())
             .first()
         )
-        return jsonify({
+
+        data = {
             "status": "ok",
             "database": {
                 "total_berita": total,
                 "positif": positif,
                 "netral": netral,
                 "negatif": negatif,
+                "pct_positif": pct_positif,
+                "pct_netral": pct_netral,
+                "pct_negatif": pct_negatif,
             },
             "ai_review": {
                 "sudah_dicek": sudah_dicek,
                 "belum_dicek": belum_dicek,
+                "pct_checked": pct_checked,
                 "terakhir_dicek": terakhir_dicek.ai_last_checked.isoformat() if terakhir_dicek and terakhir_dicek.ai_last_checked else None,
-                "judul_terakhir": terakhir_dicek.judul[:60] if terakhir_dicek else None,
+                "judul_terakhir": terakhir_dicek.judul if terakhir_dicek else None,
+                "sentimen_terakhir": terakhir_dicek.sentimen if terakhir_dicek else None,
+                "media_terakhir": terakhir_dicek.media if terakhir_dicek else None,
+                "wilayah_terakhir": terakhir_dicek.wilayah if terakhir_dicek else None,
             }
-        })
+        }
+
+        # Jika request meminta JSON khusus (e.g. format=json atau Fetch API)
+        if request.args.get("format") == "json" or request.headers.get("Accept") == "application/json":
+            return jsonify(data)
+
+        # Standar browser request: tampilkan Halaman UI HTML Status AI
+        return render_template("status_ai.html", data=data, active_page="status_ai")
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        if request.args.get("format") == "json" or request.headers.get("Accept") == "application/json":
+            return jsonify({"status": "error", "message": str(e)}), 500
+        return f"Gagal memuat status AI: {e}", 500
 
 
 @app.route("/run-ai-review", methods=["GET", "POST"])
