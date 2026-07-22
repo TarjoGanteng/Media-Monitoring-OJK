@@ -128,13 +128,203 @@ def _build_periode_label(jenis: str, tgl_dari: date, tgl_sampai: date, triwulan_
         return f"Custom ({tgl_dari.strftime('%d %b %Y')} – {tgl_sampai.strftime('%d %b %Y')})"
 
 
+_TEMP_META_CACHE = {}
+
+
+def _save_temp_meta(temp_key: str, meta: dict):
+    """Simpan metadata temp ke memori dan disk."""
+    _TEMP_META_CACHE[temp_key] = meta
+    temp_dir = _get_temp_dir(temp_key)
+    try:
+        meta_path = os.path.join(temp_dir, "meta.json")
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
 def _load_temp_meta(temp_key: str) -> dict:
-    """Load metadata JSON dari folder temp."""
+    """Load metadata JSON dari memori cache atau folder temp."""
+    if temp_key in _TEMP_META_CACHE:
+        return _TEMP_META_CACHE[temp_key]
     meta_path = os.path.join(_get_temp_dir(temp_key), "meta.json")
     if not os.path.exists(meta_path):
         return None
-    with open(meta_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            _TEMP_META_CACHE[temp_key] = data
+            return data
+    except Exception:
+        return None
+
+
+def _ensure_pdf_file(laporan_record=None, temp_key: str = None) -> str:
+    """
+    Memastikan file PDF tersedia di disk. Jika file hilang (misal di Vercel Serverless),
+    generate ulang PDF secara instan on-the-fly.
+    """
+    if laporan_record and laporan_record.path_pdf and os.path.exists(laporan_record.path_pdf):
+        return laporan_record.path_pdf
+
+    if temp_key:
+        temp_dir = _get_temp_dir(temp_key)
+        pdfs = glob.glob(os.path.join(temp_dir, "*.pdf"))
+        if pdfs and os.path.exists(pdfs[0]):
+            return pdfs[0]
+
+    # Fallback: Regenerate PDF On-The-Fly
+    meta = _load_temp_meta(temp_key) if temp_key else None
+
+    if laporan_record:
+        tgl_dari = laporan_record.tanggal_dari
+        tgl_sampai = laporan_record.tanggal_sampai
+        wilayah = laporan_record.wilayah
+        topik = laporan_record.topik
+        jenis_media = laporan_record.jenis_media
+        jenis_periode = laporan_record.jenis_periode
+        periode_label = laporan_record.periode_label
+        nomor_laporan = laporan_record.nomor_laporan
+        judul = laporan_record.judul
+        pembuat_nama = laporan_record.pembuat.nama_lengkap if (laporan_record.pembuat and hasattr(laporan_record.pembuat, 'nama_lengkap')) else "Admin"
+    elif meta:
+        params = meta["params"]
+        tgl_dari = _parse_tanggal(params.get("tanggal_dari"))
+        tgl_sampai = _parse_tanggal(params.get("tanggal_sampai"))
+        wilayah = params.get("wilayah", "Jawa Barat")
+        topik = params.get("topik")
+        jenis_media = params.get("jenis_media", "semua")
+        jenis_periode = params.get("jenis_periode", "custom")
+        periode_label = params.get("periode_label", "Laporan")
+        nomor_laporan = params.get("nomor_laporan", "Laporan")
+        judul = params.get("judul", "Laporan Pemberitaan OJK")
+        pembuat_nama = params.get("dibuat_oleh_nama", "Admin")
+    else:
+        return None
+
+    if not tgl_dari or not tgl_sampai:
+        tgl_sampai = date.today()
+        tgl_dari = tgl_sampai.replace(day=1)
+
+    data = LaporanService.get_data_laporan(
+        tanggal_dari=tgl_dari,
+        tanggal_sampai=tgl_sampai,
+        wilayah=wilayah if wilayah and wilayah.lower() not in ["semua", "jawa barat"] else None,
+        topik=topik,
+        jenis_media=jenis_media
+    )
+    gen_params = {
+        "nomor_laporan": nomor_laporan,
+        "judul": judul,
+        "periode_label": periode_label,
+        "jenis_periode": jenis_periode,
+        "tanggal_dari": tgl_dari,
+        "tanggal_sampai": tgl_sampai,
+        "tanggal_dari_str": tgl_dari.strftime("%d %B %Y") if tgl_dari else "",
+        "tanggal_sampai_str": tgl_sampai.strftime("%d %B %Y") if tgl_sampai else "",
+        "wilayah": wilayah or "Jawa Barat",
+        "topik": topik,
+        "jenis_media": jenis_media or "semua",
+        "dibuat_oleh_nama": pembuat_nama,
+        "tanggal_cetak": datetime.now().strftime("%d %B %Y, %H:%M WIB"),
+    }
+
+    out_dir = _get_temp_dir(temp_key) if temp_key else _get_laporan_dir()
+    os.makedirs(out_dir, exist_ok=True)
+    pdf_path = LaporanService.generate_pdf(data, gen_params, out_dir)
+
+    if laporan_record and not laporan_record.path_pdf:
+        laporan_record.path_pdf = pdf_path
+        try:
+            db.session.commit()
+        except Exception:
+            pass
+
+    return pdf_path
+
+
+def _ensure_excel_file(laporan_record=None, temp_key: str = None) -> str:
+    """
+    Memastikan file Excel tersedia di disk. Jika file hilang (misal di Vercel Serverless),
+    generate ulang Excel secara instan on-the-fly.
+    """
+    if laporan_record and laporan_record.path_excel and os.path.exists(laporan_record.path_excel):
+        return laporan_record.path_excel
+
+    if temp_key:
+        temp_dir = _get_temp_dir(temp_key)
+        xlsxs = glob.glob(os.path.join(temp_dir, "*.xlsx"))
+        if xlsxs and os.path.exists(xlsxs[0]):
+            return xlsxs[0]
+
+    # Fallback: Regenerate Excel On-The-Fly
+    meta = _load_temp_meta(temp_key) if temp_key else None
+
+    if laporan_record:
+        tgl_dari = laporan_record.tanggal_dari
+        tgl_sampai = laporan_record.tanggal_sampai
+        wilayah = laporan_record.wilayah
+        topik = laporan_record.topik
+        jenis_media = laporan_record.jenis_media
+        jenis_periode = laporan_record.jenis_periode
+        periode_label = laporan_record.periode_label
+        nomor_laporan = laporan_record.nomor_laporan
+        judul = laporan_record.judul
+        pembuat_nama = laporan_record.pembuat.nama_lengkap if (laporan_record.pembuat and hasattr(laporan_record.pembuat, 'nama_lengkap')) else "Admin"
+    elif meta:
+        params = meta["params"]
+        tgl_dari = _parse_tanggal(params.get("tanggal_dari"))
+        tgl_sampai = _parse_tanggal(params.get("tanggal_sampai"))
+        wilayah = params.get("wilayah", "Jawa Barat")
+        topik = params.get("topik")
+        jenis_media = params.get("jenis_media", "semua")
+        jenis_periode = params.get("jenis_periode", "custom")
+        periode_label = params.get("periode_label", "Laporan")
+        nomor_laporan = params.get("nomor_laporan", "Laporan")
+        judul = params.get("judul", "Laporan Pemberitaan OJK")
+        pembuat_nama = params.get("dibuat_oleh_nama", "Admin")
+    else:
+        return None
+
+    if not tgl_dari or not tgl_sampai:
+        tgl_sampai = date.today()
+        tgl_dari = tgl_sampai.replace(day=1)
+
+    data = LaporanService.get_data_laporan(
+        tanggal_dari=tgl_dari,
+        tanggal_sampai=tgl_sampai,
+        wilayah=wilayah if wilayah and wilayah.lower() not in ["semua", "jawa barat"] else None,
+        topik=topik,
+        jenis_media=jenis_media
+    )
+    gen_params = {
+        "nomor_laporan": nomor_laporan,
+        "judul": judul,
+        "periode_label": periode_label,
+        "jenis_periode": jenis_periode,
+        "tanggal_dari": tgl_dari,
+        "tanggal_sampai": tgl_sampai,
+        "tanggal_dari_str": tgl_dari.strftime("%d %B %Y") if tgl_dari else "",
+        "tanggal_sampai_str": tgl_sampai.strftime("%d %B %Y") if tgl_sampai else "",
+        "wilayah": wilayah or "Jawa Barat",
+        "topik": topik,
+        "jenis_media": jenis_media or "semua",
+        "dibuat_oleh_nama": pembuat_nama,
+        "tanggal_cetak": datetime.now().strftime("%d %B %Y, %H:%M WIB"),
+    }
+
+    out_dir = _get_temp_dir(temp_key) if temp_key else _get_laporan_dir()
+    os.makedirs(out_dir, exist_ok=True)
+    excel_path = LaporanService.generate_excel(data, gen_params, out_dir)
+
+    if laporan_record and not laporan_record.path_excel:
+        laporan_record.path_excel = excel_path
+        try:
+            db.session.commit()
+        except Exception:
+            pass
+
+    return excel_path
 
 
 def _save_to_riwayat(temp_key: str) -> Laporan:
@@ -163,8 +353,11 @@ def _save_to_riwayat(temp_key: str) -> Laporan:
             return None
         fn = os.path.basename(src_path)
         dest = os.path.join(perm_dir, fn)
-        shutil.copy2(src_path, dest)
-        return dest
+        try:
+            shutil.copy2(src_path, dest)
+            return dest
+        except Exception:
+            return src_path
 
     path_pdf   = move_file(meta.get("path_pdf"))
     path_excel = move_file(meta.get("path_excel"))
@@ -334,8 +527,7 @@ def generate():
             "path_excel":     path_excel,
             "dibuat_oleh_id": current_user.id,
         }
-        with open(os.path.join(temp_dir, "meta.json"), "w", encoding="utf-8") as mf:
-            json.dump(meta, mf, ensure_ascii=False, indent=2)
+        _save_temp_meta(temp_key, meta)
 
         logger.info(f"[laporan/generate] Berhasil: {nomor_laporan} (temp_key={temp_key})")
 
@@ -366,13 +558,12 @@ def preview_temp(temp_key: str):
     if not _validate_temp_key(temp_key):
         abort(400)
 
-    temp_dir = _get_temp_dir(temp_key)
-    pdfs = glob.glob(os.path.join(temp_dir, "*.pdf"))
-    if not pdfs:
+    pdf_path = _ensure_pdf_file(temp_key=temp_key)
+    if not pdf_path or not os.path.exists(pdf_path):
         abort(404)
 
     response = send_file(
-        pdfs[0],
+        pdf_path,
         mimetype="application/pdf",
         as_attachment=False,
     )
@@ -403,20 +594,14 @@ def download_temp(temp_key: str, fmt: str):
 
     # Serve file
     if fmt == "pdf":
-        # Coba ambil dari riwayat (permanent), fallback ke temp
-        if laporan_record and laporan_record.path_pdf and os.path.exists(laporan_record.path_pdf):
-            path = laporan_record.path_pdf
-        else:
-            temp_dir = _get_temp_dir(temp_key)
-            pdfs = glob.glob(os.path.join(temp_dir, "*.pdf"))
-            if not pdfs:
-                abort(404)
-            path = pdfs[0]
+        pdf_path = _ensure_pdf_file(laporan_record=laporan_record, temp_key=temp_key)
+        if not pdf_path or not os.path.exists(pdf_path):
+            abort(404)
 
         nomor = laporan_record.nomor_laporan if laporan_record else "Laporan"
         safe_name = nomor.replace("/", "-") + ".pdf"
         response = send_file(
-            path,
+            pdf_path,
             mimetype="application/pdf",
             as_attachment=True,
             download_name=safe_name,
@@ -426,19 +611,14 @@ def download_temp(temp_key: str, fmt: str):
         return response
 
     else:  # excel
-        if laporan_record and laporan_record.path_excel and os.path.exists(laporan_record.path_excel):
-            path = laporan_record.path_excel
-        else:
-            temp_dir = _get_temp_dir(temp_key)
-            xlsxs = glob.glob(os.path.join(temp_dir, "*.xlsx"))
-            if not xlsxs:
-                abort(404)
-            path = xlsxs[0]
+        excel_path = _ensure_excel_file(laporan_record=laporan_record, temp_key=temp_key)
+        if not excel_path or not os.path.exists(excel_path):
+            abort(404)
 
         nomor = laporan_record.nomor_laporan if laporan_record else "Laporan"
         safe_name = nomor.replace("/", "-") + ".xlsx"
         response = send_file(
-            path,
+            excel_path,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
             download_name=safe_name,
@@ -596,11 +776,10 @@ def preview_excel_temp(temp_key: str):
     """Preview Excel dari folder temp sebagai HTML table."""
     if not _validate_temp_key(temp_key):
         abort(400)
-    temp_dir = _get_temp_dir(temp_key)
-    xlsxs = glob.glob(os.path.join(temp_dir, "*.xlsx"))
-    if not xlsxs:
+    excel_path = _ensure_excel_file(temp_key=temp_key)
+    if not excel_path or not os.path.exists(excel_path):
         abort(404)
-    html = _excel_to_html(xlsxs[0], "Preview")
+    html = _excel_to_html(excel_path, "Preview")
     from flask import Response
     return Response(html, mimetype="text/html")
 
@@ -611,9 +790,12 @@ def preview_excel_temp(temp_key: str):
 def preview_excel_riwayat(laporan_id: int):
     """Preview Excel dari riwayat sebagai HTML table."""
     lap = LaporanService.get_laporan_by_id(laporan_id)
-    if not lap or not lap.path_excel or not os.path.exists(lap.path_excel):
+    if not lap:
         abort(404)
-    html = _excel_to_html(lap.path_excel, lap.nomor_laporan)
+    excel_path = _ensure_excel_file(laporan_record=lap)
+    if not excel_path or not os.path.exists(excel_path):
+        abort(404)
+    html = _excel_to_html(excel_path, lap.nomor_laporan)
     from flask import Response
     return Response(html, mimetype="text/html")
 
@@ -626,9 +808,12 @@ def preview_excel_riwayat(laporan_id: int):
 def view_pdf(laporan_id: int):
     """Tampilkan PDF dari riwayat secara inline."""
     lap = LaporanService.get_laporan_by_id(laporan_id)
-    if not lap or not lap.path_pdf or not os.path.exists(lap.path_pdf):
+    if not lap:
         abort(404)
-    response = send_file(lap.path_pdf, mimetype="application/pdf",
+    pdf_path = _ensure_pdf_file(laporan_record=lap)
+    if not pdf_path or not os.path.exists(pdf_path):
+        abort(404)
+    response = send_file(pdf_path, mimetype="application/pdf",
                          as_attachment=False,
                          download_name=f"{lap.nomor_laporan}.pdf")
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -641,10 +826,13 @@ def view_pdf(laporan_id: int):
 def download_pdf(laporan_id: int):
     """Download PDF dari riwayat."""
     lap = LaporanService.get_laporan_by_id(laporan_id)
-    if not lap or not lap.path_pdf or not os.path.exists(lap.path_pdf):
+    if not lap:
+        abort(404)
+    pdf_path = _ensure_pdf_file(laporan_record=lap)
+    if not pdf_path or not os.path.exists(pdf_path):
         abort(404)
     safe_name = lap.nomor_laporan.replace("/", "-") + ".pdf"
-    response = send_file(lap.path_pdf, mimetype="application/pdf",
+    response = send_file(pdf_path, mimetype="application/pdf",
                          as_attachment=True,
                          download_name=safe_name)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -658,11 +846,14 @@ def download_pdf(laporan_id: int):
 def download_excel(laporan_id: int):
     """Download Excel dari riwayat."""
     lap = LaporanService.get_laporan_by_id(laporan_id)
-    if not lap or not lap.path_excel or not os.path.exists(lap.path_excel):
+    if not lap:
+        abort(404)
+    excel_path = _ensure_excel_file(laporan_record=lap)
+    if not excel_path or not os.path.exists(excel_path):
         abort(404)
     safe_name = lap.nomor_laporan.replace("/", "-") + ".xlsx"
     response = send_file(
-        lap.path_excel,
+        excel_path,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         as_attachment=True,
         download_name=safe_name,
@@ -691,8 +882,6 @@ def riwayat_json():
     riwayat = LaporanService.get_riwayat(limit=20)
     data = []
     for r in riwayat:
-        has_pdf   = bool(r.path_pdf   and os.path.exists(r.path_pdf))
-        has_excel = bool(r.path_excel and os.path.exists(r.path_excel))
         data.append({
             "id":                r.id,
             "nomor_laporan":     r.nomor_laporan,
@@ -701,10 +890,10 @@ def riwayat_json():
             "wilayah":           r.wilayah or "Jawa Barat",
             "total_berita":      r.total_berita,
             "created_at":        r.created_at.strftime("%d %b %Y %H:%M") if r.created_at else "-",
-            "view_url":          url_for("laporan.view_pdf",          laporan_id=r.id) if has_pdf   else None,
-            "download_pdf":      url_for("laporan.download_pdf",      laporan_id=r.id) if has_pdf   else None,
-            "download_excel":    url_for("laporan.download_excel",    laporan_id=r.id) if has_excel else None,
-            "excel_preview_url": url_for("laporan.preview_excel_riwayat", laporan_id=r.id) if has_excel else None,
+            "view_url":          url_for("laporan.view_pdf",          laporan_id=r.id),
+            "download_pdf":      url_for("laporan.download_pdf",      laporan_id=r.id),
+            "download_excel":    url_for("laporan.download_excel",    laporan_id=r.id),
+            "excel_preview_url": url_for("laporan.preview_excel_riwayat", laporan_id=r.id),
             "hapus_url":         url_for("laporan.hapus",             laporan_id=r.id),
         })
     return jsonify({"success": True, "riwayat": data})
