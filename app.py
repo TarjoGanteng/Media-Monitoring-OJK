@@ -11,6 +11,8 @@ import os
 import logging
 from dotenv import load_dotenv
 from flask import Flask, render_template
+from flask_login import login_required
+from routes.auth import role_required
 from config import get_config
 from database.extensions import db, login_manager
 from routes import register_blueprints
@@ -78,6 +80,13 @@ def create_app(env: str = None) -> Flask:
             initialize_database(app)
         except Exception as err:
             logger.warning(f"Inisialisasi database ditunda/gagal: {err}")
+
+    # Setup logger buffer untuk Terminal Console Web Vercel
+    try:
+        from services.terminal_logger import setup_terminal_logger
+        setup_terminal_logger()
+    except Exception as err:
+        logger.warning(f"Setup terminal logger failed: {err}")
 
     logger.info(f"Aplikasi '{config.APP_NAME}' berhasil dibuat (env={env})")
     return app
@@ -435,8 +444,10 @@ def auto_ai_review_trigger():
 
 
 @app.route("/api/status-ai")
+@login_required
+@role_required("super_admin")
 def status_ai():
-    """Endpoint publik & Halaman Monitoring UI untuk status AI di Vercel."""
+    """Terminal Live Console UI & Status AI (Khusus Super Admin)."""
     from flask import request, jsonify, render_template
     from database.models import Berita
     from database.extensions import db
@@ -462,6 +473,7 @@ def status_ai():
 
         data = {
             "status": "ok",
+            "server_time": datetime.now().strftime("%H:%M:%S"),
             "database": {
                 "total_berita": total,
                 "positif": positif,
@@ -483,16 +495,56 @@ def status_ai():
             }
         }
 
-        # Jika request meminta JSON khusus (e.g. format=json atau Fetch API)
+        # Format JSON jika diminta API
         if request.args.get("format") == "json" or request.headers.get("Accept") == "application/json":
             return jsonify(data)
 
-        # Standar browser request: tampilkan Halaman UI HTML Status AI
+        # Standar browser request: tampilkan Terminal Console UI (Super Admin)
         return render_template("status_ai.html", data=data, active_page="status_ai")
     except Exception as e:
         if request.args.get("format") == "json" or request.headers.get("Accept") == "application/json":
             return jsonify({"status": "error", "message": str(e)}), 500
-        return f"Gagal memuat status AI: {e}", 500
+        return f"Gagal memuat Terminal Console: {e}", 500
+
+
+@app.route("/api/status-ai/logs")
+@login_required
+@role_required("super_admin")
+def status_ai_logs():
+    """Streaming log real-time ke Terminal Console Web (Khusus Super Admin)."""
+    from flask import request, jsonify
+    from services.terminal_logger import get_terminal_logs
+    from database.models import Berita
+    try:
+        since_id = int(request.args.get("since_id", 0))
+        logs = get_terminal_logs(since_id)
+
+        total = Berita.query.filter_by(status="aktif").count()
+        negatif = Berita.query.filter_by(status="aktif", sentimen="Negatif").count()
+        positif = Berita.query.filter_by(status="aktif", sentimen="Positif").count()
+        netral = Berita.query.filter_by(status="aktif", sentimen="Netral").count()
+        sudah_dicek = Berita.query.filter_by(status="aktif", ai_checked=True).count()
+        belum_dicek = Berita.query.filter_by(status="aktif", ai_checked=False).count()
+
+        pct_checked = round((sudah_dicek / total * 100), 1) if total > 0 else 0
+
+        return jsonify({
+            "status": "ok",
+            "logs": logs,
+            "database": {
+                "total_berita": total,
+                "positif": positif,
+                "netral": netral,
+                "negatif": negatif,
+            },
+            "ai_review": {
+                "sudah_dicek": sudah_dicek,
+                "belum_dicek": belum_dicek,
+                "pct_checked": pct_checked,
+            }
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/run-ai-review", methods=["GET", "POST"])

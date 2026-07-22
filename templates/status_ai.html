@@ -1,124 +1,123 @@
 {% extends "base.html" %}
-{% block title %}Status AI Engine & Monitoring{% endblock %}
-{% block breadcrumb %}Status Engine AI (24/7){% endblock %}
+{% block title %}Terminal Console Monitoring AI (Super Admin){% endblock %}
+{% block breadcrumb %}Terminal Live Console (Super Admin Only){% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Styling khusus Status AI Dashboard */
-    .status-badge-pulse {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.35rem 0.85rem;
-        border-radius: 50rem;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        background: rgba(16, 185, 129, 0.12);
-        color: #10b981;
-        border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .pulse-dot {
-        width: 8px;
-        height: 8px;
-        background-color: #10b981;
-        border-radius: 50%;
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-        animation: pulse-animation 1.6s infinite;
-    }
-
-    @keyframes pulse-animation {
-        0% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-        }
-        70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-        }
-        100% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-        }
-    }
-
-    .card-status {
-        border: 1px solid var(--border-color, #e5e7eb);
+    /* Styling Terminal Console Super Admin */
+    .terminal-container {
+        background-color: #0b0f19;
         border-radius: 14px;
-        background: #ffffff;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        border: 1px solid #1e293b;
+        overflow: hidden;
+        font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
     }
 
-    .card-status:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
-    }
-
-    .provider-pill {
+    .terminal-header {
+        background-color: #1e293b;
+        padding: 0.75rem 1.25rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.75rem 1rem;
-        border-radius: 10px;
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
-        margin-bottom: 0.6rem;
+        border-bottom: 1px solid #334155;
     }
 
-    .provider-pill .name {
+    .terminal-dots {
+        display: flex;
+        gap: 6px;
+    }
+
+    .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .dot-red { background-color: #ef4444; }
+    .dot-yellow { background-color: #f59e0b; }
+    .dot-green { background-color: #10b981; }
+
+    .terminal-title {
+        color: #94a3b8;
+        font-size: 0.82rem;
         font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .terminal-body {
+        padding: 1.25rem;
+        height: 520px;
+        overflow-y: auto;
+        color: #e2e8f0;
         font-size: 0.88rem;
-        color: #1e293b;
+        line-height: 1.6;
+        scroll-behavior: smooth;
+    }
+
+    /* Scrollbar styling terminal */
+    .terminal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    .terminal-body::-webkit-scrollbar-track {
+        background: #0b0f19;
+    }
+    .terminal-body::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+    }
+
+    .terminal-line {
+        margin-bottom: 0.35rem;
+        word-break: break-all;
+        white-space: pre-wrap;
+    }
+
+    .log-time { color: #64748b; margin-right: 8px; font-weight: 500; }
+    .log-info { color: #10b981; font-weight: 700; }
+    .log-warning { color: #f59e0b; font-weight: 700; }
+    .log-error { color: #ef4444; font-weight: 700; }
+    .log-module { color: #38bdf8; font-weight: 600; }
+    .log-msg { color: #f1f5f9; }
+
+    .terminal-input-bar {
+        background-color: #0f172a;
+        padding: 0.75rem 1.25rem;
+        border-top: 1px solid #1e293b;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
 
-    .provider-pill .status-text {
-        font-size: 0.72rem;
-        font-weight: 700;
-        padding: 0.25rem 0.6rem;
-        border-radius: 6px;
+    .terminal-prompt-symbol {
+        color: #10b981;
+        font-weight: 800;
+        font-size: 1rem;
     }
 
-    .status-active {
-        background: #dcfce7;
-        color: #166534;
+    .terminal-input {
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #38bdf8;
+        font-family: inherit;
+        font-size: 0.9rem;
+        width: 100%;
+        font-weight: 600;
     }
 
-    .status-standby {
-        background: #e0f2fe;
-        color: #075985;
+    .stat-pill-sm {
+        background: #1e293b;
+        border: 1px solid #334155;
+        padding: 0.5rem 0.85rem;
+        border-radius: 8px;
+        color: #f8fafc;
+        font-size: 0.8rem;
     }
 
-    .progress-custom {
-        height: 10px;
-        border-radius: 6px;
-        background-color: #f1f5f9;
-        overflow: hidden;
-    }
-
-    .ai-live-card {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        color: #ffffff;
-        border-radius: 16px;
-        padding: 1.5rem;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .ai-live-card::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 250px;
-        height: 250px;
-        background: radial-gradient(circle, rgba(200, 0, 45, 0.25) 0%, rgba(250, 204, 21, 0) 70%);
-        pointer-events: none;
+    .stat-pill-sm .val {
+        font-weight: 800;
+        color: #38bdf8;
     }
 </style>
 {% endblock %}
@@ -126,365 +125,256 @@
 {% block content %}
 <div class="container-fluid p-0">
 
-    <!-- HEADER / BANNER STATUS -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <!-- HEADER / BANNER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="status-badge-pulse">
-                    <span class="pulse-dot"></span> SYSTEM ONLINE (24/7)
+                <span class="badge bg-danger text-white px-2 py-1" style="font-size:0.72rem; letter-spacing:0.5px;">
+                    <i class="bi bi-shield-lock-fill me-1"></i> KHUSUS SUPER ADMIN
                 </span>
-                <span class="badge bg-light text-dark border" style="font-size:0.75rem;">Vercel Cloud Serverless</span>
+                <span class="badge bg-dark text-success border border-success" style="font-size:0.75rem;">
+                    <i class="bi bi-terminal-fill me-1"></i> Live Stream Active
+                </span>
             </div>
-            <h3 style="font-weight:800; color:var(--text-primary); margin:0; font-size:1.6rem;">Status Engine AI & Pemantauan Data</h3>
-            <p class="text-muted mb-0" style="font-size:0.88rem;">Halaman pemantauan kesehatan mesin AI, konsistensi sentimen, dan progres verifikasi berita secara real-time.</p>
+            <h3 style="font-weight:800; color:var(--text-primary); margin:0; font-size:1.5rem;">
+                Vercel AI Terminal Console Log
+            </h3>
+            <p class="text-muted mb-0" style="font-size:0.85rem;">
+                Pantau seluruh aktivitas proses latar belakang AI, koreksi sentimen, dan pembersihan berita secara real-time seperti di terminal lokal.
+            </p>
         </div>
+
         <div class="d-flex align-items-center gap-2">
-            <button id="btn-refresh" class="btn btn-light border shadow-sm px-3" onclick="refreshStatusData()">
-                <i class="bi bi-arrow-clockwise me-1" id="icon-refresh"></i> Refresh (<span id="countdown">15</span>s)
+            <button id="btn-toggle-scroll" class="btn btn-dark border-secondary text-light btn-sm px-3" onclick="toggleAutoScroll()">
+                <i class="bi bi-arrow-down-circle me-1" id="icon-scroll"></i> Auto-Scroll: <span id="text-scroll">ON</span>
             </button>
-            <button id="btn-trigger-ai" class="btn btn-danger shadow-sm px-3" onclick="triggerManualAI()">
-                <i class="bi bi-cpu me-1"></i> Jalankan AI Review
+            <button class="btn btn-outline-danger btn-sm px-3" onclick="triggerManualAI()">
+                <i class="bi bi-play-fill me-1"></i> Run AI Review
             </button>
-            <a href="/api/status-ai?format=json" target="_blank" class="btn btn-outline-secondary px-3">
-                <i class="bi bi-code-slash me-1"></i> Raw JSON
-            </a>
+            <button class="btn btn-outline-secondary btn-sm px-3" onclick="clearTerminal()">
+                <i class="bi bi-trash me-1"></i> Clear Log
+            </button>
         </div>
     </div>
 
-    <!-- METRIC CARDS GRID (4 KOLOM) -->
-    <div class="row g-3 mb-4">
-        <!-- 1. Total Berita -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card-status p-3 h-100">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">TOTAL BERITA</span>
-                    <div style="width:38px; height:38px; background:#eff6ff; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#3b82f6; font-size:1.2rem;">
-                        <i class="bi bi-newspaper"></i>
-                    </div>
-                </div>
-                <div style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="val-total">{{ data.database.total_berita }}</div>
-                <div class="mt-2" style="font-size:0.78rem; color:#64748b;">
-                    <i class="bi bi-database-check me-1 text-primary"></i> Database Neon PostgreSQL
-                </div>
-            </div>
+    <!-- METRICS MONITOR BAR -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <div class="stat-pill-sm">
+            <span>Total Berita:</span> <span class="val" id="top-total">{{ data.database.total_berita }}</span>
         </div>
-
-        <!-- 2. AI Coverage / Verification -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card-status p-3 h-100">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">SUDAH DICEK AI</span>
-                    <div style="width:38px; height:38px; background:#ecfdf5; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#10b981; font-size:1.2rem;">
-                        <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <span style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="val-sudah">{{ data.ai_review.sudah_dicek }}</span>
-                    <span class="badge bg-success-subtle text-success fw-bold" style="font-size:0.8rem;" id="val-pct-checked">{{ data.ai_review.pct_checked }}%</span>
-                </div>
-                <div class="progress progress-custom mt-2 mb-1">
-                    <div class="progress-bar bg-success" role="progressbar" id="bar-checked" style="width: {{ data.ai_review.pct_checked }}%"></div>
-                </div>
-                <div class="d-flex justify-content-between" style="font-size:0.72rem; color:#64748b;">
-                    <span>Cakupan Verifikasi</span>
-                    <span>100% Target</span>
-                </div>
-            </div>
+        <div class="stat-pill-sm">
+            <span>Sudah Dicek AI:</span> <span class="val text-success" id="top-sudah">{{ data.ai_review.sudah_dicek }} ({{ data.ai_review.pct_checked }}%)</span>
         </div>
-
-        <!-- 3. Antrian Belum Dicek -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card-status p-3 h-100">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">ANTRIAN PENDING</span>
-                    <div style="width:38px; height:38px; background:#fff7ed; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#f97316; font-size:1.2rem;">
-                        <i class="bi bi-hourglass-split"></i>
-                    </div>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <span style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="val-belum">{{ data.ai_review.belum_dicek }}</span>
-                    <span class="badge bg-warning-subtle text-warning fw-bold" style="font-size:0.75rem;" id="badge-pending">
-                        {% if data.ai_review.belum_dicek == 0 %}Optimal{% else %}Diproses Auto{% endif %}
-                    </span>
-                </div>
-                <div class="mt-2" style="font-size:0.78rem; color:#64748b;">
-                    <i class="bi bi-lightning-charge me-1 text-warning"></i> Auto-Sync tiap 60s aktif
-                </div>
-            </div>
+        <div class="stat-pill-sm">
+            <span>Pending:</span> <span class="val text-warning" id="top-belum">{{ data.ai_review.belum_dicek }}</span>
         </div>
-
-        <!-- 4. Guardrail Sentimen Negatif -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card-status p-3 h-100">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">SENTIMEN NEGATIF</span>
-                    <div style="width:38px; height:38px; background:#fef2f2; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#ef4444; font-size:1.2rem;">
-                        <i class="bi bi-shield-exclamation"></i>
-                    </div>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <span style="font-size:2.2rem; font-weight:800; color:#0f172a; line-height:1;" id="val-negatif">{{ data.database.negatif }}</span>
-                    <span class="badge bg-danger-subtle text-danger fw-bold" style="font-size:0.75rem;">Guardrail Active</span>
-                </div>
-                <div class="mt-2" style="font-size:0.78rem; color:#64748b;">
-                    <i class="bi bi-shield-check me-1 text-success"></i> Filter Institusi OJK Jabar
-                </div>
-            </div>
+        <div class="stat-pill-sm">
+            <span>Sentimen Negatif:</span> <span class="val text-danger" id="top-negatif">{{ data.database.negatif }}</span>
+        </div>
+        <div class="stat-pill-sm ms-auto bg-dark border-secondary">
+            <span>User Role:</span> <span class="badge bg-danger">{{ current_user.role }}</span>
         </div>
     </div>
 
-    <!-- MAIN SECTION: AI ENGINE HEALTH & LATEST ARTICLE REVIEWED -->
-    <div class="row g-3 mb-4">
-        <!-- Left Column: Status Engine & Fallback -->
-        <div class="col-lg-6">
-            <div class="card-status p-4 h-100">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="m-0" style="font-weight:700; color:#0f172a; font-size:1.05rem;">
-                        <i class="bi bi-cpu-fill text-danger me-2"></i>Multi-Provider AI Engine Architecture
-                    </h5>
-                    <span class="badge bg-secondary-subtle text-secondary" style="font-size:0.7rem;">Auto-Failover</span>
+    <!-- TERMINAL CONSOLE WINDOW -->
+    <div class="terminal-container mb-4">
+        <!-- Terminal Header Bar -->
+        <div class="terminal-header">
+            <div class="d-flex align-items-center gap-3">
+                <div class="terminal-dots">
+                    <div class="dot dot-red"></div>
+                    <div class="dot dot-yellow"></div>
+                    <div class="dot dot-green"></div>
                 </div>
-                <p class="text-muted" style="font-size:0.82rem;">Sistem ini menggunakan arsitektur multi-provider cerdas untuk menjamin ketersediaan analisis 24 jam nonstop tanpa terkendala limit API.</p>
-
-                <!-- Provider 1: Cohere -->
-                <div class="provider-pill">
-                    <div class="name">
-                        <i class="bi bi-lightning-fill text-warning"></i> Cohere AI (Command-R+)
-                    </div>
-                    <span class="status-text status-active">PRIMARY (ACTIVE)</span>
-                </div>
-
-                <!-- Provider 2: Groq -->
-                <div class="provider-pill">
-                    <div class="name">
-                        <i class="bi bi-speedometer2 text-info"></i> Groq AI (Llama-3.3 70B)
-                    </div>
-                    <span class="status-text status-active">FAST FALLBACK</span>
-                </div>
-
-                <!-- Provider 3: Gemini -->
-                <div class="provider-pill">
-                    <div class="name">
-                        <i class="bi bi-google text-danger"></i> Google Gemini 2.0 Flash Lite
-                    </div>
-                    <span class="status-text status-active">BACKUP ENGINE</span>
-                </div>
-
-                <!-- Provider 4: Local Guardrail -->
-                <div class="provider-pill mb-0">
-                    <div class="name">
-                        <i class="bi bi-robot text-primary"></i> Local Heuristic Guardrail
-                    </div>
-                    <span class="status-text status-standby">STANDBY 24/7</span>
-                </div>
+                <span class="terminal-title">
+                    <i class="bi bi-terminal me-1 text-success"></i> vercel-production-cloud:~ python app.py --monitor-ai
+                </span>
+            </div>
+            <div>
+                <span class="badge bg-slate-800 text-slate-400 border border-slate-700" style="font-size:0.7rem;">
+                    Status: RUNNING 24/7
+                </span>
             </div>
         </div>
 
-        <!-- Right Column: Last Analyzed News Card -->
-        <div class="col-lg-6">
-            <div class="ai-live-card h-100 d-flex flex-column justify-content-between">
-                <div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="badge bg-danger text-white px-2 py-1" style="font-size:0.7rem; font-weight:700; letter-spacing:0.5px;">
-                            <i class="bi bi-clock-history me-1"></i> AKTIVITAS TERAKHIR AI
-                        </span>
-                        <span style="font-size:0.75rem; color:#94a3b8;" id="val-terakhir-waktu">
-                            {{ data.ai_review.terakhir_dicek or 'Belum ada aktivitas' }}
-                        </span>
-                    </div>
-
-                    <h5 style="font-weight:700; line-height:1.4; color:#ffffff; font-size:1.05rem;" id="val-terakhir-judul">
-                        {% if data.ai_review.judul_terakhir %}
-                            "{{ data.ai_review.judul_terakhir }}"
-                        {% else %}
-                            Semua berita aktif telah diperiksa oleh AI Engine.
-                        {% endif %}
-                    </h5>
-                </div>
-
-                <div class="mt-4 pt-3 border-top border-secondary">
-                    <div class="row text-center g-2">
-                        <div class="col-4 border-end border-secondary">
-                            <span style="font-size:0.7rem; color:#94a3b8; display:block;">SENTIMEN</span>
-                            <span class="fw-bold text-warning" style="font-size:0.88rem;" id="val-terakhir-sentimen">
-                                {{ data.ai_review.sentimen_terakhir or '-' }}
-                            </span>
-                        </div>
-                        <div class="col-4 border-end border-secondary">
-                            <span style="font-size:0.7rem; color:#94a3b8; display:block;">MEDIA</span>
-                            <span class="fw-bold text-light" style="font-size:0.88rem;" id="val-terakhir-media">
-                                {{ data.ai_review.media_terakhir or '-' }}
-                            </span>
-                        </div>
-                        <div class="col-4">
-                            <span style="font-size:0.7rem; color:#94a3b8; display:block;">WILAYAH</span>
-                            <span class="fw-bold text-info" style="font-size:0.88rem;" id="val-terakhir-wilayah">
-                                {{ data.ai_review.wilayah_terakhir or 'Jawa Barat' }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
+        <!-- Terminal Output Body -->
+        <div class="terminal-body" id="terminal-body">
+            <div class="terminal-line">
+                <span class="log-time">[{{ data.server_time }}]</span>
+                <span class="log-info">[SYSTEM]</span>
+                <span class="log-module">[Init]</span>
+                <span class="log-msg">Terhubung ke Terminal Live Stream Vercel. Selamat datang, Super Admin ({{ current_user.nama }}).</span>
             </div>
+            <div class="terminal-line">
+                <span class="log-time">[{{ data.server_time }}]</span>
+                <span class="log-info">[AIEngine]</span>
+                <span class="log-module">[Status]</span>
+                <span class="log-msg">Cohere/Groq/Gemini Multi-Provider Fallback Active. Fast Guardrail Ready.</span>
+            </div>
+            <div class="terminal-line text-muted">──────────────────────────────────────────────────────────────────────────────────────────</div>
         </div>
-    </div>
 
-    <!-- SENTIMENT BREAKDOWN METERS -->
-    <div class="card-status p-4 mb-4">
-        <h5 class="mb-3" style="font-weight:700; color:#0f172a; font-size:1.05rem;">
-            <i class="bi bi-pie-chart-fill text-primary me-2"></i>Distribusi Sentimen Ter-Verifikasi AI
-        </h5>
-        
-        <div class="row g-4 align-items-center">
-            <div class="col-md-4">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-semibold text-success" style="font-size:0.85rem;"><i class="bi bi-emoji-smile-fill me-1"></i> Positif</span>
-                    <span class="fw-bold" style="font-size:0.85rem;" id="val-positif-count">{{ data.database.positif }} Berita ({{ data.database.pct_positif }}%)</span>
-                </div>
-                <div class="progress progress-custom mb-1">
-                    <div class="progress-bar bg-success" role="progressbar" id="bar-positif" style="width: {{ data.database.pct_positif }}%"></div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-semibold text-primary" style="font-size:0.85rem;"><i class="bi bi-emoji-neutral-fill me-1"></i> Netral</span>
-                    <span class="fw-bold" style="font-size:0.85rem;" id="val-netral-count">{{ data.database.netral }} Berita ({{ data.database.pct_netral }}%)</span>
-                </div>
-                <div class="progress progress-custom mb-1">
-                    <div class="progress-bar bg-primary" role="progressbar" id="bar-netral" style="width: {{ data.database.pct_netral }}%"></div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-semibold text-danger" style="font-size:0.85rem;"><i class="bi bi-emoji-frown-fill me-1"></i> Negatif</span>
-                    <span class="fw-bold" style="font-size:0.85rem;" id="val-negatif-count">{{ data.database.negatif }} Berita ({{ data.database.pct_negatif }}%)</span>
-                </div>
-                <div class="progress progress-custom mb-1">
-                    <div class="progress-bar bg-danger" role="progressbar" id="bar-negatif" style="width: {{ data.database.pct_negatif }}%"></div>
-                </div>
-            </div>
+        <!-- Terminal Input Prompt Bar -->
+        <div class="terminal-input-bar">
+            <span class="terminal-prompt-symbol">admin@ojk-jabar-ai:~$</span>
+            <input type="text" id="terminal-cmd" class="terminal-input" placeholder="Ketik perintah (contoh: 'help', 'run', 'status', 'clear') dan tekan Enter..." onkeydown="handleTerminalCommand(event)">
         </div>
     </div>
 
 </div>
 
 <script>
-    let countdownVal = 15;
-    let timerId = null;
+    let lastLogId = 0;
+    let autoScroll = true;
+    let pollInterval = null;
 
-    function startTimer() {
-        if (timerId) clearInterval(timerId);
-        countdownVal = 15;
-        document.getElementById('countdown').textContent = countdownVal;
-        
-        timerId = setInterval(() => {
-            countdownVal--;
-            document.getElementById('countdown').textContent = countdownVal;
-            if (countdownVal <= 0) {
-                refreshStatusData();
-            }
-        }, 1000);
+    function toggleAutoScroll() {
+        autoScroll = !autoScroll;
+        document.getElementById('text-scroll').textContent = autoScroll ? 'ON' : 'OFF';
+        document.getElementById('btn-toggle-scroll').classList.toggle('btn-success', autoScroll);
+        document.getElementById('btn-toggle-scroll').classList.toggle('btn-dark', !autoScroll);
     }
 
-    async function refreshStatusData() {
-        const icon = document.getElementById('icon-refresh');
-        if (icon) icon.classList.add('spin-anim');
+    function clearTerminal() {
+        const body = document.getElementById('terminal-body');
+        body.innerHTML = `
+            <div class="terminal-line">
+                <span class="log-time">[${new Date().toLocaleTimeString('id-ID')}]</span>
+                <span class="log-info">[SYSTEM]</span>
+                <span class="log-msg">Terminal dibersihkan. Memantau keluaran log baru...</span>
+            </div>
+        `;
+    }
 
-        try {
-            const resp = await fetch('/api/status-ai?format=json', {
+    async function fetchLiveLogs() {
+        try:
+            const resp = await fetch(`/api/status-ai/logs?since_id=${lastLogId}`, {
                 headers: { 'Accept': 'application/json' }
             });
-            if (resp.ok) {
-                const json = await resp.json();
-                updateUI(json);
+            if (!resp.ok) return;
+
+            const json = await resp.json();
+            if (json.status === 'ok') {
+                if (json.logs && json.logs.length > 0) {
+                    appendLogsToTerminal(json.logs);
+                }
+                if (json.database && json.ai_review) {
+                    updateTopMetrics(json.database, json.ai_review);
+                }
             }
-        } catch (e) {
-            console.error("Gagal refresh status AI:", e);
-        } finally {
-            if (icon) icon.classList.remove('spin-anim');
-            startTimer();
+        } catch (err) {
+            console.error("Gagal mengambil live logs:", err);
         }
     }
 
-    function updateUI(res) {
-        if (!res || res.status !== 'ok') return;
+    function appendLogsToTerminal(logs) {
+        const body = document.getElementById('terminal-body');
+        
+        logs.forEach(item => {
+            if (item.id > lastLogId) {
+                lastLogId = item.id;
+            }
 
-        const db = res.database || {};
-        const ai = res.ai_review || {};
+            const div = document.createElement('div');
+            div.className = 'terminal-line';
 
-        document.getElementById('val-total').textContent = db.total_berita || 0;
-        document.getElementById('val-sudah').textContent = ai.sudah_dicek || 0;
-        document.getElementById('val-belum').textContent = ai.belum_dicek || 0;
-        document.getElementById('val-negatif').textContent = db.negatif || 0;
+            let levelClass = 'log-info';
+            if (item.level === 'WARNING') levelClass = 'log-warning';
+            if (item.level === 'ERROR') levelClass = 'log-error';
 
-        document.getElementById('val-pct-checked').textContent = (ai.pct_checked || 0) + '%';
-        document.getElementById('bar-checked').style.width = (ai.pct_checked || 0) + '%';
+            div.innerHTML = `
+                <span class="log-time">[${item.timestamp}]</span>
+                <span class="${levelClass}">[${item.level}]</span>
+                <span class="log-module">[${item.name || 'AI'}]</span>
+                <span class="log-msg">${escapeHtml(item.message)}</span>
+            `;
+            body.appendChild(div);
+        });
 
-        // Update sentimen
-        document.getElementById('val-positif-count').textContent = `${db.positif || 0} Berita (${db.pct_positif || 0}%)`;
-        document.getElementById('bar-positif').style.width = (db.pct_positif || 0) + '%';
-
-        document.getElementById('val-netral-count').textContent = `${db.netral || 0} Berita (${db.pct_netral || 0}%)`;
-        document.getElementById('bar-netral').style.width = (db.pct_netral || 0) + '%';
-
-        document.getElementById('val-negatif-count').textContent = `${db.negatif || 0} Berita (${db.pct_negatif || 0}%)`;
-        document.getElementById('bar-negatif').style.width = (db.pct_negatif || 0) + '%';
-
-        // Update aktivitas terakhir
-        if (ai.judul_terakhir) {
-            document.getElementById('val-terakhir-judul').textContent = `"${ai.judul_terakhir}"`;
+        if (autoScroll) {
+            body.scrollTop = body.scrollHeight;
         }
-        if (ai.terakhir_dicek) {
-            const dt = new Date(ai.terakhir_dicek);
-            document.getElementById('val-terakhir-waktu').textContent = dt.toLocaleString('id-ID');
-        }
-        if (ai.sentimen_terakhir) {
-            document.getElementById('val-terakhir-sentimen').textContent = ai.sentimen_terakhir;
-        }
-        if (ai.media_terakhir) {
-            document.getElementById('val-terakhir-media').textContent = ai.media_terakhir;
-        }
-        if (ai.wilayah_terakhir) {
-            document.getElementById('val-terakhir-wilayah').textContent = ai.wilayah_terakhir;
-        }
+    }
 
-        const badgePending = document.getElementById('badge-pending');
-        if (badgePending) {
-            badgePending.textContent = (ai.belum_dicek === 0) ? 'Optimal' : 'Diproses Auto';
-        }
+    function updateTopMetrics(db, ai) {
+        document.getElementById('top-total').textContent = db.total_berita || 0;
+        document.getElementById('top-sudah').textContent = `${ai.sudah_dicek || 0} (${ai.pct_checked || 0}%)`;
+        document.getElementById('top-belum').textContent = ai.belum_dicek || 0;
+        document.getElementById('top-negatif').textContent = db.negatif || 0;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     async function triggerManualAI() {
-        const btn = document.getElementById('btn-trigger-ai');
-        const origText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menjalankan...';
-
+        appendSystemLog("Pemicu AI Review manual dikirim ke Vercel Engine...");
         try {
-            const res = await fetch('/run-ai-review', { method: 'POST' });
-            if (res.ok) {
-                await refreshStatusData();
-                alert('Siklus AI Review berhasil dipicu! Data telah diperbarui.');
+            const resp = await fetch('/run-ai-review', { method: 'POST' });
+            if (resp.ok) {
+                appendSystemLog("SUCCESS: Siklus AI Review berhasil dipicu. Memproses berita...");
             } else {
-                alert('Pemicuan AI review selesai.');
-                await refreshStatusData();
+                appendSystemLog("WARNING: Respons pemicu AI dikirim.");
             }
+            fetchLiveLogs();
         } catch (e) {
-            console.error("Error trigger AI:", e);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = origText;
+            appendSystemLog("ERROR: Gagal memicu AI Review - " + e.message);
+        }
+    }
+
+    function appendSystemLog(msg) {
+        const body = document.getElementById('terminal-body');
+        const div = document.createElement('div');
+        div.className = 'terminal-line';
+        const time = new Date().toLocaleTimeString('id-ID');
+        div.innerHTML = `
+            <span class="log-time">[${time}]</span>
+            <span class="log-info">[CMD]</span>
+            <span class="log-module">[UserAction]</span>
+            <span class="log-msg">${msg}</span>
+        `;
+        body.appendChild(div);
+        if (autoScroll) body.scrollTop = body.scrollHeight;
+    }
+
+    function handleTerminalCommand(e) {
+        if (e.key === 'Enter') {
+            const input = document.getElementById('terminal-cmd');
+            const cmd = input.value.trim().toLowerCase();
+            if (!cmd) return;
+
+            appendSystemLog(`$ ${cmd}`);
+            input.value = '';
+
+            if (cmd === 'help') {
+                appendSystemLog("Daftar Perintah Terminal UI:");
+                appendSystemLog("  - 'run'    : Jalankan 1 siklus AI Review sekarang");
+                appendSystemLog("  - 'status' : Tampilkan statistik terkini");
+                appendSystemLog("  - 'clear'  : Bersihkan layar terminal");
+                appendSystemLog("  - 'help'   : Tampilkan bantuan perintah");
+            } else if (cmd === 'run') {
+                triggerManualAI();
+            } else if (cmd === 'clear') {
+                clearTerminal();
+            } else if (cmd === 'status') {
+                fetchLiveLogs();
+                appendSystemLog("Metrik statistik terbaru diperbarui.");
+            } else {
+                appendSystemLog(`Perintah '${cmd}' tidak dikenali. Ketik 'help' untuk daftar perintah.`);
+            }
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        startTimer();
+        fetchLiveLogs();
+        // Poll live logs every 1.5 seconds
+        pollInterval = setInterval(fetchLiveLogs, 1500);
     });
 </script>
-
-<style>
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .spin-anim { animation: spin 0.8s linear infinite; }
-</style>
 {% endblock %}
