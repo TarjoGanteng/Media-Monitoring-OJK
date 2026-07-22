@@ -140,7 +140,18 @@ const lineChart = new Chart(ctxLine, {
         },
         scales: {
             x: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b' } },
-            y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b', stepSize: 1, precision: 0, callback: function(val) { return Number.isInteger(val) ? val : null; } }, beginAtZero: true }
+            y: {
+                grid: { color: 'rgba(148,163,184,0.08)' },
+                min: 0,
+                suggestedMax: 5,
+                ticks: {
+                    color: '#64748b',
+                    stepSize: 1,
+                    precision: 0,
+                    callback: function(val) { return (val % 1 === 0) ? val : ''; }
+                },
+                beginAtZero: true
+            }
         }
     }
 });
@@ -176,7 +187,18 @@ new Chart(ctxBar, {
         },
         scales: {
             x: { grid: { display: false }, ticks: { color: '#64748b' } },
-            y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b', stepSize: 1, precision: 0, callback: function(val) { return Number.isInteger(val) ? val : null; } }, beginAtZero: true }
+            y: {
+                grid: { color: 'rgba(148,163,184,0.08)' },
+                min: 0,
+                suggestedMax: 5,
+                ticks: {
+                    color: '#64748b',
+                    stepSize: 1,
+                    precision: 0,
+                    callback: function(val) { return (val % 1 === 0) ? val : ''; }
+                },
+                beginAtZero: true
+            }
         }
     }
 });

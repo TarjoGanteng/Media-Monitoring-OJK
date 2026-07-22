@@ -265,7 +265,21 @@ new Chart(ctx, {
         plugins: { legend: { display: false }, tooltip: { backgroundColor: '#fff', titleColor: '#374151', bodyColor: '#6b7280', borderColor: '#e5e7eb', borderWidth: 1 } },
         scales: {
             x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
-            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 }, stepSize: 1, precision: 0, callback: function(val) { return Number.isInteger(val) ? val : null; } }, beginAtZero: true }
+            y: {
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                min: 0,
+                suggestedMax: Math.max(5, ...(trendData.total && trendData.total.length ? trendData.total : [0])),
+                ticks: {
+                    color: '#9ca3af',
+                    font: { size: 10 },
+                    stepSize: 1,
+                    precision: 0,
+                    callback: function(val) {
+                        return (val % 1 === 0) ? val : '';
+                    }
+                },
+                beginAtZero: true
+            }
         }
     }
 });
