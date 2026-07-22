@@ -443,7 +443,14 @@ def auto_ai_review_trigger():
             logger.warning(f"Auto AI Review Error: {err}")
 
 
-@app.route("/api/status-ai")
+@app.route("/api/status-ai", methods=["GET", "POST"])
+@app.route("/api/status-ai/", methods=["GET", "POST"])
+@app.route("/api/status_ai", methods=["GET", "POST"])
+@app.route("/api/status_ai/", methods=["GET", "POST"])
+@app.route("/api/status ai", methods=["GET", "POST"])
+@app.route("/api/status%20ai", methods=["GET", "POST"])
+@app.route("/status-ai", methods=["GET", "POST"])
+@app.route("/status-ai/", methods=["GET", "POST"])
 @login_required
 @role_required("super_admin")
 def status_ai():
@@ -507,7 +514,12 @@ def status_ai():
         return f"Gagal memuat Terminal Console: {e}", 500
 
 
-@app.route("/api/status-ai/logs")
+@app.route("/api/status-ai/logs", methods=["GET", "POST"])
+@app.route("/api/status-ai/logs/", methods=["GET", "POST"])
+@app.route("/api/status_ai/logs", methods=["GET", "POST"])
+@app.route("/api/status_ai/logs/", methods=["GET", "POST"])
+@app.route("/api/status ai/logs", methods=["GET", "POST"])
+@app.route("/api/status%20ai/logs", methods=["GET", "POST"])
 @login_required
 @role_required("super_admin")
 def status_ai_logs():
