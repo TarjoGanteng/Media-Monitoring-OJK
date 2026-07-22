@@ -142,15 +142,15 @@ const lineChart = new Chart(ctxLine, {
             x: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b' } },
             y: {
                 grid: { color: 'rgba(148,163,184,0.08)' },
+                beginAtZero: true,
                 min: 0,
-                suggestedMax: 5,
+                suggestedMax: 6,
                 ticks: {
                     color: '#64748b',
                     stepSize: 1,
                     precision: 0,
-                    callback: function(val) { return (val % 1 === 0) ? val : ''; }
-                },
-                beginAtZero: true
+                    callback: function(val) { return (val % 1 === 0) ? Number(val).toFixed(0) : ''; }
+                }
             }
         }
     }
@@ -189,15 +189,15 @@ new Chart(ctxBar, {
             x: { grid: { display: false }, ticks: { color: '#64748b' } },
             y: {
                 grid: { color: 'rgba(148,163,184,0.08)' },
+                beginAtZero: true,
                 min: 0,
-                suggestedMax: 5,
+                suggestedMax: 6,
                 ticks: {
                     color: '#64748b',
                     stepSize: 1,
                     precision: 0,
-                    callback: function(val) { return (val % 1 === 0) ? val : ''; }
-                },
-                beginAtZero: true
+                    callback: function(val) { return (val % 1 === 0) ? Number(val).toFixed(0) : ''; }
+                }
             }
         }
     }

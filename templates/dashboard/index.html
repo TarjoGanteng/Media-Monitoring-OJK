@@ -267,18 +267,21 @@ new Chart(ctx, {
             x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
             y: {
                 grid: { color: 'rgba(0,0,0,0.05)' },
+                beginAtZero: true,
                 min: 0,
-                suggestedMax: Math.max(5, ...(trendData.total && trendData.total.length ? trendData.total : [0])),
+                suggestedMax: (function() {
+                    const maxVal = Math.max(...(trendData.total && trendData.total.length ? trendData.total : [0]));
+                    return maxVal < 6 ? 6 : maxVal;
+                })(),
                 ticks: {
                     color: '#9ca3af',
                     font: { size: 10 },
                     stepSize: 1,
                     precision: 0,
-                    callback: function(val) {
-                        return (val % 1 === 0) ? val : '';
+                    callback: function(value) {
+                        return (value % 1 === 0) ? Number(value).toFixed(0) : '';
                     }
-                },
-                beginAtZero: true
+                }
             }
         }
     }
