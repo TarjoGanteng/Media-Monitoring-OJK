@@ -80,3 +80,21 @@ def debug_sentimen():
             } for b in negatif
         ]
     })
+
+
+@bp.route("/run-ai-review", methods=["GET", "POST"])
+@bp.route("/run-ai-review/", methods=["GET", "POST"])
+@bp.route("/api/run-ai-review", methods=["GET", "POST"])
+def manual_run_ai_review():
+    """Endpoint manual / Vercel Cron Job untuk memproses seluruh berita di Vercel secara intensif."""
+    from flask import jsonify, current_app
+    try:
+        from services.ai_review_service import AIReviewService
+        for _ in range(10):
+            AIReviewService._proses_batch(current_app)
+        return jsonify({
+            "status": "success",
+            "message": "AI Review Engine berhasil memproses 10 batch data di Vercel!"
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
