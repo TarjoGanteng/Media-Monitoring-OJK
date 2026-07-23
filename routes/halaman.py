@@ -36,6 +36,35 @@ def fix_db():
         return f"Gagal: {str(e)}"
 
 
+@bp.route("/api/status-sentimen")
+def status_sentimen():
+    """Endpoint publik transparan untuk mengecek statistik sentimen & daftar berita negatif di server Vercel."""
+    from flask import jsonify
+    negatif_list = Berita.query.filter_by(sentimen="Negatif", status="aktif").all()
+    positif_count = Berita.query.filter_by(sentimen="Positif", status="aktif").count()
+    netral_count = Berita.query.filter_by(sentimen="Netral", status="aktif").count()
+    total_count = Berita.query.filter_by(status="aktif").count()
+
+    return jsonify({
+        "status": "success",
+        "total_berita_aktif": total_count,
+        "total_positif": positif_count,
+        "total_netral": netral_count,
+        "total_negatif": len(negatif_list),
+        "daftar_berita_negatif": [
+            {
+                "id": b.id,
+                "judul": b.judul,
+                "media": b.media,
+                "wilayah": b.wilayah,
+                "tanggal": b.tanggal.strftime("%d %b %Y") if b.tanggal else "-",
+                "ai_checked": b.ai_checked,
+            }
+            for b in negatif_list
+        ]
+    })
+
+
 @bp.route("/analisis")
 @login_required
 @role_required("super_admin", "pemimpin")
