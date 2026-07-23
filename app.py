@@ -397,7 +397,17 @@ def manual_init_db():
                 u_obj.password_hash = generate_password_hash("ojkjabar2026")
                 u_obj.status = "aktif"
 
-        db.session.commit()
+        # Purge berita luar Jabar & berita non-Jabar spesifik
+        try:
+            db.session.query(Berita).filter(
+                db.or_(
+                    Berita.judul.like("%Investasi Saham Bukan Judi%"),
+                    Berita.wilayah.in_(["Ponorogo", "Jawa Timur", "Surabaya", "Semarang", "Yogyakarta", "Bali", "Solo", "Gontor"])
+                )
+            ).delete(synchronize_session=False)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
         user_count = User.query.count()
         berita_count = Berita.query.count()

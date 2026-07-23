@@ -251,6 +251,31 @@ class AIReviewService:
                     diupdate += 1
                     logger.info(f"[AIReview] Fast Wilayah: Set ID={berita.id} -> Kota {found_city}")
 
+            # ── Fast Pre-Check C: Auto-Purge Berita Luar Jabar (misal: Ponorogo, Jawa Timur, Bali, dll) ──
+            WILAYAH_LUAR_JABAR = [
+                "Jakarta", "Surabaya", "Medan", "Bali", "Makassar",
+                "Semarang", "Yogyakarta", "Palembang", "Pekanbaru",
+                "Batam", "Banjarmasin", "Manado", "Padang", "Aceh",
+                "Lampung", "Kalimantan", "Sulawesi", "Papua", "Maluku",
+                "Sumatra", "Sumatera", "Lombok", "Nusa Tenggara",
+                "Ponorogo", "Jawa Timur", "Jatim", "Gontor", "Jawa Tengah", "Jateng",
+                "Solo", "Surakarta", "Gresik", "Malang", "Sidoarjo", "Banyuwangi",
+                "Kediri", "Madiun", "Banten", "Tangerang", "Serang", "Cilegon"
+            ]
+
+            # Jika wilayah berita terdaftar di luar Jabar dan tidak menyebutkan kota Jabar
+            if berita.wilayah and any(luar.lower() == str(berita.wilayah).lower() or luar.lower() in str(berita.wilayah).lower() for luar in WILAYAH_LUAR_JABAR):
+                has_jabar_city = any(k_lower in teks for k_lower in KOTA_JABAR_MAP.keys())
+                if not has_jabar_city:
+                    try:
+                        db.session.delete(berita)
+                        db.session.commit()
+                        dihapus += 1
+                        logger.info(f"[AIReview] Fast Purge (Wilayah Luar Jabar: {berita.wilayah}) | {judul[:50]}")
+                    except Exception:
+                        db.session.rollback()
+                    continue
+
             # ── Filter Tanggal: Hapus berita lebih dari 5 tahun ───────────────
             if berita.tanggal:
                 batas_expired = datetime.utcnow() - timedelta(days=5 * 365)
@@ -339,13 +364,6 @@ class AIReviewService:
                 else:
                     # ── Validasi Pasca-AI: Hapus jika wilayah bukan Jawa Barat ──────
                     wilayah_ai = ai_result.get("wilayah")
-                    WILAYAH_LUAR_JABAR = [
-                        "Jakarta", "Surabaya", "Medan", "Bali", "Makassar",
-                        "Semarang", "Yogyakarta", "Palembang", "Pekanbaru",
-                        "Batam", "Banjarmasin", "Manado", "Padang", "Aceh",
-                        "Lampung", "Kalimantan", "Sulawesi", "Papua", "Maluku",
-                        "Sumatra", "Sumatera", "Lombok", "Nusa Tenggara",
-                    ]
                     if wilayah_ai and any(
                         luar.lower() in str(wilayah_ai).lower()
                         for luar in WILAYAH_LUAR_JABAR
