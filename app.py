@@ -447,28 +447,26 @@ _last_auto_ai_check = datetime.min
 
 @app.before_request
 def auto_ai_review_trigger():
-    """Jalankan AI review otomatis 24/7 tanpa memblokir response halaman."""
+    """Jalankan AI review otomatis 24/7 di Vercel secara aman dan efektif."""
     from flask import request as flask_request
     global _last_auto_ai_check
 
-    # Skip untuk static assets, favicon, dll agar tidak memperlambat
     path = flask_request.path
     if any(path.startswith(p) for p in ["/static", "/favicon", "/api/status-ai"]):
         return
 
     now = datetime.utcnow()
-    if (now - _last_auto_ai_check).total_seconds() > 15:
+    if (now - _last_auto_ai_check).total_seconds() > 10:
         _last_auto_ai_check = now
         try:
-            import threading
             from services.ai_review_service import AIReviewService
-            # Jalankan di daemon thread agar tidak memblokir response
-            t = threading.Thread(
-                target=AIReviewService._proses_batch,
-                args=(app,),
-                daemon=True
-            )
-            t.start()
+            # Di serverless Vercel (atau saat ada DATABASE_URL), eksekusi synchronous agar tidak terbunuh oleh kontainer serverless
+            if os.environ.get("VERCEL") or os.environ.get("DATABASE_URL"):
+                AIReviewService._proses_batch(app)
+            else:
+                import threading
+                t = threading.Thread(target=AIReviewService._proses_batch, args=(app,), daemon=True)
+                t.start()
         except Exception as err:
             logger.warning(f"Auto AI Review Error: {err}")
 
@@ -628,14 +626,16 @@ def status_ai_logs():
 @app.route("/run-ai-review", methods=["GET", "POST"])
 @app.route("/run-ai-review/", methods=["GET", "POST"])
 def manual_run_ai_review():
-    """Endpoint manual / Vercel Cron Job untuk menjalankan siklus analisis & pembersihan AI di Vercel."""
+    """Endpoint manual / Vercel Cron Job untuk memproses seluruh berita di Vercel secara intensif."""
     from flask import jsonify
     try:
         from services.ai_review_service import AIReviewService
-        AIReviewService._proses_batch(app)
+        # Jalankan 10 batch sekaligus untuk menyapu bersih data di database Vercel
+        for i in range(10):
+            AIReviewService._proses_batch(app)
         return jsonify({
             "status": "success",
-            "message": "Siklus AI Review (Prioritas Sentimen Negatif) berhasil dijalankan di Vercel!"
+            "message": "AI Review Engine berhasil memproses 10 batch data di Vercel!"
         }), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
