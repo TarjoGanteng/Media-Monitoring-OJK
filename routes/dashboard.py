@@ -50,3 +50,33 @@ def ai_brief():
         return jsonify({"success": True, "data": data})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/debug-sentimen")
+def debug_sentimen():
+    """Endpoint diagnostik transparan untuk mengecek statistik sentimen & berita negatif di database server."""
+    from database.models import Berita
+    from database.extensions import db
+    total = Berita.query.filter_by(status="aktif").count()
+    negatif = Berita.query.filter_by(status="aktif", sentimen="Negatif").all()
+    positif = Berita.query.filter_by(status="aktif", sentimen="Positif").count()
+    netral = Berita.query.filter_by(status="aktif", sentimen="Netral").count()
+
+    return jsonify({
+        "database_engine": db.engine.name,
+        "total_berita_aktif": total,
+        "total_positif": positif,
+        "total_netral": netral,
+        "total_negatif": len(negatif),
+        "detail_berita_negatif": [
+            {
+                "id": b.id,
+                "judul": b.judul,
+                "wilayah": b.wilayah,
+                "media": b.media,
+                "tanggal": b.tanggal.strftime("%Y-%m-%d") if b.tanggal else None,
+                "ai_checked": b.ai_checked,
+                "ai_last_checked": b.ai_last_checked.strftime("%Y-%m-%d %H:%M:%S") if b.ai_last_checked else None
+            } for b in negatif
+        ]
+    })
