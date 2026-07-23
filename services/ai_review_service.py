@@ -20,9 +20,9 @@ import time
 logger = logging.getLogger(__name__)
 
 # ─── Konstanta ────────────────────────────────────────────────────────────────
-INTERVAL_DETIK = 60  # Cek ulang berita baru setiap 60 detik
-BATCH_SIZE = 2  # Jumlah berita yang diproses per siklus (diubah menjadi 2 agar aman dari limit API)
-DELAY_PER_REQ = 12.0  # Jeda antar request ke AI (detik)
+INTERVAL_DETIK = 30  # Cek ulang berita setiap 30 detik (24/7 continuous loop)
+BATCH_SIZE = 10      # Jumlah berita yang diproses per batch
+DELAY_PER_REQ = 2.0   # Jeda antar request ke AI (detik)
 
 JABAR_KEYWORDS = [
     "jawa barat",
@@ -118,17 +118,16 @@ class AIReviewService:
     @classmethod
     def _proses_batch(cls, app):
         """
-        Ambil BATCH_SIZE berita yang belum dicek AI,
-        analisis, dan update/hapus sesuai hasil.
+        Ambil BATCH_SIZE berita (gabungan Negatif, Jabar generic, belum dicek, dan berita lama),
+        analisis, dan update/hapus sesuai hasil secara berkelanjutan 24/7.
         """
         from database.extensions import db
         from database.models import Berita
         from services.ai_service import gemini
         from datetime import datetime, timedelta
 
-        # PRIORITAS UTAMA (PALING TINGGI): Re-analisis berita yang saat ini ber-sentimen 'Negatif'!
-        # Cek apakah sentimennya benar Negatif atau sebenarnya Netral/Positif/Bukan OJK Jabar
-        batas_negatif = datetime.utcnow() - timedelta(minutes=5)
+        # 1. Antrian Prioritas 1: Berita bertag 'Negatif' (untuk re-verifikasi sentimen)
+        batas_negatif = datetime.utcnow() - timedelta(minutes=2)
         antrian_negatif = (
             Berita.query.filter(
                 Berita.status == "aktif",
@@ -138,118 +137,129 @@ class AIReviewService:
                     Berita.ai_last_checked < batas_negatif
                 )
             )
-            .order_by(
-                db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
-                Berita.id.asc()
-            )
-            .limit(20)
+            .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
+            .limit(5)
             .all()
         )
 
-        antrian_jabar = []
-        antrian_baru = []
-        antrian_lama = []
-        is_reanalysis = False
-
-        if antrian_negatif:
-            antrian = antrian_negatif
-            is_reanalysis = True
-            logger.info(f"[AIReview] PRIORITAS UTAMA: Memproses {len(antrian_negatif)} berita bertag Negatif untuk verifikasi sentimen...")
-        else:
-            # PRIORITAS 2: Re-analisis berita lama yang wilayah-nya masih generic 'Jawa Barat'
-            batas_jabar = datetime.utcnow() - timedelta(hours=2)
-            antrian_jabar = (
-                Berita.query.filter(
-                    Berita.status == "aktif",
-                    Berita.wilayah == "Jawa Barat",
-                    db.or_(
-                        Berita.ai_last_checked.is_(None),
-                        Berita.ai_last_checked < batas_jabar
-                    )
-                )
-                .order_by(
-                    db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
-                    Berita.id.asc()
-                )
-                .limit(BATCH_SIZE)
-                .all()
+        # 2. Antrian Prioritas 2: Berita yang belum dicek AI sama sekali
+        antrian_baru = (
+            Berita.query.filter(
+                Berita.status == "aktif",
+                db.or_(
+                    Berita.ai_checked == False,  # noqa: E712
+                    Berita.ai_checked.is_(None),  # noqa: E711
+                ),
             )
+            .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
+            .limit(5)
+            .all()
+        )
 
-            if antrian_jabar:
-                antrian = antrian_jabar
-                is_reanalysis = True
-            else:
-                # PRIORITAS 3: Berita baru yang belum dicek AI
-                antrian_baru = (
-                    Berita.query.filter(
-                        Berita.status == "aktif",
-                        db.or_(
-                            Berita.ai_checked == False,  # noqa: E712
-                            Berita.ai_checked.is_(None),  # noqa: E711
-                        ),
-                    )
-                    .order_by(
-                        db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))),
-                        Berita.id.asc()
-                    )
-                    .limit(BATCH_SIZE)
-                    .all()
+        # 3. Antrian Prioritas 3: Berita yang wilayahnya masih generic 'Jawa Barat' (untuk penajaman kota)
+        batas_jabar = datetime.utcnow() - timedelta(minutes=15)
+        antrian_jabar = (
+            Berita.query.filter(
+                Berita.status == "aktif",
+                Berita.wilayah == "Jawa Barat",
+                db.or_(
+                    Berita.ai_last_checked.is_(None),
+                    Berita.ai_last_checked < batas_jabar
                 )
+            )
+            .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
+            .limit(5)
+            .all()
+        )
 
-                if not antrian_baru:
-                    # PRIORITAS 4: Re-analisis berita lama umum
-                    batas_re_analisis = datetime.utcnow() - timedelta(hours=12)
-                    antrian_lama = (
-                        Berita.query.filter(
-                            Berita.status == "aktif",
-                            Berita.ai_checked == True,  # noqa: E712
-                            db.or_(
-                                Berita.ai_last_checked.is_(None),
-                                Berita.ai_last_checked < batas_re_analisis
-                            )
-                        )
-                        .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
-                        .limit(5)
-                        .all()
-                    )
-                    if antrian_lama:
-                        is_reanalysis = True
+        # 4. Antrian Prioritas 4: Re-analisis berita lama secara berputar
+        batas_lama = datetime.utcnow() - timedelta(hours=1)
+        antrian_lama = (
+            Berita.query.filter(
+                Berita.status == "aktif",
+                db.or_(
+                    Berita.ai_last_checked.is_(None),
+                    Berita.ai_last_checked < batas_lama
+                )
+            )
+            .order_by(db.asc(db.func.coalesce(Berita.ai_last_checked, datetime(1970, 1, 1))))
+            .limit(5)
+            .all()
+        )
 
-                antrian = antrian_baru + antrian_lama
+        # Gabungkan semua antrian tanpa duplikat
+        seen_ids = set()
+        antrian = []
+        for b in (antrian_negatif + antrian_baru + antrian_jabar + antrian_lama):
+            if b.id not in seen_ids:
+                seen_ids.add(b.id)
+                antrian.append(b)
 
         if not antrian:
-            logger.debug(
-                "[AIReview] Tidak ada berita baru maupun berita lama yang perlu disinkronkan. Menunggu..."
-            )
+            logger.debug("[AIReview] Tidak ada berita yang perlu diproses siklus ini.")
             return
 
-        if is_reanalysis:
-            logger.info(f"[AIReview] Memproses sinkronisasi ulang {len(antrian)} berita lama secara berkala...")
-        else:
-            logger.info(f"[AIReview] Memproses {len(antrian)} berita belum dicek AI...")
+        logger.info(f"[AIReview] Memproses batch {len(antrian)} berita untuk verifikasi 24/7...")
 
         dihapus = 0
         diupdate = 0
         gagal = 0
+
+        # Peta Ekstraksi Kota Jabar untuk Fast Rule-Based Verification
+        KOTA_JABAR_MAP = {
+            "bandung": "Bandung", "bekasi": "Bekasi", "bogor": "Bogor",
+            "cirebon": "Cirebon", "depok": "Depok", "sukabumi": "Sukabumi",
+            "karawang": "Karawang", "tasikmalaya": "Tasikmalaya", "garut": "Garut",
+            "cianjur": "Cianjur", "subang": "Subang", "purwakarta": "Purwakarta",
+            "indramayu": "Indramayu", "majalengka": "Majalengka", "sumedang": "Sumedang",
+            "kuningan": "Kuningan", "ciamis": "Ciamis", "banjar": "Banjar",
+            "pangandaran": "Pangandaran", "cimahi": "Cimahi"
+        }
 
         for berita in antrian:
             judul = berita.judul or ""
             isi = berita.isi or berita.ringkasan or ""
             teks = f"{judul} {isi}".lower()
 
-            # ── Filter Tanggal: Hapus berita lebih dari 5 tahun ───────────────
-            from datetime import datetime, timedelta
+            # ── Fast Pre-Check A: Auto-correct Fake Negatives (OJK Actions/Imbauan) ─────
+            if berita.sentimen == "Negatif":
+                judul_txt = judul.lower()
+                ringkasan_txt = (berita.ringkasan or "").lower()
+                gabung_txt = f"{judul_txt} {ringkasan_txt}"
+                kata_tindakan = ["ungkap", "imbau", "edukasi", "dorong", "ingatkan", "sosialisasi", "tindak", "gandeng", "gelar", "beberkan", "buka suara", "sebut", "pastikan", "cabut izin", "tutup"]
+                kata_kritikan = ["kritik", "protes", "didemo", "disorot", "gagal", "lalai", "bobrok", "kecam", "tuding"]
+                if any(w in gabung_txt for w in kata_tindakan) and not any(w in gabung_txt for w in kata_kritikan):
+                    berita.sentimen = "Netral"
+                    berita.ai_checked = True
+                    berita.ai_last_checked = datetime.utcnow()
+                    db.session.commit()
+                    diupdate += 1
+                    logger.info(f"[AIReview] Fast Guardrail: Koreksi Negatif -> Netral ID={berita.id} | {judul[:50]}")
 
+            # ── Fast Pre-Check B: Penajaman Wilayah Kota/Kabupaten Jabar ────────────────
+            if berita.wilayah in ["Jawa Barat", "Lokal", None, ""]:
+                found_city = None
+                for k_lower, k_name in KOTA_JABAR_MAP.items():
+                    if k_lower in teks:
+                        found_city = k_name
+                        break
+                if found_city:
+                    berita.wilayah = found_city
+                    berita.ai_checked = True
+                    berita.ai_last_checked = datetime.utcnow()
+                    db.session.commit()
+                    diupdate += 1
+                    logger.info(f"[AIReview] Fast Wilayah: Set ID={berita.id} -> Kota {found_city}")
+
+            # ── Filter Tanggal: Hapus berita lebih dari 5 tahun ───────────────
             if berita.tanggal:
-                batas_lama = datetime.utcnow() - timedelta(days=5 * 365)
-                if berita.tanggal < batas_lama:
+                batas_expired = datetime.utcnow() - timedelta(days=5 * 365)
+                if berita.tanggal < batas_expired:
                     try:
                         db.session.delete(berita)
                         db.session.commit()
                         dihapus += 1
-                        logger.debug(
-                            f"[AIReview] TERLALU LAMA ({berita.tanggal.strftime('%Y-%m-%d')}), hapus | {judul[:50]}"
-                        )
+                        logger.info(f"[AIReview] TERLALU LAMA ({berita.tanggal.strftime('%Y-%m-%d')}), hapus | {judul[:50]}")
                     except Exception:
                         db.session.rollback()
                     continue
@@ -284,9 +294,7 @@ class AIReviewService:
 
                     # Hapus jika artikel benar-benar tidak bisa diakses (404, domain mati)
                     if not hasil_resolve.get("dapat_diakses", True):
-                        logger.debug(
-                            f"[AIReview] Tidak bisa diakses, hapus | {judul[:55]}"
-                        )
+                        logger.info(f"[AIReview] Tidak bisa diakses, hapus | {judul[:55]}")
                         db.session.delete(berita)
                         db.session.commit()
                         dihapus += 1
@@ -304,42 +312,21 @@ class AIReviewService:
                     db.session.delete(berita)
                     db.session.commit()
                     dihapus += 1
-                    logger.debug(f"[AIReview] L1-HAPUS | {judul[:60]}")
+                    logger.info(f"[AIReview] L1-HAPUS (bukan OJK/Jabar) | {judul[:60]}")
                 except Exception as e:
                     db.session.rollback()
                     logger.warning(f"[AIReview] Gagal hapus ID={berita.id}: {e}")
                 continue
 
-            # ── Lapis 2: Analisis AI ──────────────────────────────────────────
+            # ── Lapis 2: Analisis AI Multi-Provider ───────────────────────────
             try:
                 ai_result = gemini.analisis_berita(judul, berita.isi, berita.ringkasan, berita.media)
                 time.sleep(DELAY_PER_REQ)
 
                 if ai_result is None:
-                    # Heuristic Fallback jika API AI terkena rate limit (429):
-                    # Koreksi sentimen Negatif jika berita berisi tindakan OJK (bukan kritikan terhadap OJK)
-                    if berita.sentimen == "Negatif":
-                        judul_txt = (berita.judul or "").lower()
-                        ringkasan_txt = (berita.ringkasan or "").lower()
-                        gabung = f"{judul_txt} {ringkasan_txt}"
-                        kata_tindakan = ["ungkap", "imbau", "edukasi", "dorong", "ingatkan", "sosialisasi", "tindak", "gandeng", "gelar", "beberkan", "buka suara"]
-                        kata_kritikan = ["kritik", "protes", "didemo", "disorot", "gagal", "lalai", "bobrok", "kecam", "tuding"]
-                        if any(w in gabung for w in kata_tindakan) and not any(w in gabung for w in kata_kritikan):
-                            berita.sentimen = "Netral"
-                            berita.ai_checked = True
-                            berita.ai_last_checked = datetime.utcnow()
-                            db.session.commit()
-                            diupdate += 1
-                            logger.info(f"[AIReview] Local Fallback: Koreksi sentimen Negatif -> Netral untuk ID={berita.id}")
-                            continue
-
+                    # JANGAN update ai_last_checked ke utcnow() agar AI mencoba lagi saat quota API reset!
                     gagal += 1
-                    logger.warning(f"[AIReview] AI gagal ID={berita.id} | {judul[:50]}")
-                    try:
-                        berita.ai_last_checked = datetime.utcnow()
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+                    logger.warning(f"[AIReview] AI API Rate Limited (429) ID={berita.id} | {judul[:50]}. Menunggu retry...")
                     continue
 
                 sentimen = ai_result.get("sentimen", "Netral")
@@ -348,7 +335,7 @@ class AIReviewService:
                     db.session.delete(berita)
                     db.session.commit()
                     dihapus += 1
-                    logger.debug(f"[AIReview] L2-HAPUS (tidak relevan) | {judul[:60]}")
+                    logger.info(f"[AIReview] L2-HAPUS (tidak relevan) | {judul[:60]}")
                 else:
                     # ── Validasi Pasca-AI: Hapus jika wilayah bukan Jawa Barat ──────
                     wilayah_ai = ai_result.get("wilayah")
@@ -367,12 +354,9 @@ class AIReviewService:
                             db.session.delete(berita)
                             db.session.commit()
                             dihapus += 1
-                            logger.debug(
-                                f"[AIReview] L2-HAPUS (wilayah luar Jabar: {wilayah_ai}) | {judul[:55]}"
-                            )
+                            logger.info(f"[AIReview] L2-HAPUS (wilayah luar Jabar: {wilayah_ai}) | {judul[:55]}")
                         except Exception as e:
                             db.session.rollback()
-                            logger.warning(f"[AIReview] Gagal hapus (wilayah luar) ID={berita.id}: {e}")
                         continue
 
                     old_sentimen = berita.sentimen
@@ -393,32 +377,24 @@ class AIReviewService:
 
                     db.session.commit()
                     diupdate += 1
-                    logger.debug(
-                        f"[AIReview] OK | {sentimen:7} | {berita.wilayah or '?':20} | {judul[:45]}"
-                    )
+                    logger.info(f"[AIReview] OK | {sentimen:7} | {berita.wilayah or '?':15} | {judul[:45]}")
 
-                    # Kirim notifikasi jika terdeteksi sentimen negatif baru
                     if sentimen == "Negatif" and old_sentimen != "Negatif":
                         try:
                             from services.notifikasi_service import NotifikasiService
                             NotifikasiService.tambah_notifikasi(
-                                tipe="danger",
-                                judul="⚠️ Berita Sentimen Negatif",
-                                pesan=f"Terdeteksi berita negatif dari review AI: '{judul[:80]}...'",
-                                link=f"/pemberitaan/{berita.id}",
+                                judul=f"Sentimen Negatif Terdeteksi: {judul[:50]}...",
+                                pesan=f"Berita dari {berita.media} dikategorikan ber-sentimen Negatif.",
+                                tipe="negatif",
+                                link=berita.link,
                             )
-                        except Exception as ne:
-                            logger.error(f"[AIReview] Gagal kirim notif negatif: {ne}")
+                        except Exception as ex:
+                            logger.warning(f"[AIReview] Gagal kirim notifikasi: {ex}")
 
             except Exception as e:
                 db.session.rollback()
                 gagal += 1
                 logger.error(f"[AIReview] Error analisis ID={berita.id}: {e}")
-                try:
-                    berita.ai_last_checked = datetime.utcnow()
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
 
         if dihapus or diupdate:
             logger.info(

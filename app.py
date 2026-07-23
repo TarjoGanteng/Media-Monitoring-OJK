@@ -427,7 +427,7 @@ def auto_ai_review_trigger():
         return
 
     now = datetime.utcnow()
-    if (now - _last_auto_ai_check).total_seconds() > 60:
+    if (now - _last_auto_ai_check).total_seconds() > 15:
         _last_auto_ai_check = now
         try:
             import threading
