@@ -473,6 +473,42 @@ def auto_ai_review_trigger():
             logger.warning(f"Auto AI Review Error: {err}")
 
 
+@app.route("/api/status-sentimen", methods=["GET"])
+@app.route("/api/status-sentimen/", methods=["GET"])
+def status_sentimen():
+    """Endpoint diagnostik transparan publik untuk mengecek statistik sentimen & berita negatif di database Vercel."""
+    from flask import jsonify
+    from database.models import Berita
+    from database.extensions import db
+    try:
+        total = Berita.query.filter_by(status="aktif").count()
+        negatif = Berita.query.filter_by(status="aktif", sentimen="Negatif").all()
+        positif = Berita.query.filter_by(status="aktif", sentimen="Positif").count()
+        netral = Berita.query.filter_by(status="aktif", sentimen="Netral").count()
+
+        return jsonify({
+            "status": "success",
+            "database_engine": db.engine.name,
+            "total_berita_aktif": total,
+            "total_positif": positif,
+            "total_netral": netral,
+            "total_negatif": len(negatif),
+            "detail_berita_negatif": [
+                {
+                    "id": b.id,
+                    "judul": b.judul,
+                    "wilayah": b.wilayah,
+                    "media": b.media,
+                    "tanggal": b.tanggal.strftime("%Y-%m-%d") if b.tanggal else None,
+                    "ai_checked": b.ai_checked,
+                    "ai_last_checked": b.ai_last_checked.strftime("%Y-%m-%d %H:%M:%S") if b.ai_last_checked else None
+                } for b in negatif
+            ]
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/api/status-ai", methods=["GET", "POST"])
 @app.route("/api/status-ai/", methods=["GET", "POST"])
 @app.route("/api/status_ai", methods=["GET", "POST"])
