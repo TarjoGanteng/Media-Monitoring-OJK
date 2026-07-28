@@ -460,6 +460,11 @@ class LaporanService:
             base_q.order_by(desc(Berita.tanggal)).limit(10).all()
         )
 
+        # --- Semua Berita (untuk Excel) ---
+        semua_berita = (
+            base_q.order_by(desc(Berita.tanggal)).all()
+        )
+
         # --- AI Ringkasan Eksekutif ---
         ringkasan_ai = LaporanService._generate_ringkasan_ai(
             statistik=statistik,
@@ -496,6 +501,7 @@ class LaporanService:
             },
             "berita_negatif": berita_negatif,
             "berita_terbaru": berita_terbaru,
+            "semua_berita": semua_berita,
             "ringkasan_ai": ringkasan_ai,
         }
 
@@ -1011,7 +1017,8 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ws2.row_dimensions[1].height = 22
 
         sentimen_colors = {"Positif": "DCFCE7", "Negatif": "FEE2E2", "Netral": "F1F5F9"}
-        for i, berita in enumerate(data["berita_terbaru"], 1):
+        # Gunakan semua_berita agar Excel menampilkan seluruh berita, bukan cuma 10 berita terbaru
+        for i, berita in enumerate(data.get("semua_berita", data["berita_terbaru"]), 1):
             row_num = i + 1
             s_color = sentimen_colors.get(berita.sentimen, "FFFFFF")
             row_data = [
