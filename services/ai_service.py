@@ -81,11 +81,15 @@ Konten: {konten}
 Sistem ini adalah MEDIA MONITORING KHUSUS OJK JAWA BARAT. Hanya berita yang relevan dengan OJK dan/atau wilayah Provinsi Jawa Barat yang boleh masuk.
 
 === PANDUAN SENTIMEN (SUDUT PANDANG INSTITUSI OJK JAWA BARAT) ===
-- POSITIF : Tindakan tegas OJK, prestasi OJK, apresiasi publik, sukses literasi/edukasi keuangan, peluncuran program OJK.
+- POSITIF : 
+  * Tindakan tegas OJK, prestasi OJK, apresiasi publik, peluncuran program OJK.
+  * Berita edukasi keuangan rutin atau rilis pers standar tanpa ada opini subjektif.
+  * Berita tentang kegiatan rapat, sosialisasi, atau pengumuman izin usaha biasa.
 - NETRAL  : 
-  * Berita mengenai fenomena negatif di masyarakat (misal: Gen Z terjerat paylater, pinjol ilegal, judi online, investasi bodong) DI MANA OJK JABAR MEMBERIKAN PENJELASAN / HIMBAUAN / EDUKASI / TINDAKAN. Ini ADALAH SENTIMEN NETRAL ATAU POSITIF BAGI OJK, BUKAN NEGATIF!
-  * Laporan kinerja rutin, regulasi, sosialisasi, pengawasan perbankan.
-- NEGATIF : HANYA DAN KHUSUS JIKA BERITA EKSPLISIT BERISI KRITIKAN, PROTES, TEGURAN, DEMO, TUDUHAN KELALAIAN, ATAU SOROTAN NEGATIF LANGSUNG TERHADAP PERSIAPAN/KINERJA OJK JAWA BARAT.
+  * Berita mengenai OJK mencabut izin usaha (Cabut Izin Usaha / CIU) perusahaan/lembaga keuangan tertentu.
+  * Berita mengenai fenomena negatif di masyarakat (misal: Gen Z terjerat paylater, pinjol ilegal, judi online, investasi bodong) di mana OJK Jabar memberikan penjelasan/himbauan/edukasi/tindakan.
+  * Laporan kinerja rutin, regulasi, pengawasan perbankan.
+- NEGATIF : HANYA DAN KHUSUS jika berita secara eksplisit berisi kritikan, protes, teguran, demo, tuduhan kelalaian, atau sorotan negatif langsung terhadap kinerja/reputasi OJK Jawa Barat.
 - TIDAK RELEVAN : Gunakan ini jika SALAH SATU dari kondisi berikut terpenuhi:
     (a) Berita sama sekali tidak membahas OJK atau industri jasa keuangan.
     (b) Berita membahas OJK PUSAT / OJK NASIONAL tanpa keterkaitan apapun dengan Jawa Barat (tidak ada nama kota/kabupaten Jawa Barat, tidak ada kegiatan OJK di Jawa Barat, narasumber bukan dari OJK Jawa Barat).
@@ -128,15 +132,28 @@ def _parse_result(result: dict, media: str = None) -> dict:
     if sentimen not in ["Positif", "Negatif", "Netral", "Tidak Relevan"]:
         sentimen = "Netral"
 
+    # Gabung teks judul dan ringkasan untuk analisis kata kunci
+    judul_txt = str(result.get("judul") or "").lower()
+    ringkasan_txt = str(result.get("ringkasan") or "").lower()
+    gabung = f"{judul_txt} {ringkasan_txt}"
+
     # Guardrail Sentimen Negatif: Berita OJK mengungkap/mengimbau/edukasi masalah masyarakat BUKAN sentimen negatif OJK
     if sentimen == "Negatif":
-        judul_txt = str(result.get("judul") or "").lower()
-        ringkasan_txt = str(result.get("ringkasan") or "").lower()
-        gabung = f"{judul_txt} {ringkasan_txt}"
         kata_tindakan = ["ungkap", "imbau", "edukasi", "dorong", "ingatkan", "sosialisasi", "tindak", "gandeng", "gelar", "beberkan", "buka suara"]
         kata_kritikan = ["kritik", "protes", "didemo", "disorot", "gagal", "lalai", "bobrok", "kecam", "tuding"]
         if any(w in gabung for w in kata_tindakan) and not any(w in gabung for w in kata_kritikan):
             sentimen = "Netral"
+
+    # Guardrail CIU / Cabut Izin Usaha -> Netral
+    if "cabut izin" in gabung or " ciu " in f" {gabung} ":
+        sentimen = "Netral"
+
+    # Guardrail Edukasi/Sosialisasi/Rapat/Izin Usaha Biasa -> Positif (jika tidak ada kritik)
+    if sentimen in ["Negatif", "Netral"]:
+        kata_positif_rutin = ["edukasi keuangan", "sosialisasi", "rapat", "pengumuman izin", "izin usaha", "rilis pers", "siaran pers"]
+        kata_kritikan = ["kritik", "protes", "didemo", "disorot", "gagal", "lalai", "bobrok", "kecam", "tuding", "cabut izin", "ciu"]
+        if any(w in gabung for w in kata_positif_rutin) and not any(w in gabung for w in kata_kritikan):
+            sentimen = "Positif"
 
     topik = result.get("topik", "Regulasi")
     if topik not in TOPIK_VALID:
