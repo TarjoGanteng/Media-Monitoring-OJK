@@ -188,3 +188,39 @@ def sync_db_route():
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@bp.route("/api/cleanup-non-jabar")
+def cleanup_non_jabar():
+    """Menghapus berita dengan wilayah luar Jawa Barat dari database."""
+    from database.models import Berita
+    from database.extensions import db
+    
+    jabar_allowed = [
+        "bandung", "bekasi", "bogor", "cirebon", "depok", "sukabumi", "karawang",
+        "tasikmalaya", "garut", "cianjur", "subang", "purwakarta", "indramayu",
+        "majalengka", "sumedang", "kuningan", "ciamis", "banjar", "pangandaran",
+        "jawa barat", "jabar"
+    ]
+    
+    try:
+        active_berita = Berita.query.filter_by(status='aktif').all()
+        deleted_titles = []
+        
+        for b in active_berita:
+            if b.wilayah:
+                w_lower = b.wilayah.strip().lower()
+                if w_lower not in jabar_allowed:
+                    deleted_titles.append(f"{b.wilayah}: {b.judul}")
+                    db.session.delete(b)
+                    
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "deleted_count": len(deleted_titles),
+            "deleted_items": deleted_titles
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
