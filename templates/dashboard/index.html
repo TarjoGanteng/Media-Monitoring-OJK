@@ -361,11 +361,17 @@ async function fetchImages() {
             }
 
             const d = resp.data;
-            const sw = sentimen_warna[d.sentimen_dominan] || sentimen_warna["Netral"];
 
-            // Badge status
-            badge.className = `badge ${sw.bg}`;
-            badge.textContent = sw.label;
+            // Badge sentimen — hanya tampil jika ada berita hari ini
+            if (d.sentimen_dominan) {
+                const sw = sentimen_warna[d.sentimen_dominan] || sentimen_warna["Netral"];
+                badge.className = `badge ${sw.bg}`;
+                badge.textContent = sw.label;
+            } else {
+                // Tidak ada berita hari ini — sembunyikan badge sentimen
+                badge.className = 'badge bg-secondary';
+                badge.textContent = '— Belum ada data hari ini';
+            }
 
             // Teks narasi
             document.getElementById('ai-brief-text').textContent = d.ringkasan || '—';
@@ -378,9 +384,13 @@ async function fetchImages() {
             if (d.media_terbanyak && d.media_terbanyak !== '-')
                 document.getElementById('ai-media-badge').textContent = '📰 ' + d.media_terbanyak;
 
-            // Footer: jumlah berita & waktu
-            document.getElementById('ai-brief-footer').textContent =
-                `${d.total_hari_ini} berita hari ini · AI: ${d.waktu_generate}`;
+            // Footer: jumlah berita & waktu — sembunyikan waktu AI jika 0 berita
+            if (d.total_hari_ini > 0) {
+                document.getElementById('ai-brief-footer').textContent =
+                    `${d.total_hari_ini} berita minggu ini · AI: ${d.waktu_generate}`;
+            } else {
+                document.getElementById('ai-brief-footer').textContent = '';
+            }
 
             content.classList.remove('d-none');
             content.style.display = 'flex';

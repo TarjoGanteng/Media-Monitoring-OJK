@@ -47,29 +47,10 @@
                 </li>
                 {% if current_user.is_authenticated and current_user.role in ['super_admin', 'pemimpin'] %}
                 <li class="nav-item">
-                    <a href="#analisisSubmenu" data-bs-toggle="collapse" class="nav-link dropdown-toggle {% if active_page == 'analisis' %}active{% endif %}" aria-expanded="{% if active_page == 'analisis' %}true{% else %}false{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <i class="bi bi-bar-chart-line nav-icon"></i>
-                            <span>Analisis</span>
-                        </div>
+                    <a href="{{ url_for('halaman.analisis') }}" class="nav-link {% if active_page == 'analisis' %}active{% endif %}">
+                        <i class="bi bi-bar-chart-line nav-icon"></i>
+                        <span>Analisis</span>
                     </a>
-                    <ul class="collapse list-unstyled {% if active_page == 'analisis' %}show{% endif %}" id="analisisSubmenu" style="padding-left: 2.5rem; margin-top: 0.2rem; font-size: 0.85rem;">
-                        <li style="margin-bottom: 0.2rem;">
-                            <a href="{{ url_for('halaman.analisis') }}" style="text-decoration: none; padding: 0.4rem 0; display: block; color: {% if active_page == 'analisis' and (not tipe_media or tipe_media == 'semua') %}var(--accent-color); font-weight: 600;{% else %}var(--text-secondary);{% endif %}" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='{% if active_page == 'analisis' and (not tipe_media or tipe_media == 'semua') %}var(--accent-color){% else %}var(--text-secondary){% endif %}'">
-                                <i class="bi bi-circle{% if active_page == 'analisis' and (not tipe_media or tipe_media == 'semua') %}-fill{% endif %} me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Keseluruhan
-                            </a>
-                        </li>
-                        <li style="margin-bottom: 0.2rem;">
-                            <a href="{{ url_for('halaman.analisis', tipe='lokal') }}" style="text-decoration: none; padding: 0.4rem 0; display: block; color: {% if tipe_media == 'lokal' %}var(--accent-color); font-weight: 600;{% else %}var(--text-secondary);{% endif %}" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='{% if tipe_media == 'lokal' %}var(--accent-color){% else %}var(--text-secondary){% endif %}'">
-                                <i class="bi bi-circle{% if tipe_media == 'lokal' %}-fill{% endif %} me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Berita Lokal
-                            </a>
-                        </li>
-                        <li style="margin-bottom: 0.2rem;">
-                            <a href="{{ url_for('halaman.analisis', tipe='non-lokal') }}" style="text-decoration: none; padding: 0.4rem 0; display: block; color: {% if tipe_media == 'non-lokal' %}var(--accent-color); font-weight: 600;{% else %}var(--text-secondary);{% endif %}" onmouseover="this.style.color='var(--accent-color)'" onmouseout="this.style.color='{% if tipe_media == 'non-lokal' %}var(--accent-color){% else %}var(--text-secondary){% endif %}'">
-                                <i class="bi bi-circle{% if tipe_media == 'non-lokal' %}-fill{% endif %} me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Berita Non-Lokal
-                            </a>
-                        </li>
-                    </ul>
                 </li>
                 <li class="nav-item">
                     <a href="{{ url_for('halaman.wilayah') }}" class="nav-link {% if active_page == 'wilayah' %}active{% endif %}">
@@ -104,15 +85,7 @@
                 </li>
                 {% endif %}
 
-                {% if current_user.is_authenticated and current_user.role == 'super_admin' %}
-                <li class="nav-item">
-                    <a href="/api/status-ai" class="nav-link {% if active_page == 'status_ai' %}active{% endif %}" style="border-left:3px solid #10b981;">
-                        <i class="bi bi-terminal-fill nav-icon text-success"></i>
-                        <span>Terminal AI Console</span>
-                        <span class="badge bg-danger ms-auto" style="font-size:0.6rem;">ADMIN</span>
-                    </a>
-                </li>
-                {% endif %}
+
             </ul>
         </nav>
 
@@ -123,6 +96,14 @@
                 <div>
                     <div style="font-size:0.72rem;color:var(--text-secondary);">Update Berikutnya</div>
                     <div id="nextUpdateDisplay" style="font-size:0.78rem;font-weight:600;color:var(--text-primary);">Memuat...</div>
+                </div>
+            </div>
+            <!-- Crawl Terakhir -->
+            <div class="sidebar-update-info" style="margin-top:0.5rem;">
+                <i class="bi bi-arrow-clockwise" style="font-size:0.8rem;color:#10b981;"></i>
+                <div>
+                    <div style="font-size:0.72rem;color:var(--text-secondary);">Crawl Terakhir</div>
+                    <div id="lastCrawlDisplay" style="font-size:0.78rem;font-weight:600;color:#10b981;">Memuat...</div>
                 </div>
             </div>
         </div>
@@ -442,6 +423,30 @@
             checkAutoCrawl();
         }, 60000);
     })();
+    </script>
+
+    <!-- ===== CRAWL TERAKHIR ===== -->
+    <script>
+    function updateLastCrawl() {
+        fetch('/api/last-crawl')
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('lastCrawlDisplay');
+                if (!el) return;
+                el.textContent = data.waktu_tampil || 'Belum pernah crawl';
+            })
+            .catch(() => {
+                const el = document.getElementById('lastCrawlDisplay');
+                if (el) el.textContent = '-';
+            });
+    }
+    // Panggil saat load
+    document.addEventListener('DOMContentLoaded', updateLastCrawl);
+    // Refresh setiap 30 detik (agar sinkron setelah crawl selesai)
+    setInterval(updateLastCrawl, 30000);
+
+    // Expose fungsi agar bisa dipanggil setelah crawl selesai
+    window.refreshLastCrawl = updateLastCrawl;
     </script>
 
     {% if current_user.is_authenticated %}

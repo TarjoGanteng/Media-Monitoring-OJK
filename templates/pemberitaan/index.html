@@ -198,8 +198,18 @@
                     </select>
                 </div>
 
+                <!-- Kategori (Media Rekanan/Umum) -->
+                <div class="col-lg-1 col-md-3">
+                    <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Kategori</label>
+                    <select name="is_rekanan" class="form-select select2-no-search" style="width: 100%;">
+                        <option value=""></option>
+                        <option value="1" {% if filter_is_rekanan == '1' %}selected{% endif %}>Rekanan</option>
+                        <option value="0" {% if filter_is_rekanan == '0' %}selected{% endif %}>Umum</option>
+                    </select>
+                </div>
+
                 <!-- Sentimen -->
-                <div class="col-lg-2 col-md-3">
+                <div class="col-lg-1 col-md-3">
                     <label class="filter-label" style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">Sentimen</label>
                     <select name="sentimen" class="form-select select2-no-search" style="width: 100%;">
                         <option value=""></option>
@@ -218,7 +228,7 @@
             </div>
             
             <!-- Menggunakan min-height dan visibility agar space sudah disediakan sejak awal (Mencegah tabel lompat) -->
-            <div class="mb-2 text-end" id="resetFilterContainer" style="min-height: 24px; visibility: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah %}visible{% else %}hidden{% endif %}; opacity: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah %}1{% else %}0{% endif %}; transition: opacity 0.2s ease;">
+            <div class="mb-2 text-end" id="resetFilterContainer" style="min-height: 24px; visibility: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah or filter_is_rekanan %}visible{% else %}hidden{% endif %}; opacity: {% if filter_keyword or filter_tanggal_dari or filter_sentimen or filter_media or filter_topik or filter_wilayah or filter_is_rekanan %}1{% else %}0{% endif %}; transition: opacity 0.2s ease;">
                 <a href="{{ url_for('pemberitaan.index') }}" class="btn-reset-filter text-danger" style="font-size: 0.85rem; text-decoration: none; font-weight: 500;">
                     <i class="bi bi-x-circle"></i> Reset Filter
                 </a>
@@ -265,8 +275,11 @@
                         <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
                             {{ berita.wilayah or '-' }}
                         </td>
-                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6;">
-                            {{ berita.media or '-' }}
+                        <td style="padding: 1rem 0.5rem; font-size: 0.85rem; color: #4b5563; border-bottom: 1px solid #f3f4f6; white-space: nowrap;">
+                            <span style="display: inline-block; vertical-align: middle;">{{ berita.media or '-' }}</span>
+                            {% if berita.is_rekanan %}
+                            <span style="display: inline-block; vertical-align: middle; background-color: #166534; color: #f0fdf4; font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid #bbf7d0; margin-left: 0.35rem;" title="Media Rekanan OJK Jabar">Rekanan</span>
+                            {% endif %}
                         </td>
                         <td style="padding: 1rem 0.5rem; border-bottom: 1px solid #f3f4f6;">
                             <span class="badge-sentimen {{ berita.get_sentimen_badge() }}" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 0.25rem;">
@@ -294,7 +307,7 @@
             <!-- Info Total -->
             <div style="font-size: 0.85rem; color: #6b7280;">
                 Menampilkan <b>{{ pagination.items|length }}</b> berita di halaman ini dari total <b>{{ pagination.total }}</b> berita
-                {% if filter_keyword or filter_tanggal_dari or filter_tanggal_sampai or filter_sentimen or filter_media or filter_topik or filter_wilayah %}
+                {% if filter_keyword or filter_tanggal_dari or filter_tanggal_sampai or filter_sentimen or filter_media or filter_topik or filter_wilayah or filter_is_rekanan %}
                 <span class="text-danger" style="font-weight: 500; margin-left: 0.2rem;">(Filter Aktif)</span>
                 {% endif %}
             </div>
@@ -305,7 +318,7 @@
                 <ul style="display: flex; gap: 0.25rem; list-style: none; padding: 0; margin: 0; align-items: center;">
                     {% if pagination.has_prev %}
                     <li>
-                        <a href="{{ url_for('pemberitaan.index', page=pagination.prev_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
+                        <a href="{{ url_for('pemberitaan.index', page=pagination.prev_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai, is_rekanan=filter_is_rekanan) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
                             <i class="bi bi-chevron-left" style="font-size: 0.8rem;"></i>
                         </a>
                     </li>
@@ -314,7 +327,7 @@
                     {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                         {% if page_num %}
                         <li>
-                            <a href="{{ url_for('pemberitaan.index', page=page_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}"
+                            <a href="{{ url_for('pemberitaan.index', page=page_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai, is_rekanan=filter_is_rekanan) }}"
                                style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 500; text-decoration: none; border-radius: 0.25rem; {% if page_num == pagination.page %}background-color: #c8002d; color: white;{% else %}color: #4b5563;{% endif %}">
                                 {{ page_num }}
                             </a>
@@ -326,7 +339,7 @@
                     
                     {% if pagination.has_next %}
                     <li>
-                        <a href="{{ url_for('pemberitaan.index', page=pagination.next_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
+                        <a href="{{ url_for('pemberitaan.index', page=pagination.next_num, keyword=filter_keyword, sentimen=filter_sentimen, media=filter_media, topik=filter_topik, wilayah=filter_wilayah, tanggal_dari=filter_tanggal_dari, tanggal_sampai=filter_tanggal_sampai, is_rekanan=filter_is_rekanan) }}" style="padding: 0.4rem; color: #4b5563; text-decoration: none; display: block;">
                             <i class="bi bi-chevron-right" style="font-size: 0.8rem;"></i>
                         </a>
                     </li>

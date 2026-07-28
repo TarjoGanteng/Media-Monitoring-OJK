@@ -20,6 +20,9 @@
                 <a href="#sistem" class="list-group-item list-group-item-action" data-bs-toggle="pill">
                     <i class="bi bi-gear me-2"></i> Sistem
                 </a>
+                <a href="#keywords" class="list-group-item list-group-item-action" data-bs-toggle="pill">
+                    <i class="bi bi-tag me-2"></i> Kata Kunci
+                </a>
                 {% endif %}
             </div>
         </div>
@@ -465,12 +468,31 @@
                     <div class="mb-4">
                         <h6 class="system-section-title mb-3">AI Analisis</h6>
                         <div class="d-flex justify-content-between align-items-center border-bottom pb-3">
-                            <span class="system-label">Status Analisis AI</span>
                             <div>
-                                <span class="badge bg-success px-3 py-2" style="font-size: 0.85rem; border-radius: 6px;"><i class="bi bi-robot me-1"></i>Selalu Aktif</span>
-                                <input type="hidden" name="ai_aktif" value="true">
+                                <span class="system-label d-block">Status Analisis AI</span>
+                                <small id="ai-toggle-desc" class="text-muted" style="font-size:0.75rem;">
+                                    {% if ai_worker_running %}Worker aktif — memproses berita secara otomatis{% else %}Worker berhenti — AI tidak memproses berita{% endif %}
+                                </small>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <span id="ai-toggle-badge" class="badge px-3 py-2" style="font-size:0.82rem; border-radius:6px; background: {% if ai_worker_running %}#10b981{% else %}#6b7280{% endif %};">
+                                    <i class="bi bi-robot me-1"></i>
+                                    <span id="ai-toggle-label">{% if ai_worker_running %}Aktif{% else %}Nonaktif{% endif %}</span>
+                                </span>
+                                <!-- Toggle Switch -->
+                                <div class="form-check form-switch mb-0" style="transform: scale(1.3); transform-origin: right center;">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="toggleAiSwitch"
+                                           {% if ai_worker_running %}checked{% endif %}
+                                           onchange="handleAiToggle(this.checked)"
+                                           style="cursor:pointer; width:2.5rem; height:1.3rem;">
+                                </div>
                             </div>
                         </div>
+                        <small class="text-muted mt-2 d-block" style="font-size:0.7rem;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Matikan AI untuk memberhentikan proses analisis background dan mengosongkan terminal dari log AI. Aktifkan kembali saat limit API sudah pulih.
+                        </small>
                     </div>
 
                     <!-- Backup Data (Dihapus) -->
@@ -480,6 +502,75 @@
                         <button type="submit" class="btn btn-danger w-100 py-2 system-btn-save">Simpan Perubahan</button>
                     </div>
                 </form>
+            </div>
+
+            <!-- Tab Kata Kunci -->
+            <div class="tab-pane fade" id="keywords">
+                <div class="card-panel">
+                    <div class="card-panel-header pb-2">
+                        <h5 class="card-panel-title">Manajemen Kata Kunci Crawler</h5>
+                        <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola kata kunci yang digunakan untuk menarik berita secara otomatis dan manual.</p>
+                    </div>
+                    <div class="card-panel-body pt-3 pb-2">
+                        <!-- Form Tambah Keyword -->
+                        <form id="form-tambah-keyword" onsubmit="tambahKeyword(event)" class="d-flex gap-2 align-items-end mb-4 bg-light p-3" style="border-radius: 8px; border: 1px dashed var(--border-color);">
+                            <div style="flex:1;">
+                                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color:var(--text-secondary);">Kata Kunci Baru</label>
+                                <input type="text" id="input-keyword-baru" class="form-control form-control-sm" placeholder="Contoh: OJK Cirebon" required style="border-radius: 6px;">
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-danger px-4" style="border-radius: 6px; font-weight: 600; height: calc(1.5em + .5rem + 2px);">
+                                <i class="bi bi-plus-lg me-1"></i> Tambah
+                            </button>
+                        </form>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="background: #f8fafc; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                                        <th class="py-2 ps-3" style="width: 40px;">No</th>
+                                        <th class="py-2">Kata Kunci</th>
+                                        <th class="py-2 text-center" style="width: 120px;">Status</th>
+                                        <th class="py-2 text-center" style="width: 100px;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabel-keyword-body">
+                                    {% if daftar_keyword %}
+                                        {% for kw in daftar_keyword %}
+                                        <tr id="row-keyword-{{ kw.id }}">
+                                            <td class="ps-3 text-muted number-kw-cell">{{ loop.index }}</td>
+                                            <td class="fw-semibold">{{ kw.kata }}</td>
+                                            <td class="text-center">
+                                                <div class="form-check form-switch d-inline-block">
+                                                    <input class="form-check-input switch-kw-input" type="checkbox" role="switch" 
+                                                           id="switch-kw-{{ kw.id }}"
+                                                           {% if kw.aktif %}checked{% endif %}
+                                                           onchange="toggleKeywordStatus({{ kw.id }}, this.checked)"
+                                                           style="cursor: pointer;">
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <button class="btn btn-sm btn-outline-danger py-0 px-2"
+                                                        type="button"
+                                                        onclick="hapusKeyword({{ kw.id }}, '{{ kw.kata }}')"
+                                                        title="Hapus" style="border-radius: 4px; font-size: 0.75rem;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr id="tr-empty-keyword">
+                                            <td colspan="4" class="text-center py-4 text-muted">
+                                                <i class="bi bi-tag" style="font-size: 2rem; opacity: 0.3;"></i>
+                                                <p class="mt-2 mb-0">Belum ada kata kunci.</p>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -532,6 +623,73 @@ function cekStatusAI() {
             document.getElementById('ai-status-badge').className = 'badge bg-warning text-dark';
             document.getElementById('ai-status-badge').textContent = '? Error';
         });
+}
+
+// ---- Toggle ON/OFF AI Worker ----
+function handleAiToggle(aktifkan) {
+    const badge    = document.getElementById('ai-toggle-badge');
+    const label    = document.getElementById('ai-toggle-label');
+    const desc     = document.getElementById('ai-toggle-desc');
+    const swt      = document.getElementById('toggleAiSwitch');
+
+    // Disable toggle saat request berlangsung
+    swt.disabled = true;
+    badge.style.background = '#94a3b8';
+    label.textContent = 'Memproses...';
+
+    fetch('/pengaturan/toggle-ai', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({aktif: aktifkan})
+    })
+    .then(r => r.json())
+    .then(data => {
+        swt.disabled = false;
+        if (data.success) {
+            if (data.status === 'aktif') {
+                badge.style.background = '#10b981';
+                label.textContent = 'Aktif';
+                desc.textContent = 'Worker aktif — memproses berita secara otomatis';
+                swt.checked = true;
+                showToast('AI Analisis diaktifkan', 'success');
+            } else {
+                badge.style.background = '#6b7280';
+                label.textContent = 'Nonaktif';
+                desc.textContent = 'Worker berhenti — AI tidak memproses berita';
+                swt.checked = false;
+                showToast('AI Analisis dimatikan. Log AI berhenti di terminal.', 'warning');
+            }
+        }
+    })
+    .catch(() => {
+        swt.disabled = false;
+        swt.checked = !aktifkan; // rollback toggle
+        showToast('Gagal mengubah status AI. Coba lagi.', 'danger');
+    });
+}
+
+function showToast(pesan, tipe) {
+    // Buat toast bootstrap sederhana
+    const container = document.getElementById('toast-container') || (() => {
+        const c = document.createElement('div');
+        c.id = 'toast-container';
+        c.className = 'position-fixed bottom-0 end-0 p-3';
+        c.style.zIndex = '9999';
+        document.body.appendChild(c);
+        return c;
+    })();
+
+    const id = 'toast-' + Date.now();
+    const warna = tipe === 'success' ? '#10b981' : tipe === 'warning' ? '#f59e0b' : '#ef4444';
+    container.insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="toast align-items-center text-white border-0 show" role="alert" style="background:${warna}; min-width:280px;">
+            <div class="d-flex">
+                <div class="toast-body fw-600">${pesan}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('${id}').remove()"></button>
+            </div>
+        </div>
+    `);
+    setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, 4000);
 }
 
 function jalankanAnalisisAI() {
@@ -759,6 +917,110 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ---- Manajemen Kata Kunci (Keywords) ----
+function toggleKeywordStatus(keywordId, isChecked) {
+    const swt = document.getElementById(`switch-kw-${keywordId}`);
+    swt.disabled = true;
+
+    fetch(`/api/crawler/keywords/${keywordId}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aktif: isChecked })
+    })
+    .then(r => r.json())
+    .then(data => {
+        swt.disabled = false;
+        if (data.success) {
+            showToast(data.message, 'success');
+        } else {
+            swt.checked = !isChecked; // rollback
+            showToast(data.message, 'danger');
+        }
+    })
+    .catch(() => {
+        swt.disabled = false;
+        swt.checked = !isChecked;
+        showToast('Gagal mengubah status kata kunci.', 'danger');
+    });
+}
+
+function hapusKeyword(keywordId, kata) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus kata kunci "${kata}"?`)) {
+        return;
+    }
+
+    fetch(`/api/crawler/keywords/${keywordId}/delete`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.getElementById(`row-keyword-${keywordId}`);
+            if (row) row.remove();
+            showToast(data.message, 'success');
+            
+            // Recalculate loop indexes
+            const cells = document.querySelectorAll('.number-kw-cell');
+            cells.forEach((cell, idx) => {
+                cell.textContent = idx + 1;
+            });
+
+            if (cells.length === 0) {
+                const tbody = document.getElementById('tabel-keyword-body');
+                tbody.innerHTML = `
+                    <tr id="tr-empty-keyword">
+                        <td colspan="4" class="text-center py-4 text-muted">
+                            <i class="bi bi-tag" style="font-size: 2rem; opacity: 0.3;"></i>
+                            <p class="mt-2 mb-0">Belum ada kata kunci.</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        } else {
+            showToast(data.message, 'danger');
+        }
+    })
+    .catch(() => {
+        showToast('Gagal menghapus kata kunci.', 'danger');
+    });
+}
+
+function tambahKeyword(event) {
+    event.preventDefault();
+    const input = document.getElementById('input-keyword-baru');
+    const kata = input.value.trim();
+    if (!kata) return;
+
+    const form = document.getElementById('form-tambah-keyword');
+    const btn = form.querySelector('button[type="submit"]');
+    const oldHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+
+    fetch('/api/crawler/keywords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kata: kata })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+        if (data.success) {
+            input.value = '';
+            showToast(data.message, 'success');
+            window.location.href = '/pengaturan?tab=keywords';
+        } else {
+            showToast(data.message, 'danger');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+        showToast('Gagal menambahkan kata kunci.', 'danger');
+    });
+}
 </script>
 
 <style>

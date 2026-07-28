@@ -28,9 +28,17 @@ def index():
     sentimen = request.args.get("sentimen", "")
     keyword = request.args.get("keyword", "")
     wilayah = request.args.get("wilayah", "")
+    is_rekanan = request.args.get("is_rekanan", "")
+
     if wilayah:
         from services.ai_service import normalize_wilayah_name
         wilayah = normalize_wilayah_name(wilayah) or ""
+
+    is_rekanan_val = None
+    if is_rekanan == "1":
+        is_rekanan_val = True
+    elif is_rekanan == "0":
+        is_rekanan_val = False
 
     # Ambil data dengan filter
     pagination = BeritaService.get_berita_paginated(
@@ -42,6 +50,7 @@ def index():
         sentimen=sentimen or None,
         keyword=keyword or None,
         wilayah=wilayah or None,
+        is_rekanan=is_rekanan_val,
     )
 
     # Ambil daftar media, topik, dan wilayah untuk dropdown filter
@@ -64,6 +73,7 @@ def index():
         filter_wilayah=wilayah,
         filter_sentimen=sentimen,
         filter_keyword=keyword,
+        filter_is_rekanan=is_rekanan,
         active_page="pemberitaan",
     )
 

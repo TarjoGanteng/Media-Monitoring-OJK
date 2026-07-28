@@ -133,6 +133,15 @@ def initialize_database(app=None):
             )
             db.session.commit()
             logger.info("Kolom 'ai_checked' berhasil ditambahkan ke tabel berita.")
+
+        if "is_rekanan" not in berita_columns:
+            db.session.execute(
+                text(
+                    "ALTER TABLE berita ADD COLUMN is_rekanan BOOLEAN DEFAULT 0 NOT NULL"
+                )
+            )
+            db.session.commit()
+            logger.info("Kolom 'is_rekanan' berhasil ditambahkan ke tabel berita.")
     except Exception as e:
         db.session.rollback()
         logger.warning(f"Migrasi kolom users gagal: {e}")
@@ -257,14 +266,23 @@ def initialize_database(app=None):
         t_dedup = threading.Thread(target=_startup_dedup, args=(app,), daemon=True)
         t_dedup.start()
 
-        # Thread 2: AI Review Service — selalu aktif
+        # Thread 2: AI Review Service — hanya aktif jika config ai_aktif = True
         def _start_ai_review(flask_app):
             import time
+            import logging as _log
 
             time.sleep(5)
+            from services.config_service import ConfigService
             from services.ai_review_service import AIReviewService
 
-            AIReviewService.start(flask_app)
+            cfg = ConfigService.get_config()
+            if cfg.get("ai_aktif", True):
+                AIReviewService.start(flask_app)
+            else:
+                _log.getLogger("app").info(
+                    "[AIReview] AI Analisis DINONAKTIFKAN via Pengaturan. "
+                    "Aktifkan kembali di Pengaturan -> Sistem -> Status Analisis AI."
+                )
 
         t_ai = threading.Thread(target=_start_ai_review, args=(app,), daemon=True)
         t_ai.start()
@@ -451,6 +469,26 @@ def debug_sentimen():
     })
 
 
+@app.route("/api/last-crawl")
+def api_last_crawl():
+    """Mengembalikan waktu crawl terakhir dari CrawlLog."""
+    from flask import jsonify
+    from database.models import CrawlLog
+    from datetime import timedelta
+    BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni',
+                'Juli','Agustus','September','Oktober','November','Desember']
+    log = CrawlLog.query.filter_by(status="sukses").order_by(CrawlLog.created_at.desc()).first()
+    if log:
+        wib = log.created_at + timedelta(hours=7)
+        nama_bulan = BULAN_ID[wib.month - 1]
+        waktu_tampil = f"{wib.day:02d} {nama_bulan} {wib.year} · {wib.hour:02d}.{wib.minute:02d} WIB"
+        return jsonify({
+            "ada": True,
+            "waktu_tampil": waktu_tampil,
+        })
+    return jsonify({"ada": False, "waktu_tampil": "Belum pernah crawl"})
+
+
 from datetime import datetime
 _last_auto_ai_check = datetime.min
 
@@ -462,21 +500,36 @@ def auto_ai_review_trigger():
     global _last_auto_ai_check
 
     path = flask_request.path
-    if any(path.startswith(p) for p in ["/static", "/favicon", "/api/status-ai"]):
+    if any(path.startswith(p) for p in ["/static", "/favicon", "/api/status-ai", "/api/last-crawl"]):
         return
 
     now = datetime.utcnow()
     if (now - _last_auto_ai_check).total_seconds() > 10:
         _last_auto_ai_check = now
         try:
+            from services.config_service import ConfigService
             from services.ai_review_service import AIReviewService
-            # Di serverless Vercel (atau saat ada DATABASE_URL), eksekusi synchronous agar tidak terbunuh oleh kontainer serverless
+
+            # Cek apakah AI diaktifkan oleh user dari Pengaturan
+            cfg = ConfigService.get_config()
+            if not cfg.get("ai_aktif", True):
+                return  # AI dinonaktifkan, skip
+
+            # Di serverless Vercel, eksekusi synchronous
             if os.environ.get("VERCEL") or os.environ.get("DATABASE_URL"):
-                AIReviewService._proses_batch(app)
+                with app.app_context():
+                    AIReviewService._proses_batch(app)
             else:
-                import threading
-                t = threading.Thread(target=AIReviewService._proses_batch, args=(app,), daemon=True)
-                t.start()
+                # Lokal: hanya jalankan jika background worker TIDAK sedang aktif
+                # (agar tidak dobel dengan thread worker utama)
+                if not AIReviewService._running:
+                    import threading
+                    flask_app = app
+                    def _run_batch_with_ctx():
+                        with flask_app.app_context():
+                            AIReviewService._proses_batch(flask_app)
+                    t = threading.Thread(target=_run_batch_with_ctx, daemon=True)
+                    t.start()
         except Exception as err:
             logger.warning(f"Auto AI Review Error: {err}")
 
@@ -656,11 +709,11 @@ if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info("  Media Monitoring OJK Jawa Barat")
     logger.info("  Versi: 1.0.0")
-    logger.info("  Akses: http://localhost:5000")
+    logger.info("  Akses: http://localhost:5001")
     logger.info("=" * 60)
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=5001,
         debug=(_flask_env == "development"),
         use_reloader=(_flask_env == "development"),
     )

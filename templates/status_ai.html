@@ -247,7 +247,7 @@
     }
 
     async function fetchLiveLogs() {
-        try:
+        try {
             const resp = await fetch(`/api/status-ai/logs?since_id=${lastLogId}`, {
                 headers: { 'Accept': 'application/json' }
             });

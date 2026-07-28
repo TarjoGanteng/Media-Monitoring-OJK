@@ -49,6 +49,9 @@ class Berita(db.Model):
     ai_last_checked = db.Column(
         db.DateTime, nullable=True
     )  # waktu terakhir dianalisis/sinkronisasi AI
+    is_rekanan = db.Column(
+        db.Boolean, default=False, nullable=False
+    )  # apakah media rekanan?
 
     def __repr__(self):
         return f"<Berita id={self.id} judul='{self.judul[:50]}...'>"
@@ -75,6 +78,7 @@ class Berita(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "status": self.status,
             "keyword": self.keyword,
+            "is_rekanan": self.is_rekanan,
         }
 
     def get_sentimen_badge(self) -> str:

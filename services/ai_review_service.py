@@ -19,6 +19,53 @@ import time
 
 logger = logging.getLogger(__name__)
 
+
+def is_luar_jabar_dateline(text: str) -> bool:
+    """
+    Memeriksa apakah awal teks berita (dateline) merupakan lokasi di luar Jawa Barat.
+    Contoh: "Jakarta - ...", "SURABAYA, (ANTARA) - ..."
+    """
+    if not text:
+        return False
+    
+    # Bersihkan HTML tags
+    import re
+    text_clean = re.sub(r'<[^>]+>', '', text).strip()
+    prefix = text_clean[:150].strip()
+    
+    # List kota luar Jabar yang sering muncul sebagai dateline
+    LUAR_JABAR_CITIES = [
+        "jakarta", "surabaya", "semarang", "yogyakarta", "jogja", "solo", "surakarta", 
+        "medan", "makassar", "denpasar", "bali", "batam", "tangerang", "serang", 
+        "cilegon", "banten", "malang", "sidoarjo", "gresik", "ponorogo", "madiun",
+        "kediri", "banyuwangi", "jember", "palembang", "padang", "pekanbaru", "aceh",
+        "lampung", "pontianak", "samarinda", "banjarmasin", "balikpapan", "manado"
+    ]
+    
+    # Deteksi dateline terstruktur: "KOTA - " atau "KOTA, " atau "KOTA (..."
+    match = re.match(r'^([A-Za-z\s]{3,20}?)(?:\s*\([^)]+\))?\s*[-–—,]', prefix)
+    if match:
+        detected_city = match.group(1).strip().lower()
+        if detected_city in LUAR_JABAR_CITIES:
+            return True
+            
+    # Deteksi substring fleksibel pada 60 karakter pertama
+    first_60 = prefix[:60].lower()
+    for city in LUAR_JABAR_CITIES:
+        if re.search(r'\b' + re.escape(city) + r'\b', first_60):
+            # Pastikan tidak ada kota Jabar yang muncul lebih awal
+            jabar_cities = ["bandung", "bogor", "depok", "bekasi", "cirebon", "sukabumi", "tasikmalaya", "garut", "cianjur", "karawang", "subang", "purwakarta", "sumedang", "indramayu", "majalengka", "kuningan", "ciamis", "banjar", "pangandaran", "cimahi"]
+            jabar_index = 999
+            for jc in jabar_cities:
+                idx = first_60.find(jc)
+                if idx != -1 and idx < jabar_index:
+                    jabar_index = idx
+            city_idx = first_60.find(city)
+            if city_idx != -1 and city_idx < jabar_index:
+                return True
+    return False
+
+
 # ─── Konstanta ────────────────────────────────────────────────────────────────
 INTERVAL_DETIK = 30  # Cek ulang berita setiap 30 detik (24/7 continuous loop)
 BATCH_SIZE = 10      # Jumlah berita yang diproses per batch
@@ -91,6 +138,14 @@ class AIReviewService:
                     )
                     modified = True
                     logger.info("[AIReview] Kolom 'ai_last_checked' berhasil ditambahkan.")
+                if "is_rekanan" not in cols:
+                    db.session.execute(
+                        text(
+                            "ALTER TABLE berita ADD COLUMN is_rekanan BOOLEAN DEFAULT 0 NOT NULL"
+                        )
+                    )
+                    modified = True
+                    logger.info("[AIReview] Kolom 'is_rekanan' berhasil ditambahkan.")
                 
                 if modified:
                     db.session.commit()
@@ -218,6 +273,19 @@ class AIReviewService:
 
         for berita in antrian:
             judul = berita.judul or ""
+
+            # ── Fast Pre-Check 0: Auto-Purge Media Luar Jabar yang Bukan Rekanan ──
+            from services.crawler_service import is_media_allowed
+            if not is_media_allowed(berita.media):
+                try:
+                    db.session.delete(berita)
+                    db.session.commit()
+                    dihapus += 1
+                    logger.info(f"[AIReview] Fast Purge (Media Luar Jabar bukan Rekanan: {berita.media}) | {judul[:50]}")
+                except Exception:
+                    db.session.rollback()
+                continue
+
             isi = berita.isi or berita.ringkasan or ""
             teks = f"{judul} {isi}".lower()
 
@@ -331,8 +399,40 @@ class AIReviewService:
             except Exception as e:
                 logger.debug(f"[AIReview] Gagal resolve link ID={berita.id}: {e}")
 
+            # ── Fast Pre-Check D: Hapus jika terdeteksi dateline luar Jawa Barat ──
+            # (misalnya "Jakarta - ", "Surabaya - ", "Solo - ", dll.)
+            if berita.isi and is_luar_jabar_dateline(berita.isi):
+                try:
+                    db.session.delete(berita)
+                    db.session.commit()
+                    dihapus += 1
+                    logger.info(f"[AIReview] Fast Purge (Dateline Luar Jabar) | {judul[:55]}")
+                except Exception:
+                    db.session.rollback()
+                continue
+
+            # Jika is_rekanan belum diset, coba deteksi ulang
+            if not berita.is_rekanan:
+                from config import Config
+                media_raw = berita.media or ""
+                if media_raw:
+                    media_lower = media_raw.lower().strip()
+                    for r_name in getattr(Config, "MEDIA_REKANAN", []):
+                        r_lower = r_name.lower().strip()
+                        if r_lower in media_lower or media_lower in r_lower:
+                            berita.is_rekanan = True
+                            db.session.commit()
+                            break
+                        r_clean = r_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+                        m_clean = media_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+                        if r_clean and m_clean and (r_clean in m_clean or m_clean in r_clean):
+                            berita.is_rekanan = True
+                            db.session.commit()
+                            break
+
             # ── Lapis 1: Pre-filter kata kunci kota Jabar ─────────────────────
-            if not any(k in teks for k in JABAR_KEYWORDS):
+            # Jangan hapus jika merupakan Media Rekanan
+            if not any(k in teks for k in JABAR_KEYWORDS) and not berita.is_rekanan:
                 try:
                     db.session.delete(berita)
                     db.session.commit()
@@ -357,10 +457,26 @@ class AIReviewService:
                 sentimen = ai_result.get("sentimen", "Netral")
 
                 if sentimen == "Tidak Relevan":
-                    db.session.delete(berita)
-                    db.session.commit()
-                    dihapus += 1
-                    logger.info(f"[AIReview] L2-HAPUS (tidak relevan) | {judul[:60]}")
+                    is_tolerated = False
+                    if berita.is_rekanan:
+                        teks_lower = teks.lower()
+                        if any(x in teks_lower for x in ["ojk", "keuangan", "perbankan", "pasar modal", "investasi"]):
+                            is_tolerated = True
+                    
+                    if is_tolerated:
+                        berita.sentimen = "Netral"
+                        berita.topik = ai_result.get("topik", "Regulasi") or "Regulasi"
+                        berita.wilayah = "Jawa Barat"
+                        berita.ai_checked = True
+                        berita.ai_last_checked = datetime.utcnow()
+                        db.session.commit()
+                        diupdate += 1
+                        logger.info(f"[AIReview] Toleransi Rekanan | Netral | Jawa Barat | {judul[:45]}")
+                    else:
+                        db.session.delete(berita)
+                        db.session.commit()
+                        dihapus += 1
+                        logger.info(f"[AIReview] L2-HAPUS (tidak relevan) | {judul[:60]}")
                 else:
                     # ── Validasi Pasca-AI: Hapus jika wilayah bukan Jawa Barat ──────
                     wilayah_ai = ai_result.get("wilayah")

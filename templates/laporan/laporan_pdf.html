@@ -204,6 +204,58 @@ body {
 .cover-bottom-left  { font-size: 7pt; color: #94a3b8; text-align: left;  }
 .cover-bottom-right { font-size: 7pt; color: #c8002d; font-weight: bold; text-align: right; }
 
+/* ---- COVER HIGHLIGHTS & PENGESAHAN ---- */
+.cover-highlights-wrap {
+  border: none;
+  border-bottom: 0.3mm solid #e2e8f0;
+  padding: 2mm 0;
+  margin-top: 2mm;
+  margin-bottom: 2mm;
+}
+.cover-highlights-title {
+  font-size: 8pt;
+  font-weight: bold;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  margin-bottom: 1.5mm;
+  border: none;
+  text-decoration: none;
+}
+.cover-highlight-item {
+  font-size: 7.2pt;
+  color: #1e293b;
+  line-height: 1.4;
+  margin-bottom: 1.2mm;
+  border: none;
+  text-decoration: none;
+}
+.cover-highlight-bullet {
+  color: #1e293b;
+  font-weight: bold;
+  margin-right: 1mm;
+  border: none;
+  text-decoration: none;
+}
+
+.cover-pengesahan-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2mm;
+}
+.cover-pengesahan-td {
+  width: 50%;
+  vertical-align: top;
+  font-size: 7pt;
+  color: #64748b;
+}
+.cover-pengesahan-val {
+  font-size: 7.5pt;
+  font-weight: bold;
+  color: #1e293b;
+  margin-top: 0.3mm;
+}
+
 /* ============================================================
    STAT CARDS (ringkasan eksekutif)
    ============================================================ */
@@ -567,16 +619,38 @@ body {
         </tr>
       </table>
 
-      <!-- Ringkasan singkat -->
-      <div class="ringkasan-box" style="margin-bottom:3mm;">
-        {% set paras_ring = data.ringkasan_ai.split('\n\n') if data.ringkasan_ai else [] %}
-        {% if paras_ring and paras_ring[0].strip() %}
-          {{ paras_ring[0].strip()[:450] }}{% if paras_ring[0].strip()|length > 450 %}...{% endif %}
-        {% else %}
-          Laporan pemberitaan OJK Jawa Barat periode {{ params.periode_label }} mencakup analisis
-          {{ "{:,}".format(data.statistik.total) }} berita dari berbagai media massa di wilayah Jawa Barat.
-        {% endif %}
+      <!-- Sorotan Utama Pemberitaan (Ide 1) -->
+      <div class="cover-highlights-wrap">
+        <div class="cover-highlights-title">Sorotan Utama Pemberitaan</div>
+        <div class="cover-highlight-item">
+          <span class="cover-highlight-bullet">&bull;</span>
+          <strong>Sentimen Publik:</strong> Didominasi berita <strong>positif ({{ data.statistik.pct_positif }}%)</strong> dari total {{ "{:,}".format(data.statistik.total) }} berita terpantau.
+        </div>
+        <div class="cover-highlight-item">
+          <span class="cover-highlight-bullet">&bull;</span>
+          <strong>Fokus Topik:</strong> Topik <strong>{{ data.topik_utama }}</strong> menjadi isu utama dengan publikasi terbanyak.
+        </div>
+        <div class="cover-highlight-item">
+          <span class="cover-highlight-bullet">&bull;</span>
+          <strong>Sebaran Media:</strong> <strong>{{ data.media_utama }}</strong> teraktif, menyumbang kontribusi Jabar <strong>{{ data.kontribusi.pct }}%</strong> nasional.
+        </div>
       </div>
+
+      <!-- Blok Pengesahan / Otorisasi (Ide 4) -->
+      <table class="cover-pengesahan-table">
+        <tr>
+          <td class="cover-pengesahan-td" style="border-right: 0.2mm solid #e2e8f0; padding-right: 2mm;">
+            <div style="font-size: 6.5pt; color: #94a3b8; text-transform: uppercase;">Disusun Oleh:</div>
+            <div class="cover-pengesahan-val">{{ params.dibuat_oleh_nama }}</div>
+            <div style="font-size: 6.5pt; color: #64748b;">Tim Media Monitoring OJK Jabar</div>
+          </td>
+          <td class="cover-pengesahan-td" style="padding-left: 3mm;">
+            <div style="font-size: 6.5pt; color: #94a3b8; text-transform: uppercase;">Penanggung Jawab / Otorisasi:</div>
+            <div class="cover-pengesahan-val">Otoritas Jasa Keuangan</div>
+            <div style="font-size: 6.5pt; color: #64748b;">Kantor Regional 2 Jawa Barat</div>
+          </td>
+        </tr>
+      </table>
 
       <div class="cover-nomor">
         Nomor: <strong>{{ params.nomor_laporan }}</strong> &nbsp;|&nbsp;

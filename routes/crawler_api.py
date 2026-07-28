@@ -97,6 +97,27 @@ def tambah_keyword():
     return jsonify({"success": berhasil, "message": pesan}), status_code
 
 
+@bp.route("/keywords/<int:keyword_id>/toggle", methods=["POST"])
+@login_required
+def toggle_keyword_endpoint(keyword_id):
+    """Toggle status aktif/nonaktif dari keyword."""
+    data = request.get_json(silent=True) or {}
+    aktif = data.get("aktif", True)
+    
+    berhasil, pesan = DatabaseService.toggle_keyword(keyword_id, aktif)
+    status_code = 200 if berhasil else 400
+    return jsonify({"success": berhasil, "message": pesan}), status_code
+
+
+@bp.route("/keywords/<int:keyword_id>/delete", methods=["POST", "DELETE"])
+@login_required
+def hapus_keyword_endpoint(keyword_id):
+    """Menghapus keyword."""
+    berhasil, pesan = DatabaseService.hapus_keyword(keyword_id)
+    status_code = 200 if berhasil else 400
+    return jsonify({"success": berhasil, "message": pesan}), status_code
+
+
 @bp.route("/log", methods=["GET"])
 @login_required
 def get_crawl_log():

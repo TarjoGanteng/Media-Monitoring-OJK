@@ -75,6 +75,40 @@ class DatabaseService:
             return False, f"Gagal menambahkan keyword: {str(e)}"
 
     @staticmethod
+    def toggle_keyword(keyword_id: int, aktif: bool) -> tuple[bool, str]:
+        """Mengubah status aktif/nonaktif dari keyword."""
+        kw = Keyword.query.get(keyword_id)
+        if not kw:
+            return False, "Keyword tidak ditemukan."
+        
+        kw.aktif = aktif
+        try:
+            db.session.commit()
+            status_str = "diaktifkan" if aktif else "dinonaktifkan"
+            return True, f"Keyword '{kw.kata}' berhasil {status_str}."
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Gagal toggle keyword: {e}")
+            return False, f"Gagal mengubah status: {str(e)}"
+
+    @staticmethod
+    def hapus_keyword(keyword_id: int) -> tuple[bool, str]:
+        """Menghapus keyword dari database."""
+        kw = Keyword.query.get(keyword_id)
+        if not kw:
+            return False, "Keyword tidak ditemukan."
+        
+        kata = kw.kata
+        db.session.delete(kw)
+        try:
+            db.session.commit()
+            return True, f"Keyword '{kata}' berhasil dihapus."
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Gagal hapus keyword: {e}")
+            return False, f"Gagal menghapus keyword: {str(e)}"
+
+    @staticmethod
     def cleanup_old_data():
         """
         Menghapus data berita yang lebih lama dari rentang waktu konfigurasi (1, 3, atau 5 tahun).

@@ -441,6 +441,8 @@ def pengaturan():
     """Halaman Pengaturan."""
     from database.models import User
     from sqlalchemy import case
+    from services.config_service import ConfigService
+    from services.ai_review_service import AIReviewService
 
     order_case = case(
         (User.role == "super_admin", 1),
@@ -448,11 +450,17 @@ def pengaturan():
         (User.role == "staff", 3),
         else_=4,
     )
+    from database.models import Keyword
     daftar_user = User.query.order_by(order_case, User.created_at.asc()).all()
+    daftar_keyword = Keyword.query.order_by(Keyword.id.asc()).all()
+    config = ConfigService.get_config()
     return render_template(
         "pengaturan/index.html",
         active_page="pengaturan",
         daftar_user=daftar_user,
+        daftar_keyword=daftar_keyword,
+        ai_aktif=config.get("ai_aktif", True),
+        ai_worker_running=AIReviewService._running,
     )
 
 
@@ -461,6 +469,8 @@ def pengaturan():
 @role_required("super_admin")
 def simpan_sistem():
     from services.config_service import ConfigService
+    from services.ai_review_service import AIReviewService
+    from flask import current_app
 
     jam_update = request.form.get("jam_update", "09:00")
     rentang_data = request.form.get("rentang_data", "5")
@@ -478,6 +488,17 @@ def simpan_sistem():
         }
     )
 
+    # Kontrol AI Review Worker secara real-time
+    if ai_aktif and not AIReviewService._running:
+        app_obj = current_app._get_current_object()
+        import threading
+        t = threading.Thread(target=AIReviewService.start, args=(app_obj,), daemon=True)
+        t.start()
+        flash("AI Analisis diaktifkan.", "info")
+    elif not ai_aktif and AIReviewService._running:
+        AIReviewService.stop()
+        flash("AI Analisis dimatikan. Terminal tidak akan lagi menampilkan log AI.", "warning")
+
     # Trigger cleanup jika auto_hapus aktif
     if auto_hapus:
         from services.database_service import DatabaseService
@@ -490,10 +511,36 @@ def simpan_sistem():
             )
 
     flash(
-        "Konfigurasi sistem berhasil disimpan dan sinkron dengan jadwal auto-crawler.",
+        "Konfigurasi sistem berhasil disimpan.",
         "success",
     )
     return redirect(url_for("halaman.pengaturan", tab="sistem"))
+
+
+@bp.route("/pengaturan/toggle-ai", methods=["POST"])
+@login_required
+@role_required("super_admin")
+def toggle_ai():
+    """Toggle AI Review Service ON/OFF secara real-time via AJAX."""
+    from flask import jsonify, current_app
+    from services.ai_review_service import AIReviewService
+    from services.config_service import ConfigService
+    import threading
+
+    data = request.get_json() or {}
+    aktifkan = data.get("aktif", True)
+
+    if aktifkan:
+        if not AIReviewService._running:
+            app_obj = current_app._get_current_object()
+            t = threading.Thread(target=AIReviewService.start, args=(app_obj,), daemon=True)
+            t.start()
+        ConfigService.save_config({"ai_aktif": True})
+        return jsonify({"success": True, "status": "aktif", "pesan": "AI Analisis berhasil diaktifkan."})
+    else:
+        AIReviewService.stop()
+        ConfigService.save_config({"ai_aktif": False})
+        return jsonify({"success": True, "status": "nonaktif", "pesan": "AI Analisis dimatikan. Log AI berhenti di terminal."})
 
 
 @bp.route("/pengaturan/tambah_user", methods=["POST"])

@@ -567,9 +567,9 @@ class DashboardService:
         """
         from datetime import datetime, timedelta
 
-        # --- Kumpulkan data berita hari ini ---
+        # --- Kumpulkan data berita 7 hari terakhir (Mingguan) ---
         now = datetime.now()
-        sejak = now - timedelta(hours=24)
+        sejak = now - timedelta(days=7)
 
         berita_hari_ini = (
             Berita.query.filter(
@@ -577,11 +577,11 @@ class DashboardService:
                 Berita.tanggal >= sejak,
             )
             .order_by(Berita.tanggal.desc())
-            .limit(30)  # Maks 30 berita terbaru sebagai konteks
+            .limit(40)  # Maks 40 berita terbaru sebagai konteks mingguan
             .all()
         )
 
-        # Statistik sentimen hari ini
+        # Statistik sentimen mingguan
         total = len(berita_hari_ini)
         positif = sum(1 for b in berita_hari_ini if b.sentimen == "Positif")
         negatif = sum(1 for b in berita_hari_ini if b.sentimen == "Negatif")
@@ -610,13 +610,25 @@ class DashboardService:
             else "Netral"
         )
 
-        # Jika tidak ada berita hari ini, kembalikan kosong
+        # Jika tidak ada berita minggu ini, kembalikan kosong
         if total == 0:
+            # Cek apakah ada berita yang belum dianalisis AI (menandakan AI background sedang limit/tertunda)
+            from database.extensions import db
+            unprocessed_count = Berita.query.filter(
+                Berita.status == "aktif",
+                db.or_(Berita.ai_checked == False, Berita.ai_checked.is_(None))
+            ).count()
+
+            if unprocessed_count > 0:
+                msg = "Layanan AI (Gemini/Cohere) untuk meringkas sedang limit kuota harian"
+            else:
+                msg = "Belum ada berita yang dikumpulkan minggu ini."
+
             return {
                 "tersedia": False,
-                "ringkasan": "Belum ada berita yang dikumpulkan hari ini.",
+                "ringkasan": msg,
                 "topik_utama": "-",
-                "sentimen_dominan": "Netral",
+                "sentimen_dominan": None,
                 "total_hari_ini": 0,
                 "kota_terbanyak": "-",
                 "media_terbanyak": "-",
@@ -625,29 +637,29 @@ class DashboardService:
 
         # --- Susun konteks untuk Gemini ---
         judul_list = "\n".join(
-            f"- [{b.sentimen or 'Netral'}] {b.judul}" for b in berita_hari_ini[:15]
+            f"- [{b.sentimen or 'Netral'}] {b.judul}" for b in berita_hari_ini[:20]
         )
         topik_str = ", ".join(f"{t}({c})" for t, c in topik_counter.most_common(5))
         kota_str = ", ".join(f"{k}({c})" for k, c in wilayah_counter.most_common(5))
 
-        prompt = f"""Anda adalah analis media senior OJK (Otoritas Jasa Keuangan) Indonesia.
-Berdasarkan data pemberitaan 24 jam terakhir, buat ringkasan analisis singkat dalam Bahasa Indonesia.
+        prompt = f"""Anda adalah analis media senior OJK (Otoritas Jasa Keuangan) Provinsi Jawa Barat, Indonesia.
+Berdasarkan data pemberitaan 7 hari terakhir (minggu ini), buat ringkasan analisis singkat dalam Bahasa Indonesia.
 
-=== DATA PEMBERITAAN HARI INI ===
-Tanggal: {now.strftime("%d %B %Y")}
+=== DATA PEMBERITAAN MINGGU INI ===
+Rentang Waktu: 7 Hari Terakhir (Hingga {now.strftime("%d %B %Y")})
 Total berita: {total} artikel
 Positif: {positif} | Negatif: {negatif} | Netral: {netral}
 Topik terbanyak: {topik_str}
 Kota paling banyak disebut: {kota_str}
 
-Judul-judul berita terbaru:
+Judul-judul berita terbaru minggu ini:
 {judul_list}
 
 === TUGAS ===
 Buat ringkasan analisis naratif dalam 2-3 kalimat yang:
-1. Menjelaskan isu/topik utama yang sedang banyak dibahas
-2. Menyebutkan sentimen dominan dan apa maknanya bagi OJK
-3. Menyebutkan kota atau wilayah yang paling aktif (jika relevan)
+1. Menjelaskan isu atau topik utama yang sering muncul/dibahas minggu ini
+2. Menyebutkan sentimen dominan minggu ini dan apa maknanya bagi reputasi OJK Jawa Barat
+3. Menyebutkan daerah/wilayah yang paling aktif diberitakan jika relevan
 
 Gunakan bahasa formal, padat, dan profesional. Jangan gunakan bullet point.
 Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
@@ -721,7 +733,8 @@ Balas HANYA dengan paragraf narasi, tanpa judul atau penjelasan tambahan."""
         except Exception as e:
             logger.warning(f"[AI Dashboard] Gagal generate ringkasan: {e}")
             ringkasan_ai = (
-                f"Hari ini terdapat {total} berita terkait OJK Jawa Barat "
+                "[Layanan AI Gemini/Cohere sedang Limit Kuota/Rate Limited 429] "
+                f"Minggu ini terdapat {total} berita terkait OJK Jawa Barat "
                 f"dengan sentimen {sentimen_dominan.lower()} mendominasi ({positif}P/{negatif}N/{netral}Ntrl). "
                 f"Topik yang paling banyak dibahas adalah {topik_utama}."
             )

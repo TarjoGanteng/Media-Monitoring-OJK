@@ -71,7 +71,7 @@ Konten: {konten}
   "analisis_konteks": "<1-2 kalimat analisis inti berita dan dampaknya terhadap reputasi OJK>",
   "sentimen": "<PILIH SATU: Positif | Negatif | Netral>",
   "topik": "<PILIH SATU: {" | ".join(TOPIK_VALID)}>",
-  "wilayah": "<nama kota/kabupaten lokasi utama berita di Jawa Barat jika ada (PILIH DARI: Bandung, Bekasi, Bogor, Cirebon, Depok, Sukabumi, Karawang, Tasikmalaya, Garut, Cianjur, Subang, Purwakarta, Indramayu, Majalengka, Sumedang, Kuningan, Ciamis, Banjar, Pangandaran). Jika tidak disebutkan secara eksplisit di dalam konten, analisislah asal media tersebut (misal: 'Radar Bogor' -> Bogor, 'Radar Cirebon' -> Cirebon, 'Pikiran Rakyat' -> Bandung, 'Tribun Jabar' -> Bandung). Jika benar-benar tidak terdeteksi, berikan null>",
+  "wilayah": "<nama kota/kabupaten tempat peristiwa atau subjek utama berita terjadi di Jawa Barat (PILIH DARI: Bandung, Bekasi, Bogor, Cirebon, Depok, Sukabumi, Karawang, Tasikmalaya, Garut, Cianjur, Subang, Purwakarta, Indramayu, Majalengka, Sumedang, Kuningan, Ciamis, Banjar, Pangandaran). PENTING: Prioritaskan wilayah tempat kejadian/subjek berita utama. JANGAN gunakan nama/asal media (seperti InilahTasik.com -> Tasikmalaya) jika judul atau isi berita secara spesifik membahas kota/kabupaten lain (misal: membahas Pemkab Sumedang, maka wilayahnya wajib Sumedang). Gunakan asal media sebagai fallback HANYA jika benar-benar tidak ada lokasi peristiwa yang disebutkan di dalam judul atau konten berita. Jika tidak terdeteksi, berikan null>",
   "ringkasan": "<ringkasan 1-2 kalimat bahasa Indonesia>",
   "narasumber": "<nama dan jabatan narasumber yang dikutip, atau null>",
   "jenis_media": "<PILIH SATU: Lokal | Non-Lokal>"
@@ -153,7 +153,7 @@ def _parse_result(result: dict, media: str = None) -> dict:
     # Jika nama media adalah media lokal Jabar
     is_local_media = any(k in media_lower for k in [
         "jabar", "jawa barat", "bjb", "bandung", "ciamik", "bogor", "depok", "bekasi", "cirebon", 
-        "pikiran rakyat", "radar", "cianjur", "tasikmalaya", "garut", "subang", 
+        "pikiran rakyat", "radar", "cianjur", "tasik", "garut", "subang", 
         "purwakarta", "indramayu", "majalengka", "sumedang", "kuningan", "ciamis", 
         "banjar", "pangandaran", "sukabumi", "karawang", "pasundan"
     ])
@@ -174,7 +174,7 @@ def _parse_result(result: dict, media: str = None) -> dict:
             wilayah = "Sukabumi"
         elif "karawang" in media_lower:
             wilayah = "Karawang"
-        elif "tasikmalaya" in media_lower or "priangan" in media_lower:
+        elif "tasik" in media_lower or "priangan" in media_lower:
             wilayah = "Tasikmalaya"
         elif "garut" in media_lower:
             wilayah = "Garut"

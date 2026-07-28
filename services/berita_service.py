@@ -26,6 +26,7 @@ class BeritaService:
         sentimen: str = None,
         keyword: str = None,
         wilayah: str = None,
+        is_rekanan: bool = None,
     ):
         """
         Mengambil berita dengan filter dan pagination.
@@ -40,6 +41,7 @@ class BeritaService:
             sentimen: Filter sentimen
             keyword: Filter teks di judul
             wilayah: Filter wilayah
+            is_rekanan: Filter media rekanan (True/False/None)
 
         Returns:
             Objek Pagination dari SQLAlchemy
@@ -85,6 +87,10 @@ class BeritaService:
         # Filter wilayah
         if wilayah:
             query = query.filter(Berita.wilayah.ilike(f"%{wilayah}%"))
+
+        # Filter is_rekanan
+        if is_rekanan is not None:
+            query = query.filter(Berita.is_rekanan == is_rekanan)
 
         # Urutkan berdasarkan tanggal terbaru
         query = query.order_by(desc(Berita.tanggal), desc(Berita.created_at))

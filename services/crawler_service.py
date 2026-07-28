@@ -13,6 +13,52 @@ from services.sentiment_service import SentimentAnalyzer
 logger = logging.getLogger(__name__)
 
 
+def is_media_allowed(media_name: str) -> bool:
+    """
+    Memeriksa apakah media diperbolehkan (lokal Jabar atau rekanan OJK Jabar).
+    """
+    if not media_name:
+        return True
+    
+    from config import Config
+    media_lower = media_name.lower().strip()
+    
+    # Blokir regional daerah lain secara eksplisit agar sub-outlet (misal: ANTARA News Kepri) tidak lolos
+    BLOCKED_REGIONS = [
+        "kepri", "kaltim", "riau", "sulsel", "jatim", "jateng", "bali", "papua", "maluku",
+        "sulut", "sultra", "sulbar", "aceh", "sumut", "sumbar", "jambi", "bengkulu", "lampung",
+        "babel", "ntb", "ntt", "kalbar", "kalteng", "kalsel", "kaltara", "gorontalo", "banten",
+        "surabaya", "semarang", "yogyakarta", "jogja", "medan", "makassar", "palembang",
+        "pekanbaru", "batam", "tangerang", "serang", "cilegon"
+    ]
+    for region in BLOCKED_REGIONS:
+        import re
+        if re.search(r'\b' + re.escape(region) + r'\b', media_lower):
+            return False
+    
+    # 1. Cek Media Rekanan
+    for r_name in getattr(Config, "MEDIA_REKANAN", []):
+        r_lower = r_name.lower().strip()
+        if r_lower in media_lower or media_lower in r_lower:
+            return True
+        r_clean = r_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+        m_clean = media_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+        if r_clean and m_clean and (r_clean in m_clean or m_clean in r_clean):
+            return True
+
+    # 2. Cek Media Lokal Jabar
+    for l_name in getattr(Config, "MEDIA_LOKAL_JABAR", []):
+        l_lower = l_name.lower().strip()
+        if l_lower in media_lower or media_lower in l_lower:
+            return True
+        l_clean = l_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+        m_clean = media_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+        if l_clean and m_clean and (l_clean in m_clean or m_clean in l_clean):
+            return True
+            
+    return False
+
+
 class CrawlerService:
     """
     Service yang mengorkestrasi proses crawling:
@@ -82,38 +128,63 @@ class CrawlerService:
                     f"Ditolak: Berita terlalu lama ({tanggal_berita.strftime('%Y-%m-%d')})",
                 )
 
+        # ── Filter Media: Hanya memperbolehkan media rekanan atau lokal Jabar
+        media_name = article_data.get("media", "")
+        if not is_media_allowed(media_name):
+            return False, f"Ditolak (Media Luar): {media_name} bukan media Jabar / Rekanan."
+
         # ── Lapis 1: Pre-filter Cepat Regional Jabar ──────────────────────────
         # Mencegah pembuangan kuota AI untuk berita murni nasional/luar daerah
-        jabar_keywords = [
-            "jawa barat",
-            "jabar",
-            "bandung",
-            "bogor",
-            "depok",
-            "bekasi",
-            "cimahi",
-            "cirebon",
-            "sukabumi",
-            "tasikmalaya",
-            "banjar",
-            "garut",
-            "cianjur",
-            "ciamis",
-            "kuningan",
-            "majalengka",
-            "pangandaran",
-            "purwakarta",
-            "subang",
-            "sumedang",
-            "indramayu",
-            "karawang",
-        ]
-        teks_gabungan = f"{judul} {isi or ringkasan or ''}".lower()
-        if not any(k in teks_gabungan for k in jabar_keywords):
-            return (
-                False,
-                "Ditolak (Lapis 1): Tidak mengandung kata kunci kota/wilayah Jabar",
-            )
+        # Jika isi/ringkasan belum ada (fase crawl pertama), simpan dulu agar background worker bisa resolve link & unduh isinya untuk dicek lebih akurat.
+        is_crawling_phase = (isi is None and ringkasan is None)
+        if not is_crawling_phase:
+            jabar_keywords = [
+                "jawa barat",
+                "jabar",
+                "bandung",
+                "bogor",
+                "depok",
+                "bekasi",
+                "cimahi",
+                "cirebon",
+                "sukabumi",
+                "tasikmalaya",
+                "banjar",
+                "garut",
+                "cianjur",
+                "ciamis",
+                "kuningan",
+                "majalengka",
+                "pangandaran",
+                "purwakarta",
+                "subang",
+                "sumedang",
+                "indramayu",
+                "karawang",
+            ]
+            teks_gabungan = f"{judul} {isi or ringkasan or ''}".lower()
+            if not any(k in teks_gabungan for k in jabar_keywords):
+                return (
+                    False,
+                    "Ditolak (Lapis 1): Tidak mengandung kata kunci kota/wilayah Jabar",
+                )
+
+        # Cek apakah media termasuk Media Rekanan OJK Jabar
+        from config import Config
+        media_raw = article_data.get("media", "")
+        is_rekanan_detected = False
+        if media_raw:
+            media_lower = media_raw.lower().strip()
+            for r_name in getattr(Config, "MEDIA_REKANAN", []):
+                r_lower = r_name.lower().strip()
+                if r_lower in media_lower or media_lower in r_lower:
+                    is_rekanan_detected = True
+                    break
+                r_clean = r_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+                m_clean = media_lower.replace(".com", "").replace(".id", "").replace(".co.id", "").replace(".go.id", "").strip()
+                if r_clean and m_clean and (r_clean in m_clean or m_clean in r_clean):
+                    is_rekanan_detected = True
+                    break
 
         # ── Lapis 2: Analisis AI Cerdas (Cohere) ────────────────────────────
         sentimen_final = None
@@ -134,11 +205,23 @@ class CrawlerService:
                 if ai_result:
                     sentimen_final = ai_result["sentimen"]
                     # Jika AI mendeteksi secara konteks bahwa ini bukan Jabar
+                    # Khusus Media Rekanan, toleransi jika ada OJK / Finansial
                     if sentimen_final == "Tidak Relevan":
-                        return (
-                            False,
-                            "Ditolak (Lapis 2): AI menilai berita tidak relevan/bukan Jabar",
-                        )
+                        is_tolerated = False
+                        if is_rekanan_detected:
+                            teks_gabung = f"{judul} {isi or ringkasan or ''}".lower()
+                            if any(x in teks_gabung for x in ["ojk", "keuangan", "perbankan", "pasar modal", "investasi"]):
+                                is_tolerated = True
+                        if not is_tolerated:
+                            return (
+                                False,
+                                "Ditolak (Lapis 2): AI menilai berita tidak relevan/bukan Jabar",
+                            )
+                        else:
+                            sentimen_final = "Netral"
+                            ai_result["sentimen"] = "Netral"
+                            if not ai_result.get("wilayah"):
+                                ai_result["wilayah"] = "Jawa Barat"
 
                     topik_final = ai_result["topik"]
                     wilayah_final = ai_result.get("wilayah")
@@ -187,6 +270,7 @@ class CrawlerService:
             status="aktif",
             ai_checked=ai_checked_final,
             ai_last_checked=ai_last_checked_final,
+            is_rekanan=is_rekanan_detected,
         )
 
         db.session.add(berita)

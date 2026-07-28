@@ -117,6 +117,29 @@ class Config:
         "Ciayumajakuning.id", "rmoljabar.id"
     ]
 
+    # Media Rekanan OJK Jawa Barat
+    MEDIA_REKANAN = [
+        "Jabar Ekspres", "Bisnis Indonesia", "Bandung TV", "Tribun Jabar", "AyoBandung",
+        "TerasBandung", "Radio Rama", "Radio Paramuda", "iNews", "Radio RAKA", "Sonora",
+        "Ardan FM", "B Radio", "Cakra FM", "Ardan Group", "Bagikan Berita",
+        "Radio Pikiran Rakyat", "Berita KBB", "Teropong Media", "MQTV", "Radar Bandung",
+        "Pojok Satu", "Radio Mara", "detikJabar", "Pikiran Rakyat", "Kesatu.co",
+        "Fokussatu.id", "Kompas TV Jawa Barat", "TIMES Indonesia", "Tugubandung.id",
+        "Suara Merdeka", "BriliaNews", "GenPI", "JPNN", "RRI Bandung", "Radiopensiunan",
+        "Ketik.co.id", "MGT Radio", "Tempo", "Jurnal Gaya", "IDN Times", "INFOBAIK.ID",
+        "PRSSNI", "Bandung News Photo", "ZonaPriangan", "Republika", "K-Lite FM",
+        "Antara TV", "Inilah Koran", "BaleBandung", "Pentas TV", "BandungHariIni",
+        "Kurasi Media", "Radar Jabar", "Jabarprov.go.id", "Pasardana.id",
+        "PrianganTimurNews", "Investortrust", "Radar Tasik", "Warta Tasik", "BeritaSatu",
+        "Media Indonesia", "Kompas.com", "BatamToday", "Radio Elshinta", "Antara News",
+        "Langit7", "InilahTasik", "GemaMitra", "TerkiniNews", "Inakor",
+        "Republik Bobotoh", "KilasKepri", "SekitarBandung", "NewsTasikmalaya",
+        "DepostJabar", "Bandung24Jam", "AyoPurwakarta", "TrustJabar", "KilasBandung",
+        "Metro TV", "Harapan Rakyat", "Akurat Jabar", "Herald Jabar", "Radio PRFM",
+        "Bandung Radio Streaming", "Jurnal Jabar", "Ayobiz", "Soreang Ekspres",
+        "Cimahi Ekspres", "KBB Ekspres", "RMOL.ID", "Maknakala"
+    ]
+
 
 class DevelopmentConfig(Config):
     """Konfigurasi untuk development."""
@@ -151,5 +174,3 @@ config_map = {
 def get_config(env: str = "default") -> Config:
     """Mengembalikan konfigurasi berdasarkan environment."""
     return config_map.get(env, config_map["default"])
-
-"Bandung Barat",
