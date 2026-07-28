@@ -45,32 +45,46 @@ bp = Blueprint("laporan", __name__)
 def _get_laporan_dir() -> str:
     """Direktori penyimpanan permanen laporan di instance/laporan/ (fallback ke /tmp jika read-only)."""
     import tempfile
-    try:
-        d = os.path.join(current_app.instance_path, "laporan")
-        os.makedirs(d, exist_ok=True)
-        return d
-    except Exception:
+    if os.environ.get("VERCEL") == "1":
         d = os.path.join(tempfile.gettempdir(), "laporan")
-        os.makedirs(d, exist_ok=True)
-        return d
+    else:
+        try:
+            d = os.path.join(current_app.instance_path, "laporan")
+            os.makedirs(d, exist_ok=True)
+            # Test write access
+            test_file = os.path.join(d, ".write_test")
+            with open(test_file, "w") as f:
+                f.write("test")
+            os.remove(test_file)
+        except Exception:
+            d = os.path.join(tempfile.gettempdir(), "laporan")
+            
+    os.makedirs(d, exist_ok=True)
+    return d
 
 
 def _get_temp_dir(temp_key: str = None) -> str:
     """Direktori temp untuk laporan yang belum di-download (fallback ke /tmp jika read-only)."""
     import tempfile
-    try:
-        base = os.path.join(current_app.instance_path, "laporan_temp")
-        os.makedirs(base, exist_ok=True)
-    except Exception:
+    if os.environ.get("VERCEL") == "1":
         base = os.path.join(tempfile.gettempdir(), "laporan_temp")
-        os.makedirs(base, exist_ok=True)
+    else:
+        try:
+            base = os.path.join(current_app.instance_path, "laporan_temp")
+            os.makedirs(base, exist_ok=True)
+            # Test write access
+            test_file = os.path.join(base, ".write_test")
+            with open(test_file, "w") as f:
+                f.write("test")
+            os.remove(test_file)
+        except Exception:
+            base = os.path.join(tempfile.gettempdir(), "laporan_temp")
+            
+    os.makedirs(base, exist_ok=True)
 
     if temp_key:
         d = os.path.join(base, temp_key)
-        try:
-            os.makedirs(d, exist_ok=True)
-        except Exception:
-            pass
+        os.makedirs(d, exist_ok=True)
         return d
     return base
 
