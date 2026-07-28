@@ -11,27 +11,27 @@
 
     <!-- Stat Cards -->
     <div class="dash-stat-cards">
-        <div class="stat-card-v2 stat-total">
+        <div class="stat-card-v2 stat-total" title="Klik 2x untuk melihat semua berita" ondblclick="window.location.href='{{ url_for('pemberitaan.index') }}'">
             <div class="stat-v2-top">
                 <span class="stat-v2-label">TOTAL BERITA</span>
             </div>
             <div class="stat-v2-value">{{ statistik.total }}</div>
         </div>
-            <div class="stat-card-v2 stat-positif">
+        <div class="stat-card-v2 stat-positif" title="Klik 2x untuk melihat berita sentimen positif" ondblclick="window.location.href='{{ url_for('pemberitaan.index', sentimen='Positif') }}'">
             <div class="stat-v2-top">
                 <span class="stat-v2-label">POSITIF</span>
             </div>
             <div class="stat-v2-value">{{ statistik.positif }}</div>
             <div class="stat-v2-pct positif-pct">{{ statistik.pct_positif }}%</div>
         </div>
-        <div class="stat-card-v2 stat-netral">
+        <div class="stat-card-v2 stat-netral" title="Klik 2x untuk melihat berita sentimen netral" ondblclick="window.location.href='{{ url_for('pemberitaan.index', sentimen='Netral') }}'">
             <div class="stat-v2-top">
                 <span class="stat-v2-label">NETRAL</span>
             </div>
             <div class="stat-v2-value">{{ statistik.netral }}</div>
             <div class="stat-v2-pct netral-pct">{{ statistik.pct_netral }}%</div>
         </div>
-        <div class="stat-card-v2 stat-negatif">
+        <div class="stat-card-v2 stat-negatif" title="Klik 2x untuk melihat berita sentimen negatif" ondblclick="window.location.href='{{ url_for('pemberitaan.index', sentimen='Negatif') }}'">
             <div class="stat-v2-top">
                 <span class="stat-v2-dot dot-negatif">&#9675;</span>
                 <span class="stat-v2-label">NEGATIF</span>
@@ -409,6 +409,17 @@ async function fetchImages() {
     0%   { opacity: 1; }
     50%  { opacity: 0.4; }
     100% { opacity: 1; }
+}
+.stat-card-v2:not(.stat-ai) {
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease;
+}
+.stat-card-v2:not(.stat-ai):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+.stat-card-v2:not(.stat-ai):active {
+    transform: translateY(-1px);
 }
 </style>
 {% endblock %}
