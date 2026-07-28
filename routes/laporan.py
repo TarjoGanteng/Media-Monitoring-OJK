@@ -158,19 +158,82 @@ def _save_temp_meta(temp_key: str, meta: dict):
 
 
 def _load_temp_meta(temp_key: str) -> dict:
-    """Load metadata JSON dari memori cache atau folder temp."""
+    """Load metadata JSON dari memori cache, folder temp, atau query string fallback."""
+    from flask import request
+    
     if temp_key in _TEMP_META_CACHE:
         return _TEMP_META_CACHE[temp_key]
+        
     meta_path = os.path.join(_get_temp_dir(temp_key), "meta.json")
-    if not os.path.exists(meta_path):
-        return None
-    try:
-        with open(meta_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            _TEMP_META_CACHE[temp_key] = data
-            return data
-    except Exception:
-        return None
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _TEMP_META_CACHE[temp_key] = data
+                return data
+        except Exception:
+            pass
+
+    # Fallback: Konstruksi ulang metadata dari query string parameter (untuk Vercel/Serverless)
+    if request:
+        try:
+            jenis_periode = request.args.get("jenis_periode")
+            tanggal_dari = request.args.get("tanggal_dari")
+            tanggal_sampai = request.args.get("tanggal_sampai")
+            if jenis_periode and tanggal_dari and tanggal_sampai:
+                wilayah = request.args.get("wilayah", "Jawa Barat")
+                topik = request.args.get("topik") or None
+                if topik == "":
+                    topik = None
+                jenis_media = request.args.get("jenis_media", "semua")
+                triwulan_val = request.args.get("triwulan_val")
+                nomor_laporan = request.args.get("nomor_laporan", "Laporan")
+                
+                from datetime import datetime
+                tgl_dari_dt = datetime.strptime(tanggal_dari, "%Y-%m-%d").date()
+                tgl_sampai_dt = datetime.strptime(tanggal_sampai, "%Y-%m-%d").date()
+                periode_label = _build_periode_label(jenis_periode, tgl_dari_dt, tgl_sampai_dt, triwulan_val)
+                judul_laporan = f"Laporan Pemberitaan OJK – {periode_label}"
+                
+                from services.laporan_service import LaporanService
+                data = LaporanService.get_data_laporan(
+                    tanggal_dari=tgl_dari_dt,
+                    tanggal_sampai=tgl_sampai_dt,
+                    wilayah=wilayah if wilayah.lower() not in ["semua", "jawa barat"] else None,
+                    topik=topik,
+                    jenis_media=jenis_media
+                )
+                s = data["statistik"]
+                
+                meta = {
+                    "params": {
+                        "nomor_laporan": nomor_laporan,
+                        "judul": judul_laporan,
+                        "periode_label": periode_label,
+                        "jenis_periode": jenis_periode,
+                        "tanggal_dari": tanggal_dari,
+                        "tanggal_sampai": tanggal_sampai,
+                        "tanggal_dari_str": tgl_dari_dt.strftime("%d %B %Y"),
+                        "tanggal_sampai_str": tgl_sampai_dt.strftime("%d %B %Y"),
+                        "wilayah": wilayah,
+                        "topik": topik,
+                        "jenis_media": jenis_media,
+                        "dibuat_oleh_nama": "Admin",
+                    },
+                    "statistik": {
+                        "total": s["total"],
+                        "positif": s["positif"],
+                        "negatif": s["negatif"],
+                        "netral": s["netral"],
+                    },
+                    "dibuat_oleh_id": current_user.id if (current_user and hasattr(current_user, 'id')) else None,
+                }
+                _TEMP_META_CACHE[temp_key] = meta
+                return meta
+        except Exception as e:
+            logger.warning(f"[laporan] Gagal merekonstruksi metadata temp di Vercel: {e}")
+
+    return None
 
 
 def _ensure_pdf_file(laporan_record=None, temp_key: str = None) -> str:
@@ -545,14 +608,26 @@ def generate():
 
         logger.info(f"[laporan/generate] Berhasil: {nomor_laporan} (temp_key={temp_key})")
 
+        # Query params untuk merekonstruksi metadata temp jika file hilang (stateless / Vercel)
+        query_params = {
+            "jenis_periode": jenis_periode,
+            "tanggal_dari": tgl_dari.strftime("%Y-%m-%d") if tgl_dari else "",
+            "tanggal_sampai": tgl_sampai.strftime("%Y-%m-%d") if tgl_sampai else "",
+            "wilayah": wilayah or "Jawa Barat",
+            "topik": topik or "",
+            "jenis_media": jenis_media or "semua",
+            "triwulan_val": triwulan_val or "",
+            "nomor_laporan": nomor_laporan,
+        }
+
         return jsonify({
             "success":            True,
             "temp_key":           temp_key,
             "nomor_laporan":      nomor_laporan,
-            "preview_url":        url_for("laporan.preview_temp",       temp_key=temp_key),
-            "excel_preview_url":  url_for("laporan.preview_excel_temp", temp_key=temp_key),
-            "download_pdf_url":   url_for("laporan.download_temp",      temp_key=temp_key, fmt="pdf"),
-            "download_excel_url": url_for("laporan.download_temp",      temp_key=temp_key, fmt="excel"),
+            "preview_url":        url_for("laporan.preview_temp",       temp_key=temp_key, **query_params),
+            "excel_preview_url":  url_for("laporan.preview_excel_temp", temp_key=temp_key, **query_params),
+            "download_pdf_url":   url_for("laporan.download_temp",      temp_key=temp_key, fmt="pdf", **query_params),
+            "download_excel_url": url_for("laporan.download_temp",      temp_key=temp_key, fmt="excel", **query_params),
             "statistik":          s,
         })
 
