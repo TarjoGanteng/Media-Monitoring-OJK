@@ -125,10 +125,13 @@ def initialize_database(app=None):
 
         # Migrasi kolom ai_checked pada tabel berita
         berita_columns = [col["name"] for col in inspector.get_columns("berita")]
+        is_postgresql = db.engine.dialect.name == "postgresql"
+        default_bool = "FALSE" if is_postgresql else "0"
+
         if "ai_checked" not in berita_columns:
             db.session.execute(
                 text(
-                    "ALTER TABLE berita ADD COLUMN ai_checked BOOLEAN DEFAULT 0 NOT NULL"
+                    f"ALTER TABLE berita ADD COLUMN ai_checked BOOLEAN DEFAULT {default_bool} NOT NULL"
                 )
             )
             db.session.commit()
@@ -137,7 +140,7 @@ def initialize_database(app=None):
         if "is_rekanan" not in berita_columns:
             db.session.execute(
                 text(
-                    "ALTER TABLE berita ADD COLUMN is_rekanan BOOLEAN DEFAULT 0 NOT NULL"
+                    f"ALTER TABLE berita ADD COLUMN is_rekanan BOOLEAN DEFAULT {default_bool} NOT NULL"
                 )
             )
             db.session.commit()

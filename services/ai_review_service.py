@@ -122,10 +122,13 @@ class AIReviewService:
                 inspector = sa_inspect(db.engine)
                 cols = [c["name"] for c in inspector.get_columns("berita")]
                 modified = False
+                is_postgresql = db.engine.dialect.name == "postgresql"
+                default_bool = "FALSE" if is_postgresql else "0"
+
                 if "ai_checked" not in cols:
                     db.session.execute(
                         text(
-                            "ALTER TABLE berita ADD COLUMN ai_checked BOOLEAN DEFAULT 0 NOT NULL"
+                            f"ALTER TABLE berita ADD COLUMN ai_checked BOOLEAN DEFAULT {default_bool} NOT NULL"
                         )
                     )
                     modified = True
@@ -141,7 +144,7 @@ class AIReviewService:
                 if "is_rekanan" not in cols:
                     db.session.execute(
                         text(
-                            "ALTER TABLE berita ADD COLUMN is_rekanan BOOLEAN DEFAULT 0 NOT NULL"
+                            f"ALTER TABLE berita ADD COLUMN is_rekanan BOOLEAN DEFAULT {default_bool} NOT NULL"
                         )
                     )
                     modified = True
