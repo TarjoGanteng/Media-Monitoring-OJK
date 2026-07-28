@@ -224,3 +224,26 @@ def cleanup_non_jabar():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+@bp.route("/api/oldest-news")
+def oldest_news():
+    """Menampilkan berita paling lama di database."""
+    from database.models import Berita
+    from database.extensions import db
+    try:
+        oldest = Berita.query.filter_by(status='aktif').order_by(Berita.tanggal.asc()).first()
+        if oldest:
+            return jsonify({
+                "success": True,
+                "id": oldest.id,
+                "tanggal": oldest.tanggal.strftime("%Y-%m-%d %H:%M:%S") if oldest.tanggal else None,
+                "judul": oldest.judul,
+                "media": oldest.media,
+                "wilayah": oldest.wilayah
+            }), 200
+        else:
+            return jsonify({"success": True, "message": "Tidak ada berita"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
