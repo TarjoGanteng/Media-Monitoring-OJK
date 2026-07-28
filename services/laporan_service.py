@@ -455,13 +455,13 @@ class LaporanService:
             .all()
         )
 
-        # --- Daftar Berita Terbaru (10 berita untuk lampiran) ---
+        # --- Daftar Berita Terbaru (10 berita untuk lampiran PDF) ---
         berita_terbaru = (
             base_q.order_by(desc(Berita.tanggal)).limit(10).all()
         )
 
-        # --- Semua Berita (untuk Excel) ---
-        semua_berita = (
+        # --- Daftar Semua Berita untuk Laporan Excel ---
+        berita_semua = (
             base_q.order_by(desc(Berita.tanggal)).all()
         )
 
@@ -501,7 +501,7 @@ class LaporanService:
             },
             "berita_negatif": berita_negatif,
             "berita_terbaru": berita_terbaru,
-            "semua_berita": semua_berita,
+            "berita_semua": berita_semua,
             "ringkasan_ai": ringkasan_ai,
         }
 
@@ -899,12 +899,12 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ws1 = wb.active
         ws1.title = "Ringkasan"
 
-        RED      = "C8002D"
-        DARK_RED = "8B0000"
-        LIGHT_RED= "FFF0F0"
-        GRAY     = "F1F5F9"
-        DARK     = "1E293B"
-        WHITE    = "FFFFFF"
+        GREEN       = "16A34A"
+        DARK_GREEN  = "15803D"
+        LIGHT_GREEN = "F0FDF4"
+        GRAY        = "F1F5F9"
+        DARK        = "1E293B"
+        WHITE       = "FFFFFF"
 
         def hfill(hex_color):
             return PatternFill("solid", fgColor=hex_color)
@@ -920,7 +920,7 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ws1.merge_cells("A1:G1")
         ws1["A1"] = f"LAPORAN PEMBERITAAN OJK – {params.get('periode_label', '').upper()}"
         ws1["A1"].font = Font(bold=True, size=14, color=WHITE, name="Calibri")
-        ws1["A1"].fill = hfill(RED)
+        ws1["A1"].fill = hfill(GREEN)
         ws1["A1"].alignment = Alignment(horizontal="center", vertical="center")
         ws1.row_dimensions[1].height = 36
 
@@ -935,7 +935,7 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ws1.merge_cells(f"A{row}:G{row}")
         ws1[f"A{row}"] = "STATISTIK UTAMA"
         ws1[f"A{row}"].font = hfont(True, 11, WHITE)
-        ws1[f"A{row}"].fill = hfill(DARK_RED)
+        ws1[f"A{row}"].fill = hfill(DARK_GREEN)
         ws1[f"A{row}"].alignment = Alignment(horizontal="left", indent=1)
         ws1.row_dimensions[row].height = 22
 
@@ -950,7 +950,7 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ]
         row += 1
         for i, (label, value, extra) in enumerate(stats_data):
-            fill = hfill(LIGHT_RED if i % 2 == 0 else WHITE)
+            fill = hfill(LIGHT_GREEN if i % 2 == 0 else WHITE)
             for col in range(1, 8):
                 ws1.cell(row=row, column=col).fill = fill
                 ws1.cell(row=row, column=col).border = hborder()
@@ -969,7 +969,7 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ws1.merge_cells(f"A{row}:G{row}")
         ws1[f"A{row}"] = "TOP 5 TOPIK PEMBERITAAN"
         ws1[f"A{row}"].font = hfont(True, 11, WHITE)
-        ws1[f"A{row}"].fill = hfill(DARK_RED)
+        ws1[f"A{row}"].fill = hfill(DARK_GREEN)
         ws1[f"A{row}"].alignment = Alignment(horizontal="left", indent=1)
         ws1.row_dimensions[row].height = 22
         row += 1
@@ -980,14 +980,14 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         ws1.cell(row=row, column=4).value = "Persentase"
         for col in range(1, 5):
             ws1.cell(row=row, column=col).font = hfont(True, 10, WHITE)
-            ws1.cell(row=row, column=col).fill = hfill(RED)
+            ws1.cell(row=row, column=col).fill = hfill(GREEN)
             ws1.cell(row=row, column=col).border = hborder()
             ws1.cell(row=row, column=col).alignment = Alignment(horizontal="center")
         ws1.row_dimensions[row].height = 20
         row += 1
 
         for i, t in enumerate(data["topik_terbanyak"], 1):
-            fill = hfill(LIGHT_RED if i % 2 == 0 else WHITE)
+            fill = hfill(LIGHT_GREEN if i % 2 == 0 else WHITE)
             ws1.cell(row=row, column=1).value = i
             ws1.cell(row=row, column=2).value = t["topik"]
             ws1.cell(row=row, column=3).value = t["jumlah"]
@@ -1011,14 +1011,13 @@ Tulis 2 paragraf penutup formal dan saran strategis jangka panjang bagi humas OJ
         for col_idx, header in enumerate(headers, 1):
             cell = ws2.cell(row=1, column=col_idx, value=header)
             cell.font = Font(bold=True, size=10, color=WHITE, name="Calibri")
-            cell.fill = hfill(RED)
+            cell.fill = hfill(GREEN)
             cell.border = hborder()
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         ws2.row_dimensions[1].height = 22
 
         sentimen_colors = {"Positif": "DCFCE7", "Negatif": "FEE2E2", "Netral": "F1F5F9"}
-        # Gunakan semua_berita agar Excel menampilkan seluruh berita, bukan cuma 10 berita terbaru
-        for i, berita in enumerate(data.get("semua_berita", data["berita_terbaru"]), 1):
+        for i, berita in enumerate(data["berita_semua"], 1):
             row_num = i + 1
             s_color = sentimen_colors.get(berita.sentimen, "FFFFFF")
             row_data = [
